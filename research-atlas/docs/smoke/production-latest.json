@@ -1,0 +1,16 @@
+{
+  "commitSha": "4e2d19789dfcde741032e66dd7c8bd5cf2e11991",
+  "packageVersion": "0.5.0",
+  "deploymentUrl": "https://rishadamin001.github.io/research-tracker-app/",
+  "checkedAt": "2026-11-06T21:52:40.570Z",
+  "appLoaded": true,
+  "projectPersistence": true,
+  "openAlexMode": "anonymous first page",
+  "openAlexSearchResultCount": 20,
+  "crossrefLookup": true,
+  "unpaywallLookupIfConfigured": null,
+  "backupRestore": true,
+  "offlineProjectOpen": true,
+  "mobileOverflow": false,
+  "consoleErrors": []
+}

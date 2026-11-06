@@ -1,8 +1,8 @@
 {
-  "commitSha": null,
+  "commitSha": "4e2d19789dfcde741032e66dd7c8bd5cf2e11991",
   "packageVersion": "0.5.0",
   "deploymentUrl": "http://127.0.0.1:4173/",
-  "checkedAt": "2026-11-06T21:29:03.500Z",
+  "checkedAt": "2026-11-06T21:43:31.611Z",
   "appLoaded": true,
   "projectPersistence": true,
   "openAlexMode": "anonymous first page",
