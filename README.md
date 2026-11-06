@@ -91,3 +91,15 @@ package-lock.json    Frozen workspace dependency tree
 ```
 
 Use the existing checkout for cloud tasks; each task already has an isolated environment. No additional Git worktree is needed.
+
+## Research Atlas — research planning workspace
+
+The local-first Research Atlas app is in [`research-atlas/`](research-atlas/README.md). It includes discipline exploration, research questions, study plans, OpenAlex literature search and OA resolution, evidence extraction, and DOI verification. Research Foundations has been removed. External links use regular browser navigation with copy-link fallbacks. The original React/Express/SQLite tracker above remains unchanged.
+
+```sh
+cd research-atlas
+npm ci
+npm run dev
+```
+
+Open http://127.0.0.1:3000. For a static production preview run `npm run build` then `npm run preview`, and open http://127.0.0.1:4173. Research Atlas keeps its data in browser IndexedDB; it does not share the tracker SQLite database. See [verification](research-atlas/TESTING.md) and [deployment](research-atlas/DEPLOYMENT.md).

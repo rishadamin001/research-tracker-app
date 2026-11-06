@@ -1,0 +1,15 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createProject,parseBackup,normalizeDoi,addPaper,safeUrl,matrixCsv} from '../src/lib/model';
+import {parseWorks,searchPapers} from '../src/lib/providers';
+import {routeDesign,disciplines} from '../src/lib/content';
+test('backup round trip preserves research and rejects unsupported schema',()=>{const p=createProject('Test');p.question='What changes?';const raw=JSON.stringify({schemaVersion:1,exportedAt:new Date().toISOString(),projects:[p]});assert.deepEqual(parseBackup(raw).projects[0],p);assert.throws(()=>parseBackup(raw.replace('"schemaVersion":1','"schemaVersion":2')));assert.throws(()=>parseBackup('{"projects":[{}]}'));});
+test('DOI normalization and invalid inputs',()=>{assert.equal(normalizeDoi('https://doi.org/10.1234/ABC'),'10.1234/abc');assert.throws(()=>normalizeDoi('not a doi'));});
+test('untrusted links cannot execute script',()=>{assert.equal(safeUrl('javascript:alert(1)'),undefined);assert.equal(safeUrl('https://example.org'),'https://example.org/');});
+const fixture={results:[{id:'https://openalex.org/W1',display_name:'A paper',publication_year:2024,doi:'https://doi.org/10.1234/abc',authorships:[],primary_location:null,best_oa_location:null}]};
+test('provider handles absent source and OA without inventing values',()=>{const p=parseWorks(fixture)[0];assert.equal(p.oa,null);assert.equal(p.journal,'Source not supplied');assert.equal(p.doi,'10.1234/abc');assert.throws(()=>parseWorks({results:[{id:42}]}));});
+test('DOI duplicate is not added; CSV formula cells are neutralized',()=>{const paper=parseWorks(fixture)[0];let p=createProject();p=addPaper(p,paper);p=addPaper(p,{...paper,id:'other'});assert.equal(p.papers.length,1);p.papers[0].notes='=HYPERLINK("evil")';assert.match(matrixCsv(p),/'=HYPERLINK/);});
+test('router abstains, distinguishes disciplines and keeps reporting conditional',()=>{assert.equal(routeDesign('unknown','law'),null);assert.match(routeDesign('interpret','Law & governance')!.design,/legal/);assert.match(routeDesign('describe','Business & management')!.standard,/not a universal/);assert.match(routeDesign('describe','Health & pharmacy')!.standard,/epidemiology/);});
+test('content has distinct disciplines and domains',()=>{assert.equal(new Set(disciplines.map(d=>d.name)).size,6);for(const d of disciplines)assert.ok(d.domains.length>=5);});
+test('unsupported Boolean syntax rejected before network call',async()=>{await assert.rejects(searchPapers('climate AND health','',false),/Boolean/);});
+test('quota failure explains safe fallback',async()=>{const old=globalThis.fetch;globalThis.fetch=async()=>new Response('',{status:429});try{await assert.rejects(searchPapers('climate health','',false),/free research service is at its limit/);}finally{globalThis.fetch=old;}});

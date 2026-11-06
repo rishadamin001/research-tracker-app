@@ -1,0 +1,7 @@
+name = "research-atlas-gateway"
+main = "worker.ts"
+compatibility_date = "2026-11-06"
+# Deploy only after verifying Workers Free. No paid bindings.
+[vars]
+ALLOWED_ORIGIN = "http://127.0.0.1:3000"
+# Configure OPERATOR_EMAIL as a secret for Unpaywall; never use a placeholder.
