@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0 — 2026-11-06
+
+Added a visual research guide, conference tracker and calendar exports, transparent OpenAlex sorting for papers and journals, and saved display preferences. Updated workspace navigation, color, density, and section transitions.
+
 ## 0.2.0 — 2026-11-06
 
 Reorganized Atlas around a persistent project roadmap. Added a short starter exercise, profile and topic planning, screening reasons and decision history, evidence comparison, citation connections, data and analysis records, a manuscript draft, and a publication shortlist. A revised question flags prior work for review. The Vite build supports GitHub Pages and imports previous backups.

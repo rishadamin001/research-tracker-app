@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createProject,parseBackup,normalizeDoi,addPaper,safeUrl,matrixCsv} from '../src/lib/model';
-import {parseWorks,searchPapers} from '../src/lib/providers';
+import {checkJournalMetrics,parseWorks,searchPapers} from '../src/lib/providers';
 import {routeDesign,disciplines} from '../src/lib/content';
+import {normalizeIssn,orderJournals,orderPapers} from '../src/lib/ranking';
 test('backup round trip preserves research and rejects unsupported schema',()=>{const p=createProject('Test');p.question='What changes?';const raw=JSON.stringify({schemaVersion:1,exportedAt:new Date().toISOString(),projects:[p]});assert.deepEqual(parseBackup(raw).projects[0],p);assert.throws(()=>parseBackup(raw.replace('"schemaVersion":1','"schemaVersion":2')));assert.throws(()=>parseBackup('{"projects":[{}]}'));});
 test('a version 1 project made before the roadmap keeps its question and evidence', () => {
   const at = '2026-01-01T00:00:00.000Z';
@@ -29,3 +30,33 @@ test('router abstains, distinguishes disciplines and keeps reporting conditional
 test('content has distinct disciplines and domains',()=>{assert.equal(new Set(disciplines.map(d=>d.name)).size,6);for(const d of disciplines)assert.ok(d.domains.length>=5);});
 test('unsupported Boolean syntax rejected before network call',async()=>{await assert.rejects(searchPapers('climate AND health','',false),/Boolean/);});
 test('quota failure explains safe fallback',async()=>{const old=globalThis.fetch;globalThis.fetch=async()=>new Response('',{status:429});try{await assert.rejects(searchPapers('climate health','',false),/free research service is at its limit/);}finally{globalThis.fetch=old;}});
+test('paper citation ranking preserves zero, puts unavailable data last, and leaves saved order intact', () => {
+  const [paper] = parseWorks(fixture);
+  const zero = { ...paper, id: 'zero', fwci: 0 };
+  const high = { ...paper, id: 'high', fwci: 2.6 };
+  const unavailable = { ...paper, id: 'unavailable' };
+  const library = [unavailable, zero, high];
+  assert.deepEqual(orderPapers(library, 'impact').map(item => item.id), ['high', 'zero', 'unavailable']);
+  assert.deepEqual(library.map(item => item.id), ['unavailable', 'zero', 'high']);
+});
+test('journal lookup checks ISSN identity and retains provenance for shortlist sorting', async () => {
+  assert.equal(normalizeIssn('ISSN 00280836'), '0028-0836');
+  assert.throws(() => normalizeIssn('0028-0835'), /check digit/);
+  const old = globalThis.fetch;
+  let response = { id: 'https://openalex.org/S1', display_name: 'Nature', type: 'journal',
+    issn_l: '0028-0836', summary_stats: { '2yr_mean_citedness': 22.1, h_index: 110 } };
+  globalThis.fetch = async url => {
+    assert.equal(url, 'https://api.openalex.org/sources/issn:0028-0836');
+    return Response.json(response);
+  };
+  try {
+    const metrics = await checkJournalMetrics('0028-0836');
+    assert.equal(metrics.citedness, 22.1);
+    assert.equal(metrics.sourceId, 'https://openalex.org/S1');
+    assert.ok(Number.isFinite(Date.parse(metrics.checkedAt)));
+    const candidate = { title: 'Candidate', url: '', scope: '', cost: '', checks: [], verification: '' };
+    assert.deepEqual(orderJournals([{ ...candidate, id: 'missing' }, { ...candidate, id: 'measured', metrics }], 'citedness').map(item => item.id), ['measured', 'missing']);
+    response = { ...response, issn_l: '2041-1723' };
+    await assert.rejects(checkJournalMetrics('0028-0836'), /matching this ISSN/);
+  } finally { globalThis.fetch = old; }
+});

@@ -6,6 +6,9 @@ import { doiWebsiteUrl, sourceLinks } from '../lib/links';
 import { normalizeDoi, safeUrl, type Paper, type Project } from '../lib/model';
 import { checkDoi, resolveOa } from '../lib/providers';
 import { download } from '../lib/storage';
+import { journalOrderLabels, metricNumber, orderJournals } from '../lib/ranking';
+import { JournalMetrics } from './JournalMetrics';
+import { OrderSelect, useStoredOrder } from './RankingControls';
 
 type Props = {
   project: Project;
@@ -202,12 +205,19 @@ function JournalEditor({ journal, onChange, onRemove }: {
 }) {
   const website = safeUrl(journal.url);
   return <details className="panel matrix-paper">
-    <summary style={{ overflowWrap: 'anywhere' }}><span>{journal.title || 'Untitled candidate'}</span></summary>
+    <summary style={{ overflowWrap: 'anywhere' }}>
+      <span><strong>{journal.title || 'Untitled candidate'}</strong>
+        <small>{journal.metrics
+          ? `Recent citations per paper ${journal.metrics.citedness == null ? 'unavailable' : metricNumber(journal.metrics.citedness)} · h-index ${journal.metrics.hIndex == null ? 'unavailable' : metricNumber(journal.metrics.hIndex)} · OpenAlex`
+          : 'Journal metrics unavailable'}</small>
+      </span>
+    </summary>
     <div className="lesson-body">
       <label className="field"><span>Journal title</span><input maxLength={200} value={journal.title} onChange={event => onChange({ title: event.target.value })} /></label>
       <label className="field"><span>Official journal website</span><input type="url" maxLength={2000} value={journal.url} onChange={event => onChange({ url: event.target.value })} /></label>
       {website && <External href={website}>Open journal website</External>}
       {journal.url && !website && <p className="muted">Enter a complete website address beginning with https:// or http://.</p>}
+      <JournalMetrics value={journal.metrics} onChange={metrics => onChange({ metrics })} />
       <NotesField label="Scope and article fit" value={journal.scope} onChange={scope => onChange({ scope })} rows={3} />
       <NotesField label="Fees and waivers" value={journal.cost} onChange={cost => onChange({ cost })} placeholder="Record the official cost, currency, or whether the fees are still unknown." rows={3} />
       <fieldset>
@@ -260,6 +270,8 @@ function PublicationWorkspace({ project, update }: WorkspaceProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [record, setRecord] = useState<DoiRecord>();
+  const [journalOrder, setJournalOrder] = useStoredOrder('atlas-journal-sort', journalOrderLabels, 'citedness');
+  const journals = orderJournals(project.journalCandidates, journalOrder);
 
   function addJournal(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -295,8 +307,12 @@ function PublicationWorkspace({ project, update }: WorkspaceProps) {
           <button className="button" disabled={!title.trim() || project.journalCandidates.length >= 100}><Plus size={16} /> Add journal</button>
         </form>
         {project.journalCandidates.length >= 100 && <p>Your shortlist has reached its 100-journal limit.</p>}
+        {journals.length > 0 && <>
+          <OrderSelect label="Sort journal shortlist" labels={journalOrderLabels} order={journalOrder} onChange={setJournalOrder} />
+          <p className="muted">Values come from OpenAlex. Compare journals in the same field and check fit, fees, and editorial practices separately. Journals without the selected metric appear last.</p>
+        </>}
       </section>
-      {project.journalCandidates.map(journal => <JournalEditor key={journal.id} journal={journal}
+      {journals.map(journal => <JournalEditor key={journal.id} journal={journal}
         onChange={patch => update({ journalCandidates: project.journalCandidates.map(candidate => candidate.id === journal.id ? { ...candidate, ...patch } : candidate) })}
         onRemove={() => {
           if (window.confirm(`Remove ${journal.title || 'this journal'} and its verification notes?`)) {
@@ -344,6 +360,9 @@ function PublicationWorkspace({ project, update }: WorkspaceProps) {
         <div className="standard"><External href="https://doaj.org/search/journals">DOAJ journal directory</External></div>
         <div className="standard"><External href="https://mjl.clarivate.com/">Web of Science Master Journal List</External></div>
         <div className="standard"><External href={sourceLinks.scopus}>Scopus sources</External></div>
+        <div className="standard"><External href="https://www.scimagojr.com/journalrank.php">SCImago quartiles by subject and year</External></div>
+        <div className="standard"><External href="https://help.openalex.org/data/sources/attributes/#summary_stats">OpenAlex journal metrics</External></div>
+        <div className="standard"><External href="https://pubpeer.com/">PubPeer discussion by DOI</External></div>
       </section>
     </aside>
   </div>;

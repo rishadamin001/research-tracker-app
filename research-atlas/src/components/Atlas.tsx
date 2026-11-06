@@ -1,20 +1,27 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowDownToLine, ArrowRight, BookOpen, Check, ChevronRight, Compass, FolderOpen, Map, Menu, Plus, Sprout, X } from 'lucide-react';
+import { ArrowDownToLine, ArrowRight, BookOpen, CalendarDays, Check, ChevronRight, Compass, FolderOpen, LibraryBig, Map, Menu, Plus, Settings, X } from 'lucide-react';
 import { createProject, matrixCsv, parseBackup, protocolMarkdown, type Project, type Stage } from '@/lib/model';
 import { download, loadProjects, saveProjects } from '@/lib/storage';
 import { disciplines } from '@/lib/content';
 import { nextTask, roadmap, taskStatus, updateProject, type TaskStatus } from '@/lib/workflow';
+import { readPreferences, writePreferences, type Preferences } from '@/lib/preferences';
 import { PlanningWorkspace } from './PlanningWorkspace';
 import { EvidenceWorkspace } from './EvidenceWorkspace';
 import { ExecutionWorkspace } from './ExecutionWorkspace';
+import { ResearchGuide } from './ResearchGuide';
+import { ConferencePlanner } from './ConferencePlanner';
+import { WorkspacePreferences } from './WorkspacePreferences';
 
-type View = 'overview' | 'primer' | 'explore' | 'roadmap' | 'projects' | Stage;
+type View = 'overview' | 'primer' | 'explore' | 'guide' | 'conferences' | 'roadmap' | 'projects' | 'preferences' | Stage;
 const mainNav = [
   { id: 'overview', title: 'Home', icon: Compass },
-  { id: 'explore', title: 'Explore disciplines', icon: BookOpen },
+  { id: 'guide', title: 'Research guide', icon: BookOpen },
+  { id: 'conferences', title: 'Conference planner', icon: CalendarDays },
+  { id: 'explore', title: 'Explore disciplines', icon: Compass },
   { id: 'roadmap', title: 'Project roadmap', icon: Map },
   { id: 'projects', title: 'My projects', icon: FolderOpen },
+  { id: 'preferences', title: 'Preferences', icon: Settings },
 ] as const;
 
 function currentView(): View {
@@ -29,6 +36,7 @@ function Status({ status }: { status: TaskStatus }) {
 
 export default function Atlas() {
   const [view, setView] = useState<View>(currentView);
+  const [preferences, setPreferences] = useState(readPreferences);
   const [projects, setProjects] = useState<Project[]>([]);
   const [active, setActive] = useState('');
   const [ready, setReady] = useState(false);
@@ -94,6 +102,14 @@ export default function Atlas() {
   const current = roadmap.find(task => task.id === view);
   const next = project && nextTask(project);
   const status = project && current && taskStatus(project, current.id);
+  const visibleTasks = project && preferences.openTasksOnly
+    ? roadmap.filter(task => taskStatus(project, task.id) !== 'Complete') : roadmap;
+
+  function changePreferences(patch: Partial<Preferences>) {
+    const updated = { ...preferences, ...patch };
+    setPreferences(updated);
+    if (!writePreferences(updated)) setNotice('Your display changes apply until you close this page. Browser storage is unavailable.');
+  }
 
   function go(destination: View) {
     if (view !== destination) window.history.pushState(null, '', `#${destination}`);
@@ -165,11 +181,11 @@ export default function Atlas() {
     go(roadmap[roadmap.findIndex(task => task.id === current.id) + 1]?.id ?? 'roadmap');
   }
 
-  return <div className="app-shell journey-shell">
+  return <div className="app-shell journey-shell" data-theme={preferences.theme} data-density={preferences.density} data-motion={preferences.motion}>
     <a className="skip" href="#main" onClick={event => { event.preventDefault(); main.current?.focus(); }}>Skip to workspace</a>
     <aside className={`sidebar journey-sidebar ${mobile ? 'open' : ''}`}>
       <a href="#overview" className="brand" onClick={event => { event.preventDefault(); go('overview'); }}>
-        <span className="brand-mark"><Sprout size={23} /></span><span>Research Atlas<small>YOUR RESEARCH WORKSPACE</small></span>
+        <span className="brand-mark"><LibraryBig size={22} /></span><span>Research Atlas<small>RESEARCH WORKSPACE</small></span>
       </a>
       <button type="button" className="mobile-close icon-button" onClick={() => setMobile(false)} aria-label="Close navigation"><X /></button>
       <nav aria-label="Main navigation">
@@ -178,6 +194,7 @@ export default function Atlas() {
       {project && <div className="journey-active">
         <span className="eyebrow">ACTIVE PROJECT</span><strong>{project.title}</strong>
         {next && <button className="text-button" onClick={() => go(next.id)}>Continue project <ArrowRight size={15} /></button>}
+        <button className="text-button" onClick={() => go('screen')}><LibraryBig size={15} />Saved literature <span className="nav-count">{project.papers.length}</span></button>
       </div>}
       <p className="journey-sidebar-note">Project data is stored in this browser. Download a backup from My projects.</p>
     </aside>
@@ -190,6 +207,7 @@ export default function Atlas() {
       </header>
       <main id="main" ref={main} tabIndex={-1}>
         {notice && <div className="notice" role="status">{notice}<button className="icon-button" onClick={() => setNotice('')} aria-label="Dismiss notice"><X size={16} /></button></div>}
+        <div className="stage-frame" key={view}>
 
         {view === 'overview' && <>
           <section className="journey-hero">
@@ -202,8 +220,14 @@ export default function Atlas() {
             <button className="entry-card" onClick={() => go('primer')}><BookOpen /><strong>I’m new to research</strong><span>Try turning a topic into a question.</span><ArrowRight size={17} /></button>
             <button className="entry-card" onClick={openNewProject} disabled={!ready}><Plus /><strong>I want to start a project</strong><span>Choose a direction and get a roadmap.</span><ArrowRight size={17} /></button>
             <button className="entry-card" onClick={() => go('explore')}><Compass /><strong>I want to explore research</strong><span>Browse examples from different disciplines.</span><ArrowRight size={17} /></button>
+            <button className="entry-card" onClick={() => go('guide')}><LibraryBig /><strong>Understand scholarly publishing</strong><span>See how papers, journals, and conferences fit together.</span><ArrowRight size={17} /></button>
+            <button className="entry-card" onClick={() => go('conferences')}><CalendarDays /><strong>Find a conference</strong><span>Browse Bangladesh and international events and save a date.</span><ArrowRight size={17} /></button>
           </section>
         </>}
+
+        {view === 'guide' && <ResearchGuide onStart={() => go('primer')} onConferences={() => go('conferences')} />}
+        {view === 'conferences' && <ConferencePlanner />}
+        {view === 'preferences' && <WorkspacePreferences value={preferences} onChange={changePreferences} />}
 
         {view === 'primer' && <section className="panel start-exercise">
           <span className="eyebrow">GET STARTED</span><h1>From a topic to a question</h1>
@@ -228,8 +252,10 @@ export default function Atlas() {
         {view === 'roadmap' && project && <>
           <div className="page-heading"><div><span className="eyebrow">PROJECT ROADMAP</span><h1>{project.title}</h1><p>{project.discipline}{project.goal ? ` · ${project.goal}` : ''}</p></div><button className="button secondary" onClick={() => go('projects')}><ArrowDownToLine size={16} />Export project</button></div>
           {next && <section className="next-task"><div><span className="eyebrow">CONTINUE WHERE YOU LEFT OFF</span><h2>{next.title}</h2><p>{next.detail}</p></div><button className="button" onClick={() => go(next.id)}>Open next task <ArrowRight size={17} /></button></section>}
-          <div className="roadmap-grid">{[...new Set(roadmap.map(task => task.group))].map(group => <section className="panel roadmap-group" key={group}>
-            <h2>{group}</h2><ul>{roadmap.filter(task => task.group === group).map(task => <li key={task.id}><button className="task-link" onClick={() => go(task.id)}><span><strong>{task.title}</strong><small>{task.detail}</small></span><Status status={taskStatus(project, task.id)} /></button></li>)}</ul>
+          <div className="roadmap-toolbar"><h2>Project tasks</h2><label className="preference-check"><input type="checkbox" checked={preferences.openTasksOnly} onChange={event => changePreferences({ openTasksOnly: event.target.checked })} /> Show unfinished tasks only</label></div>
+          {!visibleTasks.length && <p className="notice">All tasks have recorded progress. Turn off the filter to see them.</p>}
+          <div className="roadmap-grid">{[...new Set(visibleTasks.map(task => task.group))].map(group => <section className="panel roadmap-group" key={group}>
+            <h2>{group}</h2><ul>{visibleTasks.filter(task => task.group === group).map(task => <li key={task.id}><button className="task-link" onClick={() => go(task.id)}><span><strong>{task.title}</strong><small>{task.detail}</small></span><Status status={taskStatus(project, task.id)} /></button></li>)}</ul>
           </section>)}</div>
           <section className="panel"><h2>Decision log</h2><p>Keep a record of changes and why you made them.</p>
             <form className="decision-form" onSubmit={event => { event.preventDefault(); if (!decision.trim()) return; update({ decisions: [...project.decisions.slice(-299), { at: new Date().toISOString(), note: decision.trim() }] }); setDecision(''); }}>
@@ -268,6 +294,7 @@ export default function Atlas() {
             <div className="button-row"><button className="button" onClick={() => { selectProject(item.id); go('roadmap'); }}>Open roadmap</button><button className="button secondary" onClick={() => download('research-protocol.md', protocolMarkdown(item), 'text/markdown')}>Export protocol</button><button className="button secondary" onClick={() => download('evidence-matrix.csv', matrixCsv(item), 'text/csv')}>Export evidence</button><button className="text-button danger" onClick={() => removeProject(item)}>Delete project</button></div>
           </article>)}</div>
         </>}
+        </div>
       </main>
     </div>
     <dialog ref={dialog} className="journey-dialog" aria-labelledby="project-dialog-title" onKeyDown={event => {

@@ -16,6 +16,13 @@ Use Node.js 24. Run `npm ci` and `npm run dev`, then open http://127.0.0.1:5174.
 
 See [Workflow specification](WORKFLOW.md), [Architecture](ARCHITECTURE.md), and [Deployment](DEPLOYMENT.md). Scholarly search uses [OpenAlex](https://help.openalex.org/api/authentication/) and DOI metadata uses [Crossref](https://www.crossref.org/documentation/retrieve-metadata/rest-api/).
 
+## Research guide, conferences, and literature sorting
+
+- **Research guide** explains papers, journals, proceedings, and review practices with diagrams, a sample paper, and verification checklists.
+- **Conference planner** separates events held in Bangladesh from events abroad. Browse organizer-checked listings, save or enter events, and choose an event date or deadline for Google Calendar or a standard `.ics` export. The upcoming view follows the device date. Organizer links and source check dates show when to recheck a listing. Exported calendar events are copies. Date changes at the source require updating the calendar entry.
+- **Saved literature** opens directly from the active project. Sort papers by OpenAlex field-adjusted citations, citation count, or publication date. Journal shortlist metrics are fetched from a user-confirmed OpenAlex match by ISSN. Missing data stays visible. Citation measures describe impact and do not establish research quality.
+- **Preferences** remember light, dark or device theme, comfortable or compact layout, motion, and the roadmap’s unfinished-task filter. Preferences, literature sort, and saved conference entries are stored on this browser separately from project backups.
+
 ## Verify
 
 Run `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`, and `npm run test:e2e`. For browser tests, install Chromium with `npx playwright install chromium`.

@@ -5,8 +5,10 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { searchWebsiteUrl } from '@/lib/links';
 import { addPaper, matrixCsv, type Paper, type Project } from '@/lib/model';
 import { searchPapers } from '@/lib/providers';
+import { orderPapers, paperOrderLabels } from '@/lib/ranking';
 import { download } from '@/lib/storage';
 import { External } from './External';
+import { OrderSelect, PaperImpact, PaperOrderHelp, usePaperOrder } from './RankingControls';
 
 interface EvidenceWorkspaceProps {
   project: Project;
@@ -54,6 +56,8 @@ function Discover({ project, update, notify }: Omit<EvidenceWorkspaceProps, 'mod
   const [results, setResults] = useState<{ query: string; papers: Paper[] } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [order, setOrder] = usePaperOrder();
+  const [hideSaved, setHideSaved] = useState(false);
   const request = useRef<AbortController | null>(null);
   const searchInput = useRef<HTMLInputElement | null>(null);
 
@@ -116,6 +120,8 @@ function Discover({ project, update, notify }: Omit<EvidenceWorkspaceProps, 'mod
   const savedPapersById = new Map(project.papers.map(paper => [paper.id, paper]));
   const savedDois = new Set(project.papers.flatMap(paper => paper.doi ? [paper.doi.toLowerCase()] : []));
   const libraryFull = project.papers.length >= 2000;
+  const isSaved = (paper: Paper) => savedPapersById.has(paper.id) || (paper.doi !== null && savedDois.has(paper.doi.toLowerCase()));
+  const visible = results ? orderPapers(results.papers.filter(paper => !hideSaved || !isSaved(paper)), order) : [];
 
   return (
     <>
@@ -159,18 +165,28 @@ function Discover({ project, update, notify }: Omit<EvidenceWorkspaceProps, 'mod
 
       {error && <p className="error" role="alert">{error}</p>}
       {libraryFull && <p className="info-bar">Your project has reached its 2,000-source limit. You can still review and export the saved library.</p>}
-      {results && <p role="status">{results.papers.length} results for “{results.query}”</p>}
+      {results && (
+        <section className="panel" aria-label="Search result controls">
+          <p role="status">{visible.length} of {results.papers.length} results shown for “{results.query}” · {project.papers.length} in your library</p>
+          <OrderSelect label="Sort papers" labels={paperOrderLabels} order={order} onChange={setOrder} />
+          <label className="checkbox"><input type="checkbox" checked={hideSaved} onChange={event => setHideSaved(event.target.checked)} /> Hide saved papers</label>
+          <PaperOrderHelp />
+        </section>
+      )}
       {results?.papers.length === 0 && <p className="panel">Try a broader phrase or a different source. An empty result set cannot establish a gap in the literature.</p>}
-      {results?.papers.map(paper => {
-        const saved = savedPapersById.has(paper.id) || (paper.doi !== null && savedDois.has(paper.doi.toLowerCase()));
+      {results && results.papers.length > 0 && !visible.length && <p className="panel">All of these results are in your library. Turn off Hide saved papers to see them.</p>}
+      {visible.map(paper => {
+        const saved = isSaved(paper);
         const savedPaper = savedPapersById.get(paper.id);
         const canRefreshReferences = savedPaper && savedPaper.referenceIds === undefined && paper.referenceIds !== undefined;
+        const canRefreshMetrics = savedPaper && (savedPaper.fwci !== paper.fwci || savedPaper.citedByCount !== paper.citedByCount || savedPaper.isRetracted !== paper.isRetracted);
         return (
           <article className="panel paper" key={paper.id}>
             <span className="tag">{paper.source} · {paper.year ?? 'Year unknown'}</span>
             {paper.oa && <span className="oa-badge">Open-access link</span>}
             <h3>{paper.title}</h3>
             <p>{paper.authors || 'Authors not supplied'} · {paper.journal}</p>
+            <PaperImpact paper={paper} />
             {paper.doi && <p className="muted">DOI {paper.doi}</p>}
             <div className="paper-bottom">
               <SourceLinks paper={paper} />
@@ -193,6 +209,13 @@ function Discover({ project, update, notify }: Omit<EvidenceWorkspaceProps, 'mod
                   update({ papers: project.papers.map(item => item.id === paper.id ? { ...item, referenceIds: paper.referenceIds } : item) });
                   notify('Citation links updated for this saved source.');
                 }}>Refresh citation links</button>
+              )}
+              {canRefreshMetrics && (
+                <button type="button" className="button secondary small" onClick={() => {
+                  const { fwci, citedByCount, isRetracted, workType } = paper;
+                  update({ papers: project.papers.map(item => item.id === paper.id ? { ...item, fwci, citedByCount, isRetracted, workType } : item) });
+                  notify('Citation and publication status data refreshed.');
+                }}>Refresh paper metrics</button>
               )}
             </div>
           </article>
@@ -275,8 +298,14 @@ function CitationNeighborhood({ papers }: { papers: Paper[] }) {
 
 function Screen({ project, update }: Pick<EvidenceWorkspaceProps, 'project' | 'update'>) {
   const [filter, setFilter] = useState<Paper['decision'] | 'all'>('all');
+  const [query, setQuery] = useState('');
+  const [order, setOrder] = usePaperOrder();
   const reviewed = project.papers.filter(paper => paper.decision !== 'unreviewed' && paper.reason.trim()).length;
-  const shown = project.papers.filter(paper => filter === 'all' || paper.decision === filter);
+  const terms = query.trim().toLowerCase();
+  const shown = orderPapers(project.papers.filter(paper =>
+    (filter === 'all' || paper.decision === filter) &&
+    (!terms || [paper.title, paper.authors, paper.journal, paper.doi].some(value => value?.toLowerCase().includes(terms))),
+  ), order);
 
   function editPaper(id: string, patch: Partial<Paper>) {
     update({ papers: project.papers.map(paper => paper.id === id ? { ...paper, ...patch } : paper) });
@@ -302,7 +331,8 @@ function Screen({ project, update }: Pick<EvidenceWorkspaceProps, 'project' | 'u
           <summary>How to screen a source</summary>
           <p>Apply the same inclusion and exclusion rules to each source. If the title and abstract leave you unsure, keep the source unreviewed until you can read the full text. Record a specific reason with each decision so you can review it later.</p>
         </details>
-        {!!project.papers.length && (
+        {!!project.papers.length && <>
+          <label className="field"><span>Find in saved literature</span><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Title, author, journal, or DOI" /></label>
           <label className="field">
             <span>Show sources</span>
             <select value={filter} onChange={event => setFilter(event.target.value as typeof filter)}>
@@ -312,7 +342,10 @@ function Screen({ project, update }: Pick<EvidenceWorkspaceProps, 'project' | 'u
               <option value="exclude">Excluded</option>
             </select>
           </label>
-        )}
+          <OrderSelect label="Sort saved papers" labels={paperOrderLabels} order={order} onChange={setOrder} />
+          <p role="status">{shown.length} of {project.papers.length} saved sources shown</p>
+          <PaperOrderHelp />
+        </>}
       </section>
       {project.papers.length === 0 && <p className="panel">Save a paper in literature discovery to start screening.</p>}
       {project.papers.length > 0 && !shown.length && <p className="panel">No saved sources match this filter.</p>}
@@ -323,6 +356,7 @@ function Screen({ project, update }: Pick<EvidenceWorkspaceProps, 'project' | 'u
           </summary>
           <div className="lesson-body">
             <p>{paper.authors || 'Authors not supplied'} · {paper.journal}</p>
+            <PaperImpact paper={paper} />
             <SourceLinks paper={paper} />
             <label className="field">
               <span>Decision reason</span>
@@ -359,14 +393,16 @@ const extractionFields = [
 ] as const;
 
 function Extract({ project, update }: Pick<EvidenceWorkspaceProps, 'project' | 'update'>) {
-  const active = project.papers.filter(paper => paper.decision !== 'exclude');
+  const [order, setOrder] = usePaperOrder();
+  const ordered = orderPapers(project.papers, order);
+  const active = ordered.filter(paper => paper.decision !== 'exclude');
 
   return (
     <>
       <section className="panel">
         <div className="section-heading">
           <h2>Evidence matrix</h2>
-          <button type="button" className="button secondary" disabled={!project.papers.length} onClick={() => download('literature-matrix.csv', matrixCsv(project), 'text/csv;charset=utf-8')}>
+          <button type="button" className="button secondary" disabled={!project.papers.length} onClick={() => download('literature-matrix.csv', matrixCsv({ ...project, papers: ordered }), 'text/csv;charset=utf-8')}>
             <Download size={16} aria-hidden="true" /> Export CSV
           </button>
         </div>
@@ -374,6 +410,7 @@ function Extract({ project, update }: Pick<EvidenceWorkspaceProps, 'project' | '
           <summary>How to extract comparable evidence</summary>
           <p>Read the source and record its methods, findings, limitations, and the page or section you checked. If you only read an abstract, say so. Keep a note of findings that challenge your interpretation.</p>
         </details>
+        {project.papers.length > 0 && <OrderSelect label="Sort evidence" labels={paperOrderLabels} order={order} onChange={setOrder} />}
         <p className="muted">The matrix displays included and unreviewed sources. The export includes every saved record and its screening decision.</p>
         {active.length === 0 ? <p>Save or include a source to populate the matrix.</p> : (
           <div style={{ overflowX: 'auto' }} role="region" aria-label="Evidence comparison table" tabIndex={0}>
@@ -402,6 +439,7 @@ function Extract({ project, update }: Pick<EvidenceWorkspaceProps, 'project' | '
           </summary>
           <div className="lesson-body">
             <SourceLinks paper={paper} />
+            <PaperImpact paper={paper} />
             {extractionFields.map(({ key, label, hint }) => (
               <label className="field" key={key}>
                 <span>{label}</span>

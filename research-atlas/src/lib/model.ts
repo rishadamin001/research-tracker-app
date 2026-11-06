@@ -1,10 +1,25 @@
 import { z } from 'zod';
 const text = z.string().max(20000);
-export const paperSchema = z.object({id:z.string().max(500),title:text,authors:text,year:z.number().nullable(),doi:z.string().nullable(),journal:text,url:z.string(),oa:z.string().nullable(),source:z.string(),notes:text.default(''),finding:text.default(''),methods:text.default(''),limitations:text.default(''),locator:text.default(''),decision:z.enum(['unreviewed','include','exclude']).default('unreviewed'),reason:text.default(''),referenceIds:z.array(z.string().max(500)).max(500).optional()});
+export const paperSchema = z.object({
+  id:z.string().max(500),title:text,authors:text,year:z.number().nullable(),doi:z.string().nullable(),journal:text,url:z.string(),oa:z.string().nullable(),source:z.string(),notes:text.default(''),finding:text.default(''),methods:text.default(''),limitations:text.default(''),locator:text.default(''),decision:z.enum(['unreviewed','include','exclude']).default('unreviewed'),reason:text.default(''),referenceIds:z.array(z.string().max(500)).max(500).optional(),
+  fwci: z.number().nonnegative().optional(),
+  citedByCount: z.number().int().nonnegative().optional(),
+  workType: z.string().max(100).optional(),
+  isRetracted: z.boolean().optional(),
+});
 export type Paper=z.infer<typeof paperSchema>;
 export const workflowStage = z.enum(['profile','topic','question','discover','screen','extract','methods','data','writing','publication']);
 export type Stage = z.infer<typeof workflowStage>;
-const journalCandidate = z.object({id:z.string(),title:text,url:text,scope:text,cost:text,checks:z.array(z.string()).max(30),verification:text});
+const journalMetrics = z.object({
+  sourceId: z.string().regex(/^https:\/\/openalex\.org\/S\d+$/),
+  title: text,
+  issn: z.string().regex(/^\d{4}-\d{3}[\dX]$/),
+  citedness: z.number().nonnegative().optional(),
+  hIndex: z.number().int().nonnegative().optional(),
+  checkedAt: z.string().datetime(),
+});
+export type JournalMetrics = z.infer<typeof journalMetrics>;
+const journalCandidate = z.object({id:z.string(),title:text,url:text,scope:text,cost:text,checks:z.array(z.string()).max(30),verification:text,metrics:journalMetrics.optional()});
 const decisionRecord = z.object({at:z.string(),note:text});
 export const projectSchema=z.object({id:z.string(),title:text,discipline:text,domain:text,problem:text,question:text,setting:text,purpose:z.enum(['explore','describe','causal','predict','interpret','synthesize','design']),data:z.enum(['existing','new']),design:text,ethics:text,analysis:text,gap:text,gapStatus:z.enum(['idea','search underway','evidence-supported candidate','human-reviewed candidate','contradicted','needs-update']),papers:z.array(paperSchema).max(2000),searches:z.array(z.object({query:text,source:text,date:text,count:z.number(),filters:text})).max(1000),lessons:z.array(z.string()).default([]),
   experience:text.default(''),goal:text.default(''),institution:text.default(''),constraints:text.default(''),topic:text.default(''),topicIdeas:text.default(''),topicRationale:text.default(''),objectives:text.default(''),hypothesis:text.default(''),sampling:text.default(''),instruments:text.default(''),ethicsStatus:text.default(''),dataPlan:text.default(''),analysisRecord:text.default(''),manuscript:text.default(''),

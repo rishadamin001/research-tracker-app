@@ -1,0 +1,31 @@
+import { readFile } from 'node:fs/promises';
+import { expect, test } from '@playwright/test';
+
+test('conference planner exports the selected deadline and keeps edited events', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-11-06T12:00:00Z'));
+  await page.goto('/#conferences');
+  const listing = page.getByRole('article').filter({ hasText: 'Climate and Disaster Risk Management' });
+  await expect(listing).toBeVisible();
+  await listing.getByText('Add to calendar', { exact: true }).click();
+  await listing.getByLabel('Which date do you want to save?').selectOption('deadline-2026-11-10-0');
+  const url = await listing.getByRole('link', { name: 'Open Google Calendar' }).getAttribute('href');
+  expect(new URL(url!).searchParams.get('dates')).toBe('20261110/20261111');
+  const download = page.waitForEvent('download');
+  await listing.getByRole('button', { name: 'Download .ics' }).click();
+  const file = await readFile((await (await download).path())!, 'utf8');
+  expect(file).toContain('DTSTART;VALUE=DATE:20261110\r\nDTEND;VALUE=DATE:20261111');
+  await listing.getByRole('button', { name: 'Save to tracker' }).click();
+  await page.getByRole('button', { name: 'My tracker (1)' }).click();
+  await page.getByRole('button', { name: 'Edit tracker entry' }).click();
+  await page.getByLabel('Private tracker notes').fill('Prepare questions about flood resilience.');
+  await page.getByRole('button', { name: 'Save event' }).click();
+  await page.reload();
+  await page.getByRole('button', { name: 'My tracker (1)' }).click();
+  await expect(page.getByText('Prepare questions about flood resilience.')).toBeVisible();
+  await page.clock.setFixedTime(new Date('2027-01-01T12:00:00Z'));
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect(listing).toHaveCount(0);
+  await page.getByLabel('Show past events').check();
+  await expect(listing).toBeVisible();
+  await expect(listing.getByText('Ended', { exact: true })).toBeVisible();
+});

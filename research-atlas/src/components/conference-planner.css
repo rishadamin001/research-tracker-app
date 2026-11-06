@@ -1,0 +1,112 @@
+.conference-planner {
+  color: var(--ink, #182d2d);
+  display: grid;
+  gap: 1rem;
+}
+
+.conference-intro,
+.conference-safety,
+.conference-deadline {
+  align-items: flex-start;
+  display: flex;
+  gap: .8rem;
+}
+
+.conference-intro {
+  background: var(--accent-soft, #e8f3ef);
+  border: 1px solid var(--line, #cfddd8);
+  border-radius: 1.2rem;
+  padding: clamp(1rem, 4vw, 1.75rem);
+}
+
+.conference-intro > svg,
+.conference-safety > svg,
+.conference-deadline > svg,
+.conference-icon-line > svg { color: var(--green, #14604d); flex: 0 0 auto; }
+.conference-intro h1, .conference-safety h2, .conference-card h2 { margin: .25rem 0; }
+.conference-intro p, .conference-safety ol { margin: .4rem 0; }
+.conference-kicker { font-size: .73rem; font-weight: 750; letter-spacing: .1em; }
+.conference-muted { color: var(--muted, #475f58); }
+.conference-freshness, .conference-status { margin: 0; }
+
+.conference-toolbar,
+.conference-tabs,
+.conference-card-top,
+.conference-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+}
+
+.conference-toolbar, .conference-card-top { justify-content: space-between; }
+
+.conference-tabs button {
+  background: var(--surface, #fff);
+  border: 1px solid var(--line, #cfddd8);
+  border-radius: .6rem;
+  color: var(--ink, #182d2d);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 650;
+  padding: .56rem .8rem;
+}
+
+.conference-tabs button[aria-pressed="true"] {
+  background: var(--accent-soft, #e8f3ef);
+  border-color: var(--green, #14604d);
+  color: var(--ink, #182d2d);
+}
+
+.conference-filters,
+.conference-form-grid {
+  display: grid;
+  gap: .8rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+}
+
+.conference-filters { align-items: end; }
+.conference-planner label { display: grid; gap: .35rem; font-weight: 650; min-width: 0; }
+.conference-planner input:not([type="checkbox"]), .conference-planner select, .conference-planner textarea {
+  background: var(--surface, #fff);
+  border: 1px solid var(--line, #cfddd8);
+  border-radius: .55rem;
+  color: var(--ink, #182d2d);
+  font: inherit;
+  font-weight: 450;
+  min-width: 0;
+  padding: .54rem .65rem;
+  width: 100%;
+}
+
+.conference-planner .conference-checkbox { align-items: center; display: flex; gap: .5rem; padding-block: .48rem; }
+.conference-planner input[type="checkbox"] { accent-color: var(--green, #14604d); width: auto; }
+.conference-grid, .conference-directory-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); }
+.conference-card, .conference-editor, .conference-directories, .conference-safety, .conference-empty {
+  background: var(--surface, #fff);
+  border: 1px solid var(--line, #cfddd8);
+  border-radius: .9rem;
+  min-width: 0;
+  padding: 1rem;
+}
+
+.conference-card { align-content: start; display: grid; gap: .65rem; }
+.conference-card h2 { font-size: 1.13rem; line-height: 1.3; overflow-wrap: anywhere; }
+.conference-card p { margin: 0; overflow-wrap: anywhere; }
+.conference-icon-line { align-items: center; display: flex; gap: .45rem; }
+.conference-badge { background: var(--accent-soft, #e8f3ef); border-radius: .4rem; font-size: .76rem; font-weight: 650; padding: .25rem .45rem; }
+.conference-deadline { background: var(--surface-soft, #f2f6f4); border-radius: .55rem; padding: .65rem; }
+.conference-deadline span, .conference-source small { color: var(--muted, #475f58); display: block; }
+.conference-notes { white-space: pre-wrap; }
+.conference-calendar { border-top: 1px solid var(--line, #cfddd8); padding-top: .6rem; }
+.conference-planner summary { align-items: center; cursor: pointer; display: flex; font-weight: 650; gap: .45rem; }
+.conference-planner summary::after { content: '+'; margin-left: auto; }
+.conference-planner details[open] > summary::after { content: '−'; }
+.conference-calendar label { margin-top: .6rem; }
+.conference-calendar p { color: var(--muted, #475f58); font-size: .87rem; margin-block: .45rem; }
+.conference-directories ul, .conference-safety ol { padding-left: 1.25rem; }
+.conference-directories li, .conference-safety li { margin-block: .25rem; }
+.conference-editor { display: grid; gap: .75rem; }
+.conference-editor h2 { margin: 0; }
+.conference-editor-deadline { border: 1px solid var(--line, #cfddd8); border-radius: .55rem; display: grid; gap: .5rem; margin: 0; min-width: 0; padding: .7rem; }
+.conference-status { background: var(--accent-soft, #e8f3ef); border-radius: .55rem; padding: .55rem .75rem; }
