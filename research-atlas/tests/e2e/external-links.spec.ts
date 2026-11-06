@@ -7,6 +7,8 @@ test('Foundations is removed; external references navigate without popup tabs', 
   await page.getByRole('button', { name: 'New project', exact: true }).click();
   await page.getByLabel('Working title').fill('Link navigation check');
   await page.getByRole('button', { name: 'Create project', exact: true }).click();
+  await page.getByRole('button', { name: 'Back to roadmap' }).click();
+  await page.getByRole('button', { name: /^Frame your question/ }).click();
   const link = page.getByRole('link', { name: 'Research perspectives', exact: true });
   await expect(link).not.toHaveAttribute('target', '_blank');
   await expect(link).toHaveAttribute('href', 'https://www.open.edu/openlearn/mod/oucontent/view.php?id=48638');
@@ -16,10 +18,8 @@ test('Foundations is removed; external references navigate without popup tabs', 
   await expect(page.getByRole('heading', { name: 'Reference destination' })).toBeVisible();
   expect(page.context().pages()).toHaveLength(1);
   await page.goBack();
-  const menu = page.getByRole('button', { name: 'Open navigation', exact: true });
-  if (await menu.isVisible()) await menu.click();
-  await page.getByRole('button', { name: 'Frame your question', exact: true }).click();
-  await expect(page.getByLabel('Project title')).toHaveValue('Link navigation check');
+  await expect(page.getByRole('heading', { name: 'Frame your question', exact: true })).toBeVisible();
+  await expect(page.locator('.page-heading')).toContainText('Link navigation check');
 });
 
 test('copy fallback reveals an address when clipboard access is unavailable', async ({ page }) => {
@@ -27,6 +27,8 @@ test('copy fallback reveals an address when clipboard access is unavailable', as
   await page.goto('/');
   await page.getByRole('button', { name: 'New project', exact: true }).click();
   await page.getByRole('button', { name: 'Create project', exact: true }).click();
+  await page.getByRole('button', { name: 'Back to roadmap' }).click();
+  await page.getByRole('button', { name: /^Frame your question/ }).click();
   await page.getByRole('button', { name: 'Copy link: Research perspectives', exact: true }).click();
   await expect(page.getByLabel('Copy this address')).toHaveValue('https://www.open.edu/openlearn/mod/oucontent/view.php?id=48638');
 });

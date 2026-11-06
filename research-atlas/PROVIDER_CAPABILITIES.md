@@ -4,6 +4,6 @@ OpenAlex: keyword phrase, starting year, OA-only filter, first 20 results, title
 
 Crossref: one normalized DOI lookup, title/publisher/ISSN/container, post-publication update signal if supplied. Not journal endorsement, complete retraction checking, APC verification, or indexing verification.
 
-OA resolution: direct OpenAlex DOI lookup works without credentials. If NEXT_PUBLIC_API_URL is configured, the gateway uses Unpaywall with OPERATOR_EMAIL. No email is invented and no user email is collected for runtime searches.
+OA resolution: direct OpenAlex DOI lookup works without credentials. If VITE_API_URL is configured, the gateway uses Unpaywall with OPERATOR_EMAIL. No email is invented and no user email is collected for runtime searches.
 
 Network failure/429 states are actionable; no automatic paid retry. UI uses a 15-second deadline; gateway uses 12 seconds and caps response at 2 MB. No persistent remote cache in v0.1, no automatic retry loop. User can retry manually or follow the official source.

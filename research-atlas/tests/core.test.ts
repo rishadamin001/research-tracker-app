@@ -4,6 +4,22 @@ import {createProject,parseBackup,normalizeDoi,addPaper,safeUrl,matrixCsv} from 
 import {parseWorks,searchPapers} from '../src/lib/providers';
 import {routeDesign,disciplines} from '../src/lib/content';
 test('backup round trip preserves research and rejects unsupported schema',()=>{const p=createProject('Test');p.question='What changes?';const raw=JSON.stringify({schemaVersion:1,exportedAt:new Date().toISOString(),projects:[p]});assert.deepEqual(parseBackup(raw).projects[0],p);assert.throws(()=>parseBackup(raw.replace('"schemaVersion":1','"schemaVersion":2')));assert.throws(()=>parseBackup('{"projects":[{}]}'));});
+test('a version 1 project made before the roadmap keeps its question and evidence', () => {
+  const at = '2026-01-01T00:00:00.000Z';
+  const [project] = parseBackup(JSON.stringify({ schemaVersion: 1, exportedAt: at, projects: [{
+    id: 'old-project', title: 'Existing project', discipline: 'Business & management', domain: '',
+    problem: '', question: 'What did the original study ask?', setting: '', purpose: 'explore', data: 'existing',
+    design: '', ethics: '', analysis: '', gap: '', gapStatus: 'idea',
+    papers: [{ id: 'old-paper', title: 'Existing reference', authors: '', year: null, doi: null,
+      journal: '', url: '', oa: null, source: 'OpenAlex', finding: 'Existing extraction', decision: 'include' }],
+    searches: [], lessons: ['legacy'], updatedAt: at, createdAt: at,
+  }] })).projects;
+  assert.equal(project.question, 'What did the original study ask?');
+  assert.equal(project.papers[0].finding, 'Existing extraction');
+  assert.equal(project.papers[0].methods, '');
+  assert.equal(project.experience, '');
+  assert.deepEqual(project.needsReview, []);
+});
 test('DOI normalization and invalid inputs',()=>{assert.equal(normalizeDoi('https://doi.org/10.1234/ABC'),'10.1234/abc');assert.throws(()=>normalizeDoi('not a doi'));});
 test('untrusted links cannot execute script',()=>{assert.equal(safeUrl('javascript:alert(1)'),undefined);assert.equal(safeUrl('https://example.org'),'https://example.org/');});
 const fixture={results:[{id:'https://openalex.org/W1',display_name:'A paper',publication_year:2024,doi:'https://doi.org/10.1234/abc',authorships:[],primary_location:null,best_oa_location:null}]};

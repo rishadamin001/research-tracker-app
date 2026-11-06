@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.0 — 2026-11-06
+
+Reorganized Atlas around a persistent project roadmap. Added a short starter exercise, profile and topic planning, screening reasons and decision history, evidence comparison, citation connections, data and analysis records, a manuscript draft, and a publication shortlist. A revised question flags prior work for review. The Vite build supports GitHub Pages and imports previous backups.
+
 ## 0.1.1 — 2026-11-06
 
 Removed Research Foundations navigation, lessons, and homepage promotion. External references now use same-tab navigation and include copy-link/fallback controls. Corrected OpenLearn and PRISMA URLs, switched the blocked OpenAlex website fallback to Crossref metadata search, and updated the Scopus directory URL. OA resolution now works directly through the OpenAlex API without gateway credentials. Added desktop/mobile link regression checks.

@@ -94,7 +94,7 @@ Use the existing checkout for cloud tasks; each task already has an isolated env
 
 ## Research Atlas — research planning workspace
 
-The local-first Research Atlas app is in [`research-atlas/`](research-atlas/README.md). It includes discipline exploration, research questions, study plans, OpenAlex literature search and OA resolution, evidence extraction, and DOI verification. Research Foundations has been removed. External links use regular browser navigation with copy-link fallbacks. The original React/Express/SQLite tracker above remains unchanged.
+The [Research Atlas app](research-atlas/README.md) connects setup, literature screening, evidence extraction, methods, writing, and publication checks through one project roadmap.
 
 ```sh
 cd research-atlas
@@ -102,4 +102,4 @@ npm ci
 npm run dev
 ```
 
-Open http://127.0.0.1:3000. For a static production preview run `npm run build` then `npm run preview`, and open http://127.0.0.1:4173. Research Atlas keeps its data in browser IndexedDB; it does not share the tracker SQLite database. See [verification](research-atlas/TESTING.md) and [deployment](research-atlas/DEPLOYMENT.md).
+Open http://127.0.0.1:5174. For a static preview, run `npm run build` and `npm run preview`, then open http://127.0.0.1:4173. Atlas keeps project data in browser IndexedDB. See [workflow](research-atlas/WORKFLOW.md), [verification](research-atlas/TESTING.md), and [GitHub Pages setup](research-atlas/DEPLOYMENT.md).

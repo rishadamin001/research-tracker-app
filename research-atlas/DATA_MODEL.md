@@ -1,9 +1,7 @@
 # Data model
 
-Backup: schemaVersion=1, exportedAt ISO string, projects[] (max 100; max 10 MB import).
-Project: id, title, discipline, domain, problem, question, setting, purpose, data source, design, ethics, analysis, gap, gapStatus, papers[], searches[], lessons[], timestamps.
-Paper: id, bibliographic fields, DOI, source, legal-link candidate, user finding/locator/notes, screening decision and reason. Paper cap on imported projects: 2,000. Search log cap: 1,000. Text fields cap: 20,000 characters.
+A version 1 backup contains an array of projects. Existing records remain readable through schema defaults. Projects store profile, topic, question, objectives, design and ethics notes, analysis plans and records, manuscript, and publication candidates. Each project keeps its own reference library, search sessions, review flags, and timestamped decisions.
 
-Imported projects get new IDs and an imported suffix; no existing project is replaced. Zod validates imported and persisted records. Unknown JSON fields are stripped. React renders notes as text. URL rendering permits only HTTP(S). CSV cells that could be formulas receive an apostrophe prefix. Exact DOI or provider-ID matches prevent repeated additions. No fuzzy deduplication is claimed.
+A reference has a provider ID, optional DOI, title, authors, year, source, and access URLs. The same reference holds its screening decision and reason, extracted methods, findings, limitations, evidence locator, and notes. Optional OpenAlex reference IDs support a directed view of links between saved works. Saving a matching ID or DOI does not create a new row.
 
-Institutional unit and program catalogues are intentionally deferred; six disciplinary families must not be presented as official departments.
+Task status derives from recorded artifacts. Revising a question flags started downstream tasks and logs the prior wording when flags are added. Existing evidence remains available for review. Import makes new project copies, retaining their reference relationships. Legacy lesson IDs remain accepted for compatibility.

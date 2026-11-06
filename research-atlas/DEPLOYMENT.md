@@ -1,17 +1,15 @@
-# Deployment
+# Deploy Research Atlas
 
-## Current status
+The default release is a static Vite site for the public GitHub repository. Its build output is `research-atlas/out`, and relative asset URLs and hash navigation support the repository URL prefix. Hosting requires no credentials in the browser build. See the [GitHub Pages workflow documentation](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages).
 
-Local app and production static build provided. No public hosting deployment has been performed. The Cloudflare connection cannot verify billing; its subscription read returns HTTP 403 and requests a Billing Read API token. No credentials should be pasted into chat.
+1. In [repository Pages settings](https://github.com/rishadamin001/research-tracker-app/settings/pages), set the publishing source to **GitHub Actions**.
+2. From **Actions**, run **Publish Research Atlas to GitHub Pages** on `main`.
+3. Open the URL printed by the deployment job. Create a test project, enter a question, reload, and check persistence. Run a short scholarly search and verify a DOI.
 
-Source repository: https://github.com/rishadamin001/research-tracker-app . The Research Atlas app lives in research-atlas/; existing client/ and server/ tracker files remain intact. Configure research-atlas as the deployment root.
+Project data belongs to its browser origin. Use **My projects → Download backup** on the local app and **Import backup** on Pages to move an existing workspace.
 
-## Static app
-
-After verifying a free account, create a Cloudflare Pages static project. Build command: npm run build; output directory: out; Node: 24. No Functions or paid bindings are needed for the default direct-API version. Use only an explicitly free setup. Headers are in public/_headers. Preview locally with npm run preview after building.
+For a local production preview, run `npm ci`, `npm run build`, and `npm run preview`. The default preview address is http://127.0.0.1:4173.
 
 ## Optional gateway
 
-Deploy gateway/worker.ts only to verified Workers Free using gateway/wrangler.toml. Set ALLOWED_ORIGIN to the exact production origin. Configure a real OPERATOR_EMAIL as a secret for Unpaywall. OPENALEX_API_KEY is optional and must be a free-only key without prepaid capacity. Set NEXT_PUBLIC_API_URL to the gateway origin at build time, and add that exact origin to connect-src in public/_headers before rebuilding. Do not put secret values in NEXT_PUBLIC variables.
-
-The gateway has no billable storage bindings. Do not add paid services. Smoke-test a real search, DOI lookup, OA link, local save, and backup restore on the final URL. Verify CSP and CORS in the actual production browser. Record the deployed commit and plan verification, and retain a prior static artifact for rollback.
+The existing gateway is optional for organizations operating a verified free deployment. Set `VITE_API_URL` to its public origin if you intentionally use it. Configure gateway secrets on the server. The `VITE_` value is public and must contain only a URL. The default Pages build uses direct keyless OpenAlex and Crossref requests.

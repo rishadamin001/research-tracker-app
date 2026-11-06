@@ -1,51 +1,288 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowRight, ArrowUpRight, BookOpen, Check, ChevronRight, Compass, Download, FlaskConical, FolderOpen, Layers, Library, Menu, Plus, Search, ShieldCheck, Sprout, Target, Upload, X } from 'lucide-react';
-import { addPaper, createProject, matrixCsv, parseBackup, protocolMarkdown, safeUrl, type Paper, type Project } from '@/lib/model';
+import { ArrowDownToLine, ArrowRight, BookOpen, Check, ChevronRight, Compass, FolderOpen, Map, Menu, Plus, Sprout, X } from 'lucide-react';
+import { createProject, matrixCsv, parseBackup, protocolMarkdown, type Project, type Stage } from '@/lib/model';
 import { download, loadProjects, saveProjects } from '@/lib/storage';
-import { disciplines, routeDesign, standards } from '@/lib/content';
-import { External } from './External';
-import { sourceLinks, searchWebsiteUrl, doiWebsiteUrl } from '@/lib/links';
-import { checkDoi, resolveOa, searchPapers } from '@/lib/providers';
-type View='overview'|'explore'|'question'|'literature'|'plan'|'contribution'|'projects';
-const nav=[{id:'overview',label:'Your workspace',icon:Compass},{id:'explore',label:'Explore disciplines',icon:Layers},{id:'question',label:'Frame your question',icon:Target},{id:'literature',label:'Literature & evidence',icon:Library},{id:'plan',label:'Plan your study',icon:FlaskConical},{id:'contribution',label:'Contribution & venues',icon:ShieldCheck}] as const;
-function Field({label,value,onChange,placeholder,large=false}:{label:string;value:string;onChange:(s:string)=>void;placeholder?:string;large?:boolean}) {return <label className="field"><span>{label}</span>{large?<textarea value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} rows={4} maxLength={20000}/>:<input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} maxLength={20000}/>}</label>;}
-export default function Atlas(){
- const [view,setView]=useState<View>('overview'),[projects,setProjects]=useState<Project[]>([]),[active,setActive]=useState(''),[ready,setReady]=useState(false),[saveState,setSaveState]=useState('Opening local workspace…'),[notice,setNotice]=useState(''),[mobile,setMobile]=useState(false),[modal,setModal]=useState(false),[newTitle,setNewTitle]=useState(''),[imported,setImported]=useState<Project[]|null>(null),[backupDate,setBackupDate]=useState('');
- const saveQueue=useRef(Promise.resolve()),loadFailed=useRef(false),saveRevision=useRef(0);
- useEffect(()=>{if(!modal)return;const previous=document.activeElement as HTMLElement|null;const dialog=document.querySelector<HTMLElement>('[role=dialog]');const controls=()=>Array.from(dialog?.querySelectorAll<HTMLElement>('button,input,select,textarea,a[href]')||[]).filter(e=>!e.hasAttribute('disabled'));dialog?.querySelector<HTMLInputElement>('input')?.focus();const onKey=(e:KeyboardEvent)=>{if(e.key==='Escape'){setModal(false);return;}if(e.key==='Tab'){const list=controls();const first=list[0],last=list.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}}};document.addEventListener('keydown',onKey);return()=>{document.removeEventListener('keydown',onKey);previous?.focus();};},[modal]);
- useEffect(()=>{let live=true;loadProjects().then(p=>{if(!live)return;setProjects(p);setActive(p[0]?.id||'');setReady(true);}).catch(()=>{if(!live)return;loadFailed.current=true;setSaveState('Local storage unavailable');setNotice('Your saved workspace could not be opened. This session will not overwrite it. You can still work and download a backup.');setReady(true);});return()=>{live=false;};},[]);
- useEffect(()=>{if(!ready||loadFailed.current)return;const revision=++saveRevision.current;saveQueue.current=saveQueue.current.catch(()=>{}).then(()=>saveProjects(projects)).then(()=>{if(revision===saveRevision.current)setSaveState('Saved on this device');}).catch(()=>{if(revision===saveRevision.current)setSaveState('Could not save — download a backup');});},[projects,ready]);
- useEffect(()=>{if(saveState==='Saved on this device'||!ready)return;const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[saveState,ready]);
- const project=projects.find(p=>p.id===active);
- function go(v:View){setView(v);setMobile(false);window.scrollTo({top:0});}
- function markDirty(){++saveRevision.current;setSaveState(loadFailed.current?'Local storage unavailable — download a backup':'Saving…');}
- function update(patch:Partial<Project>){markDirty();setProjects(all=>all.map(p=>p.id===active?{...p,...patch,updatedAt:new Date().toISOString()}:p));}
- function start(){if(!ready)return;if(projects.length>=100){setNotice('This workspace supports 100 projects. Back up and remove an old project before adding another.');setModal(false);return;}const p=createProject(newTitle.trim()||'My first research project');markDirty();setProjects(all=>[p,...all]);setActive(p.id);setModal(false);setNewTitle('');go('question');}
- function backup(){download('research-atlas-backup.json',JSON.stringify({schemaVersion:1,exportedAt:new Date().toISOString(),projects},null,2),'application/json');setBackupDate(new Date().toLocaleString());setNotice('Backup downloaded. Keep it somewhere safe; browser storage can be cleared.');}
- const completion=project?[!!project.question,!!project.problem,project.papers.length>0,!!project.design,!!project.analysis,!!project.ethics].filter(Boolean).length:0;
- return <div className="app-shell"><a className="skip" href="#main">Skip to workspace</a><aside className={`sidebar ${mobile?'open':''}`}><a className="brand" href="#" onClick={e=>{e.preventDefault();go('overview');}}><span className="brand-mark"><Sprout size={25}/></span><span>research<span className="brand-light">atlas</span><small>FROM CURIOSITY TO CONTRIBUTION</small></span></a><button className="mobile-close icon-button" onClick={()=>setMobile(false)} aria-label="Close navigation"><X/></button><div className="workspace-label">YOUR RESEARCH JOURNEY</div><nav aria-label="Main navigation">{nav.map(n=><button key={n.id} className={view===n.id?'nav-item active':'nav-item'} onClick={()=>go(n.id)}><n.icon size={19}/>{n.label}{view===n.id&&<span className="nav-dot"/>}</button>)}</nav><div className="side-separator"/><button className={`nav-item ${view==='projects'?'active':''}`} onClick={()=>go('projects')}><FolderOpen size={19}/>My projects<span className="count">{projects.length}</span></button><div className="side-bottom"><div className="local-card"><ShieldCheck size={21}/><strong>Your work stays yours.</strong><p>Projects are saved on this device. No account needed.</p><button className="text-button" onClick={()=>go('projects')}>Manage backups <ArrowRight size={14}/></button></div><div className="sidebar-footer"><span className="tiny-dot"/>Free & open by design<span>v0.1</span></div></div></aside>
- <div className="main-shell"><header className="topbar"><div className="crumb"><button className="mobile-toggle icon-button" onClick={()=>setMobile(true)} aria-label="Open navigation"><Menu size={21}/></button><span>Workspace</span><ChevronRight size={14}/><strong>{nav.find(n=>n.id===view)?.label||'My projects'}</strong></div><div className="top-actions"><span className="saved"><span className="tiny-dot"/>{saveState}</span><button className="button small" disabled={!ready} onClick={()=>setModal(true)}><Plus size={16}/>New project</button><span className="avatar" aria-label="Local workspace">RA</span></div></header>
- <main id="main">{notice&&<div role="status" className="notice">{notice}<button aria-label="Dismiss notification" className="icon-button" onClick={()=>setNotice('')}><X size={16}/></button></div>}
- {view==='overview'&&<><div className="page-heading"><div><div className="eyebrow">A LITTLE CURIOSITY GOES A LONG WAY</div><h1>Your next discovery starts here.</h1><p>A clearer path through research. One thoughtful step at a time.</p></div><span className="outline-badge"><Sprout size={15}/>Built for curious minds</span></div><section className="hero"><div className="hero-copy"><span className="hero-label"><span/>YOUR RESEARCH, WITH DIRECTION</span><h2>Big questions.<br/>A place to begin.</h2><p>Turn an idea into a focused question, find the evidence,<br className="desktop-br"/> and build a research plan you can stand behind.</p><div className="hero-actions"><button className="button light" onClick={()=>project?go('question'):setModal(true)}>{project?'Continue your research':'Start a research project'}<ArrowRight size={17}/></button><button className="hero-link" onClick={()=>go('explore')}>Find a research direction <ArrowUpRight size={16}/></button></div><div className="hero-foot"><Check size={13}/>No paid AI required <span>·</span><Check size={13}/>Private by default</div></div><div className="hero-art" aria-hidden="true"><div className="orbit orbit-one"/><div className="orbit orbit-two"/><div className="orbit orbit-three"/><div className="art-star star-one">✦</div><div className="art-star star-two">✦</div><div className="art-card art-back"><div className="art-line"/><div className="art-line short"/></div><div className="art-card art-front"><div className="art-icon"><Sprout size={29}/></div><div className="art-line"/><div className="art-line short"/><div className="art-chart"><i/><i/><i/><i/><i/></div><div className="art-bottom"><span/><span/><span/></div></div><span className="art-tag"><Check size={15}/>A question worth exploring</span></div></section>
- <div className="overview-grid"><section><div className="section-heading"><h2>Find your next step</h2><span>YOUR TOOLKIT</span></div><div className="tool-grid">{[{v:'explore' as View,icon:Compass,color:'mint',title:'Explore a direction',desc:'Find your field, discover a domain, and follow your curiosity.',link:'Explore disciplines'},{v:'literature' as View,icon:BookOpen,color:'sand',title:'Follow the evidence',desc:'Search scholarly literature and build a picture of what is known.',link:'Find literature'},{v:'plan' as View,icon:FlaskConical,color:'lavender',title:'Make a thoughtful plan',desc:'Connect your question to a design, methods, and ethical choices.',link:'Plan your study'},{v:'contribution' as View,icon:ShieldCheck,color:'blue',title:'Build with confidence',desc:'Document your contribution and check potential publication venues.',link:'Check your next move'}].map(c=><button key={c.v} className="tool-card" onClick={()=>go(c.v)}><span className={`tool-icon ${c.color}`}><c.icon size={22}/></span><h3>{c.title}</h3><p>{c.desc}</p><span className="tool-link">{c.link}<ArrowRight size={16}/></span></button>)}</div></section></div>
- <section className="recent"><div className="section-heading"><h2>Your research projects <span className="inline-count">{projects.length}</span></h2><button className="text-button" onClick={()=>go('projects')}>View all projects <ArrowRight size={15}/></button></div>{projects.length?<div className="project-grid">{projects.slice(0,3).map(p=><button className="project-card" key={p.id} onClick={()=>{setActive(p.id);go('question');}}><span className="tag">{p.discipline}</span><h3>{p.title}</h3><p>{p.question||'A fresh space for your next question.'}</p><div>{p.papers.length} saved papers <ArrowUpRight size={17}/></div></button>)}</div>:<div className="empty-project"><span className="empty-icon"><FolderOpen size={28}/></span><div><h3>A home for your ideas</h3><p>Your questions, sources, and plans will live together here.</p></div><button className="button secondary" onClick={()=>setModal(true)}><Plus size={16}/>Create your first project</button></div>}</section><footer className="page-footer"><span>Thoughtful research. Open possibilities.</span><span>Made for every discipline · Designed with Bangladesh in mind</span></footer></>}
- {view!=='overview'&&<><div className="page-heading"><div><div className="eyebrow">YOUR RESEARCH JOURNEY</div><h1>{view==='projects'?'Your projects, in one place.':nav.find(n=>n.id===view)?.label}</h1><p>{view==='explore'?'Follow your curiosity across six disciplinary families.':'Make your reasoning visible. Keep the evidence close.'}</p></div></div>{project&&view!=='projects'&&<div className="project-strip"><span><FolderOpen size={17}/><strong>{project.title}</strong></span><label>Active project<select aria-label="Active project" value={active} onChange={e=>setActive(e.target.value)}>{projects.map(p=><option key={p.id} value={p.id}>{p.title}</option>)}</select></label></div>}
- {view==='explore'&&<><div className="info-bar">Illustrative discipline packs, not a verified IUB department directory. Topic examples are starting points, not claims of novelty.</div><div className="discipline-grid">{disciplines.map((d,i)=><section className="panel discipline-card" key={d.name}><span className={`tool-icon ${['mint','sand','lavender','blue'][i%4]}`}><Layers size={22}/></span><h2>{d.name}</h2><div className="chips">{d.domains.map(domain=><button key={domain} onClick={()=>{if(!project){setNewTitle(domain+' research');setModal(true);setNotice('Create a project, then choose this discipline and domain in the question builder.');}else{update({discipline:d.name,domain});go('question');}}}>{domain}</button>)}</div><p className="example">Example question</p><p>{d.example}</p></section>)}</div></>}
- {(['question','literature','plan','contribution'] as View[]).includes(view)&&!project&&<div className="panel empty-state"><FolderOpen size={36}/><h2>Give your research a home.</h2><p>Create a project to keep your question, evidence, and decisions together.</p><button className="button" onClick={()=>setModal(true)}><Plus size={17}/>Create a project</button></div>}
- {view==='question'&&project&&<div className="content-grid"><section className="panel"><div className="panel-heading"><span className="step-number">01</span><div><h2>What do you want to understand?</h2><p>A focused question begins with a clear problem.</p></div></div><Field label="Project title" value={project.title} onChange={title=>update({title})}/><div className="two-col"><label className="field"><span>Discipline</span><select value={project.discipline} onChange={e=>update({discipline:e.target.value,domain:''})}>{disciplines.map(d=><option key={d.name}>{d.name}</option>)}</select></label><label className="field"><span>Research domain</span><select value={project.domain} onChange={e=>update({domain:e.target.value})}><option value="">Choose a domain</option>{disciplines.find(d=>d.name===project.discipline)?.domains.map(d=><option key={d}>{d}</option>)}</select></label></div><Field label="The problem you want to explore" value={project.problem} onChange={problem=>update({problem})} large placeholder="What is happening, who is affected, and why does it matter?"/><Field label="Population, setting, or corpus" value={project.setting} onChange={setting=>update({setting})} placeholder="For example: small retailers in Dhaka, or a defined collection of texts"/><Field label="Your research question" value={project.question} onChange={question=>update({question})} large placeholder="What exactly do you want to find out?"/><button className="button" onClick={()=>go('literature')}>Find supporting evidence <ArrowRight size={16}/></button></section><aside><section className="panel warm"><span className="tag">A STARTING POINT</span><h3>Make it specific. Keep it open.</h3><p>{disciplines.find(d=>d.name===project.discipline)?.example}</p><p className="muted">This example is not a verified research gap. Check what is already known before adopting it.</p><External href={sourceLinks.researchPerspectives}>Research perspectives</External></section><section className="panel"><h3>Your plan is taking shape</h3><div className="progress"><span style={{width:`${completion/6*100}%`}}/></div><p>{completion} of 6 planning elements recorded</p><p className="muted">Progress tracks documentation, not research quality.</p></section></aside></div>}
- {view==='literature'&&project&&<Literature key={project.id} project={project} update={update} notify={setNotice}/>}
- {view==='plan'&&project&&<div className="content-grid"><section className="panel"><h2>Choose a design with purpose.</h2><p>Your question, available evidence, and constraints should guide the method.</p><div className="two-col"><label className="field"><span>What are you trying to do?</span><select value={project.purpose} onChange={e=>update({purpose:e.target.value as Project['purpose'],design:''})}>{[['explore','Explore experiences'],['describe','Describe a pattern'],['causal','Estimate a causal effect'],['predict','Predict an outcome'],['interpret','Interpret texts or law'],['synthesize','Synthesize existing studies'],['design','Build and evaluate an artifact']].map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label><label className="field"><span>Data source</span><select value={project.data} onChange={e=>update({data:e.target.value as Project['data']})}><option value="existing">Existing data / literature</option><option value="new">New data collection</option></select></label></div>{(()=>{const r=routeDesign(project.purpose,project.discipline);return r&&<div className="recommendation"><span className="tag">CONDITIONAL SUGGESTION</span><h3>{r.design}</h3><p>{r.why}</p><p>{r.standard}</p><External href={r.url}>Check guidance and applicability</External><button className="button secondary" onClick={()=>update({design:r.design})}>Use as a starting point <Check size={15}/></button></div>;})()}<Field label="Chosen design and justification" value={project.design} onChange={design=>update({design})} large placeholder="Explain why this design suits your question and constraints."/><Field label="Ethics, consent, and institutional review" value={project.ethics} onChange={ethics=>update({ethics})} large placeholder="Identify participants, permissions, potential harms, confidentiality, and review requirements."/><Field label="Analysis and reproducibility plan" value={project.analysis} onChange={analysis=>update({analysis})} large placeholder="Describe sampling, analysis, assumptions, limitations, and what can safely be shared."/><button className="button" onClick={()=>download('research-protocol.md',protocolMarkdown(project),'text/markdown')}><Download size={16}/>Export protocol</button></section><aside><section className="panel warm"><h3>Reporting is not validation.</h3><p>Checklists help explain what you did. They cannot establish that a study was well designed or that its findings are valid.</p><External href={sourceLinks.prismaExplanation}>Read the PRISMA explanation</External></section><section className="panel"><h3>Standards reference shelf</h3>{standards.map(s=><div className="standard" key={s.name}><External href={s.url}>{s.name}</External><small>{s.scope}</small></div>)}</section></aside></div>}
- {view==='contribution'&&project&&<Contribution key={project.id} project={project} update={update}/>}
- {view==='projects'&&<><div className="content-grid"><section className="panel"><h2>A workspace on your device.</h2><p>Export a backup regularly. Clearing browser data, switching browsers, or using another device will not carry your projects with you.</p><div className="button-row"><button className="button" onClick={backup}><Download size={16}/>Download backup</button><label className="button secondary upload"><Upload size={16}/>Import backup<input type="file" accept=".json,application/json" onChange={async e=>{const f=e.target.files?.[0];if(!f)return;try{if(f.size>10_000_000)throw Error('Choose a backup smaller than 10 MB.');const incoming=parseBackup(await f.text()).projects;if(incoming.length+projects.length>100)throw Error('Import would exceed the 100-project workspace limit.');setImported(incoming);}catch(err){setNotice(err instanceof Error?err.message:'Could not read the backup.');}e.target.value='';}}/></label></div><p className="muted">{backupDate?`Last download this session: ${backupDate}`:'No backup downloaded during this session.'}</p>{imported&&<div className="recommendation"><h3>Import preview: {imported.length} projects</h3><p>{imported.map(p=>p.title).join(', ')}</p><p>Projects will be imported as new copies. Existing projects will stay unchanged.</p><div className="button-row"><button className="button" onClick={()=>{const copies=imported.map(p=>({...p,id:crypto.randomUUID(),title:p.title+' (imported)'}));markDirty();setProjects(all=>[...copies,...all]);setActive(copies[0]?.id||active);setImported(null);setNotice('Backup imported as new copies.');}}>Import as new copies</button><button className="button secondary" onClick={()=>setImported(null)}>Cancel</button></div></div>}</section><section className="panel warm"><h3>Privacy, plainly explained.</h3><p>Project notes stay in this browser’s IndexedDB. Online literature searches send your query to scholarly providers. Do not include confidential names or unpublished sensitive details in search queries.</p><p>No analytics, accounts, or paid AI services are used. Local storage is not encrypted by this app.</p></section></div><div className="project-grid">{projects.map(p=><section className="panel" key={p.id}><span className="tag">{p.discipline}</span><h3>{p.title}</h3><p>{p.papers.length} papers · {p.gapStatus}</p><div className="button-row"><button className="button secondary" onClick={()=>{setActive(p.id);go('question');}}>Open project <ArrowRight size={15}/></button><button className="text-button danger" onClick={()=>{if(window.confirm(`Delete “${p.title}” from this browser? Download a backup first if you need a copy.`)){markDirty();setProjects(all=>all.filter(x=>x.id!==p.id));if(active===p.id)setActive(projects.find(x=>x.id!==p.id)?.id||'');}}}>Delete</button></div></section>)}</div></>}
- </>}
- </main></div>{modal&&<div className="modal-backdrop" onKeyDown={e=>{if(e.key==='Escape')setModal(false);}}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="new-project-title"><button className="modal-close icon-button" aria-label="Close new project" onClick={()=>setModal(false)}><X/></button><span className="tool-icon mint"><Sprout size={26}/></span><h2 id="new-project-title">Every discovery starts somewhere.</h2><p>Give your project a working title. You can change it anytime.</p><form onSubmit={e=>{e.preventDefault();start();}}><Field label="Working title" value={newTitle} onChange={setNewTitle} placeholder="What are you curious about?"/><button className="button full" type="submit">Create project <ArrowRight size={17}/></button></form><small>Saved on this device. No sign-up, no subscription.</small></section></div>}</div>;
+import { disciplines } from '@/lib/content';
+import { nextTask, roadmap, taskStatus, updateProject, type TaskStatus } from '@/lib/workflow';
+import { PlanningWorkspace } from './PlanningWorkspace';
+import { EvidenceWorkspace } from './EvidenceWorkspace';
+import { ExecutionWorkspace } from './ExecutionWorkspace';
+
+type View = 'overview' | 'primer' | 'explore' | 'roadmap' | 'projects' | Stage;
+const mainNav = [
+  { id: 'overview', title: 'Home', icon: Compass },
+  { id: 'explore', title: 'Explore disciplines', icon: BookOpen },
+  { id: 'roadmap', title: 'Project roadmap', icon: Map },
+  { id: 'projects', title: 'My projects', icon: FolderOpen },
+] as const;
+
+function currentView(): View {
+  const page = window.location.hash.slice(1);
+  if (roadmap.some(task => task.id === page) || mainNav.some(tab => tab.id === page) || page === 'primer') return page as View;
+  return 'overview';
 }
-function Literature({project,update,notify}:{project:Project;update:(p:Partial<Project>)=>void;notify:(s:string)=>void}){
- const [query,setQuery]=useState(''),[year,setYear]=useState(''),[oa,setOa]=useState(false),[results,setResults]=useState<Paper[]>([]),[busy,setBusy]=useState(false),[error,setError]=useState(''),[tab,setTab]=useState<'search'|'matrix'>('search'),[executed,setExecuted]=useState('');const request=useRef<AbortController|null>(null);
- useEffect(()=>()=>request.current?.abort(),[]);
- async function search(e:React.FormEvent){e.preventDefault();request.current?.abort();const controller=new AbortController();request.current=controller;setBusy(true);setError('');setResults([]);const timeout=setTimeout(()=>controller.abort(),15000);try{const papers=await searchPapers(query,year,oa,controller.signal);setResults(papers);const filters=`from year=${year||'any'}; OA=${oa}; first 20 results only`;setExecuted(`${query.trim()} · ${filters}`);update({searches:[...project.searches,{query:query.trim(),source:'OpenAlex',date:new Date().toISOString(),count:papers.length,filters}],gapStatus:project.gapStatus==='idea'?'search underway':project.gapStatus});}catch(err){setError(controller.signal.aborted?'Search timed out. Try again or use the official search.':err instanceof Error?err.message:'Search failed.');}finally{clearTimeout(timeout);setBusy(false);}}
- return <><div className="tabs"><button className={tab==='search'?'selected':''} onClick={()=>setTab('search')}><Search size={17}/>Discover literature</button><button className={tab==='matrix'?'selected':''} onClick={()=>setTab('matrix')}><Library size={17}/>Evidence matrix <span>{project.papers.length}</span></button></div>{tab==='search'?<><section className="panel search-panel"><h2>Follow a question. Find the evidence.</h2><p>Search public scholarly metadata with OpenAlex. Findings still need your critical reading.</p><form onSubmit={search}><div className="search-row"><Search size={21}/><input aria-label="Search literature" placeholder="Try: digital financial inclusion Bangladesh" value={query} onChange={e=>setQuery(e.target.value)} maxLength={300}/><button className="button" disabled={busy}>{busy?'Searching…':'Search papers'}<ArrowRight size={16}/></button></div><div className="filter-row"><label>Published from<input aria-label="Published from" placeholder="Any year" value={year} onChange={e=>setYear(e.target.value)} maxLength={4} inputMode="numeric"/></label><label className="checkbox"><input type="checkbox" checked={oa} onChange={e=>setOa(e.target.checked)}/>Open access only</label><span>Keyword phrases · up to 20 results</span></div></form><p className="muted">Queries are sent online. Do not include confidential research details.</p></section>{error&&<div className="error" role="alert">{error}</div>}<div className="section-heading"><p>{executed?`Executed search: ${executed}`:'Start with a few terms describing your question.'}</p><External href={searchWebsiteUrl(query)}>Search on Crossref</External></div>{results.map(p=><article className="panel paper" key={p.id}><div><span className="tag">{p.year??'Year unknown'} · {p.source}</span>{p.oa&&<span className="oa-badge">Open-access link</span>}<h3><External href={p.url}>{p.title}</External></h3><p>{p.authors||'Authors not supplied'}</p><small>{p.journal}</small></div><div className="paper-bottom"><span>{p.doi?`DOI: ${p.doi}`:'No DOI supplied'}</span><div className="button-row">{p.oa&&<External href={p.oa}>Read open copy</External>}<button className="button secondary small" disabled={project.papers.some(x=>x.id===p.id||(x.doi&&x.doi===p.doi))} onClick={()=>{update({papers:addPaper(project,p).papers});notify('Paper saved to your evidence matrix.');}}><Plus size={15}/>{project.papers.some(x=>x.id===p.id||(x.doi&&x.doi===p.doi))?'Saved':'Save paper'}</button></div></div></article>)}{!busy&&!error&&executed&&!results.length&&<div className="panel empty-state"><Search/><h3>No results in this search.</h3><p>Try broader terms or another source. This does not establish that no studies exist.</p></div>}</>:<><div className="section-heading"><h2>Your evidence, with context.</h2><button className="button secondary" onClick={()=>download('literature-matrix.csv',matrixCsv(project),'text/csv')}><Download size={16}/>Export CSV</button></div><div className="info-bar">Record your own extraction. A title or abstract alone cannot support every finding. Include the page or section you read.</div>{!project.papers.length&&<div className="panel empty-state"><Library size={32}/><h3>Your evidence matrix is waiting.</h3><p>Search for literature, then save a paper to begin.</p><button className="button" onClick={()=>setTab('search')}>Find literature</button></div>}{project.papers.map(p=><details className="panel matrix-paper" key={p.id}><summary><span><strong>{p.title}</strong><small>{p.year} · {p.decision}</small></span><ChevronRight size={18}/></summary><div className="lesson-body"><External href={p.url}>Open source</External><label className="field"><span>Screening decision</span><select value={p.decision} onChange={e=>update({papers:project.papers.map(x=>x.id===p.id?{...x,decision:e.target.value as Paper['decision']}:x)})}><option value="unreviewed">Unreviewed</option><option value="include">Include</option><option value="exclude">Exclude</option></select></label>{(['reason','finding','locator','notes'] as const).map(key=><Field key={key} label={{reason:'Decision reason',finding:'Extracted finding',locator:'Evidence level and page / section',notes:'Methods, limitations, and your notes'}[key]} value={p[key]} onChange={v=>update({papers:project.papers.map(x=>x.id===p.id?{...x,[key]:v}:x)})} large={key==='notes'||key==='finding'}/>)}<button className="text-button danger" onClick={()=>{if(window.confirm('Remove this paper and its extraction notes?'))update({papers:project.papers.filter(x=>x.id!==p.id)});}}>Remove paper</button></div></details>)}</>}
- <details className="panel"><summary>Search audit trail ({project.searches.length})</summary>{project.searches.map((s,i)=><p key={i} className="audit">{new Date(s.date).toLocaleString()} · {s.source} · “{s.query}” · {s.filters} · {s.count} results</p>)}<p className="muted">This is a discovery log, not a complete systematic-review search.</p></details></>;
+
+function Status({ status }: { status: TaskStatus }) {
+  return <span className={`task-status ${status.toLowerCase().replaceAll(' ', '-')}`}>{status}</span>;
 }
-function Contribution({project,update}:{project:Project;update:(p:Partial<Project>)=>void}){const [doi,setDoi]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[record,setRecord]=useState<Awaited<ReturnType<typeof checkDoi>>|null>(null),[oaMessage,setOaMessage]=useState('');async function verify(e:React.FormEvent){e.preventDefault();setBusy(true);setError('');setRecord(null);setOaMessage('');try{setRecord(await checkDoi(doi));}catch(err){setError(err instanceof Error?err.message:'Verification failed.');}finally{setBusy(false);}}return <div className="content-grid"><div><section className="panel"><h2>What might your research contribute?</h2><p>Build a scoped claim from the papers you have examined, including contradictory evidence.</p><Field label="Candidate gap and supporting / conflicting evidence" value={project.gap} onChange={gap=>update({gap})} large placeholder="Within our documented search… Reference your saved papers and explain the limits of the claim."/><label className="field"><span>Review state</span><select value={project.gapStatus} onChange={e=>update({gapStatus:e.target.value as Project['gapStatus']})}>{['idea','search underway','evidence-supported candidate','human-reviewed candidate','contradicted','needs-update'].map(v=><option key={v}>{v}</option>)}</select></label><p className="muted">This state is self-reported. It is not an independent verification or a guarantee of novelty.</p><div className="chips"><span>{project.papers.length} saved papers</span><span>{project.searches.length} logged searches</span></div></section><section className="panel"><h2>Check a publication’s identity.</h2><p>Look up an article DOI in Crossref to inspect its journal and publisher metadata.</p><form onSubmit={verify}><Field label="Article DOI" value={doi} onChange={setDoi} placeholder="10.1038/nature12373"/><button disabled={busy} className="button">{busy?'Checking…':'Check DOI metadata'}<Search size={16}/></button></form>{error&&<p className="error" role="alert">{error}</p>}{record&&<div className="verification"><span className="tag">VERIFIED METADATA · CROSSREF</span><h3>{record.title[0]||'Title not supplied'}</h3><dl><dt>Journal / container</dt><dd>{record['container-title'].join(', ')||'Not supplied'}</dd><dt>Publisher</dt><dd>{record.publisher}</dd><dt>ISSN</dt><dd>{record.ISSN.join(', ')||'Not supplied'}</dd><dt>DOI</dt><dd>{record.DOI}</dd></dl><External href={doiWebsiteUrl(record.DOI)}>Open publisher record</External><h4>Unknown / requires manual verification</h4><p>Indexing, peer-review quality, editorial board, fees, archiving, and journal integrity have not been established by this lookup.</p><h4>Warning signals</h4><p>{record['update-to']?.length?'Post-publication update metadata is present. Inspect the source record.':'No determination. Missing update metadata does not prove there are no corrections or retractions.'}</p><button className="button secondary" onClick={async()=>{try{const r=await resolveOa(record.DOI);setOaMessage(r.is_oa?(safeUrl(r.best_oa_location?.url)||'Open access reported; link unavailable.'):`No open-access location reported by ${r.source}.`);}catch(err){setOaMessage(err instanceof Error?err.message:'OA lookup unavailable.');}}}>Resolve open-access copy</button>{oaMessage&&<p role="status">{safeUrl(oaMessage)?<External href={oaMessage}>Open legal OA copy</External>:oaMessage}</p>}</div>}</section></div><aside><section className="panel warm"><h3>A signal is not a verdict.</h3><p>A DOI confirms an identifier, not quality. Absence from an open-access directory does not prove a journal is predatory.</p><External href="https://thinkchecksubmit.org/journals/">Think. Check. Submit.</External></section><section className="panel"><h3>Manual verification</h3><div className="standard"><External href="https://doaj.org/search/journals">DOAJ journal directory</External></div><div className="standard"><External href="https://mjl.clarivate.com/">Web of Science Master Journal List</External></div><div className="standard"><External href={sourceLinks.scopus}>Scopus sources</External></div><p className="muted">These directories may require sign-in or a browser access check. If a destination is blocked, use its copy-link button in your usual browser. This app does not infer indexing status.</p></section></aside></div>;}
+
+export default function Atlas() {
+  const [view, setView] = useState<View>(currentView);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [active, setActive] = useState('');
+  const [ready, setReady] = useState(false);
+  const [saveState, setSaveState] = useState('Opening local workspace…');
+  const [notice, setNotice] = useState('');
+  const [mobile, setMobile] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [draftQuestion, setDraftQuestion] = useState('');
+  const [decision, setDecision] = useState('');
+  const [imported, setImported] = useState<Project[] | null>(null);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const projectTitle = useRef<HTMLInputElement>(null);
+  const closeDialog = useRef<HTMLButtonElement>(null);
+  const submitProject = useRef<HTMLButtonElement>(null);
+  const main = useRef<HTMLElement>(null);
+  const saveQueue = useRef(Promise.resolve());
+  const loadFailed = useRef(false);
+  const saveRevision = useRef(0);
+
+  useEffect(() => {
+    const onHash = () => { setView(currentView()); setMobile(false); };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
+  useEffect(() => {
+    let live = true;
+    loadProjects().then(records => {
+      if (!live) return;
+      setProjects(records);
+      let remembered: string | null = null;
+      try { remembered = sessionStorage.getItem('atlas-active'); } catch { /* Session selection is optional. */ }
+      setActive(records.find(record => record.id === remembered)?.id ?? records[0]?.id ?? '');
+      setReady(true);
+    }).catch(() => {
+      if (!live) return;
+      loadFailed.current = true;
+      setSaveState('Local storage unavailable');
+      setNotice('Your workspace could not be opened. Changes in this session can be downloaded as a backup.');
+      setReady(true);
+    });
+    return () => { live = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!ready || loadFailed.current) return;
+    const revision = ++saveRevision.current;
+    saveQueue.current = saveQueue.current.catch(() => {}).then(() => saveProjects(projects)).then(() => {
+      if (revision === saveRevision.current) setSaveState('Saved on this device');
+    }).catch(() => {
+      if (revision === saveRevision.current) setSaveState('Could not save. Download a backup.');
+    });
+  }, [projects, ready]);
+
+  useEffect(() => {
+    if (!ready || saveState === 'Saved on this device') return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [ready, saveState]);
+
+  const project = projects.find(item => item.id === active);
+  const current = roadmap.find(task => task.id === view);
+  const next = project && nextTask(project);
+  const status = project && current && taskStatus(project, current.id);
+
+  function go(destination: View) {
+    if (view !== destination) window.history.pushState(null, '', `#${destination}`);
+    setView(destination);
+    setMobile(false);
+    window.scrollTo({ top: 0 });
+    main.current?.focus({ preventScroll: true });
+  }
+
+  function selectProject(id: string) {
+    setActive(id);
+    try { sessionStorage.setItem('atlas-active', id); } catch { /* Session selection is optional. */ }
+  }
+
+  function markDirty() {
+    ++saveRevision.current;
+    setSaveState(loadFailed.current ? 'Local storage unavailable' : 'Saving…');
+  }
+
+  function update(patch: Partial<Project>) {
+    markDirty();
+    setProjects(items => items.map(item => item.id === active ? updateProject(item, patch) : item));
+  }
+
+  function openNewProject() {
+    if (!ready) return;
+    if (projects.length >= 100) { setNotice('Back up and remove an old project before adding another.'); return; }
+    setNewTitle('');
+    dialog.current?.showModal();
+    projectTitle.current?.focus();
+  }
+
+  function create() {
+    const item = createProject(newTitle.trim() || 'Untitled research project');
+    if (view === 'primer') item.question = draftQuestion.trim();
+    markDirty();
+    setProjects(items => [item, ...items]);
+    selectProject(item.id);
+    dialog.current?.close();
+    go('profile');
+  }
+
+  function backup() {
+    const data = { schemaVersion: 1, exportedAt: new Date().toISOString(), projects };
+    download('research-atlas-backup.json', JSON.stringify(data, null, 2), 'application/json');
+  }
+
+  function importBackup() {
+    if (!imported) return;
+    if (imported.length + projects.length > 100) { setNotice('This import would exceed the 100-project limit.'); return; }
+    const copies = imported.map(item => ({ ...item, id: crypto.randomUUID(), title: `${item.title.slice(0, 19989)} (imported)` }));
+    markDirty();
+    setProjects(items => [...copies, ...items]);
+    if (copies[0]) selectProject(copies[0].id);
+    setImported(null);
+    setNotice(`${copies.length} project${copies.length === 1 ? '' : 's'} imported as new copies.`);
+  }
+
+  function removeProject(item: Project) {
+    if (!window.confirm(`Delete ${item.title}? Download a backup first if you want to retain a copy.`)) return;
+    markDirty();
+    const remaining = projects.filter(record => record.id !== item.id);
+    setProjects(remaining);
+    if (active === item.id) selectProject(remaining[0]?.id ?? '');
+  }
+
+  function advance() {
+    if (!current) return;
+    go(roadmap[roadmap.findIndex(task => task.id === current.id) + 1]?.id ?? 'roadmap');
+  }
+
+  return <div className="app-shell journey-shell">
+    <a className="skip" href="#main" onClick={event => { event.preventDefault(); main.current?.focus(); }}>Skip to workspace</a>
+    <aside className={`sidebar journey-sidebar ${mobile ? 'open' : ''}`}>
+      <a href="#overview" className="brand" onClick={event => { event.preventDefault(); go('overview'); }}>
+        <span className="brand-mark"><Sprout size={23} /></span><span>Research Atlas<small>YOUR RESEARCH WORKSPACE</small></span>
+      </a>
+      <button type="button" className="mobile-close icon-button" onClick={() => setMobile(false)} aria-label="Close navigation"><X /></button>
+      <nav aria-label="Main navigation">
+        {mainNav.map(item => <button type="button" key={item.id} className={`nav-item ${view === item.id ? 'active' : ''}`} aria-current={view === item.id ? 'page' : undefined} onClick={() => go(item.id)}><item.icon size={18} />{item.title}</button>)}
+      </nav>
+      {project && <div className="journey-active">
+        <span className="eyebrow">ACTIVE PROJECT</span><strong>{project.title}</strong>
+        {next && <button className="text-button" onClick={() => go(next.id)}>Continue project <ArrowRight size={15} /></button>}
+      </div>}
+      <p className="journey-sidebar-note">Project data is stored in this browser. Download a backup from My projects.</p>
+    </aside>
+    <div className="main-shell">
+      <header className="topbar journey-topbar">
+        <button type="button" className="mobile-toggle icon-button" onClick={() => setMobile(true)} aria-label="Open navigation" aria-expanded={mobile}><Menu /></button>
+        <div className="journey-breadcrumb">{current ? <><button className="text-button" onClick={() => go('roadmap')}>Project roadmap</button><ChevronRight size={15} /><span>{current.title}</span></> : <span>{mainNav.find(item => item.id === view)?.title ?? 'Get started'}</span>}</div>
+        <span className="saved" role="status">{saveState}</span>
+        <button className="button small" onClick={openNewProject} disabled={!ready}><Plus size={16} />New project</button>
+      </header>
+      <main id="main" ref={main} tabIndex={-1}>
+        {notice && <div className="notice" role="status">{notice}<button className="icon-button" onClick={() => setNotice('')} aria-label="Dismiss notice"><X size={16} /></button></div>}
+
+        {view === 'overview' && <>
+          <section className="journey-hero">
+            <span className="eyebrow">RESEARCH ATLAS</span>
+            <h1>Turn curiosity into<br />a research project.</h1>
+            <p>Research answers a focused question using evidence and a method you can explain. Start with an idea, then save your sources and decisions as the project takes shape.</p>
+            <button className="button light" onClick={project ? () => go('roadmap') : openNewProject} disabled={!ready}>{project ? 'Resume your project' : 'Start a research project'}<ArrowRight size={18} /></button>
+          </section>
+          <section className="entry-grid" aria-label="Choose a starting point">
+            <button className="entry-card" onClick={() => go('primer')}><BookOpen /><strong>I’m new to research</strong><span>Try turning a topic into a question.</span><ArrowRight size={17} /></button>
+            <button className="entry-card" onClick={openNewProject} disabled={!ready}><Plus /><strong>I want to start a project</strong><span>Choose a direction and get a roadmap.</span><ArrowRight size={17} /></button>
+            <button className="entry-card" onClick={() => go('explore')}><Compass /><strong>I want to explore research</strong><span>Browse examples from different disciplines.</span><ArrowRight size={17} /></button>
+          </section>
+        </>}
+
+        {view === 'primer' && <section className="panel start-exercise">
+          <span className="eyebrow">GET STARTED</span><h1>From a topic to a question</h1>
+          <p>A topic names an area. A research question tells you what evidence to look for and what you want to understand.</p>
+          <dl><dt>Topic</dt><dd>Social media and university students</dd><dt>Question</dt><dd>How do university students describe the influence of social media on their study habits?</dd></dl>
+          <p>This question asks about experiences. Interviews could help, depending on the study’s objectives and access to participants.</p>
+          <label className="field"><span>Try your own research question</span><textarea value={draftQuestion} onChange={event => setDraftQuestion(event.target.value)} maxLength={20000} rows={4} placeholder="What will you investigate, and in which setting?" /></label>
+          <button className="button" onClick={openNewProject} disabled={!ready}>{draftQuestion.trim() ? 'Start a project with this question' : 'Start a project'}<ArrowRight size={17} /></button>
+        </section>}
+
+        {view === 'explore' && <>
+          <div className="page-heading"><div><span className="eyebrow">TOPIC EXPLORATION</span><h1>Explore disciplines</h1><p>Use these examples to find a direction you can investigate.</p></div></div>
+          <div className="discipline-grid">{disciplines.map(item => <article className="panel" key={item.name}><h2>{item.name}</h2><p>{item.example}</p><div className="chips">{item.domains.map(domain => <span key={domain} className="tag">{domain}</span>)}</div></article>)}</div>
+          <button className="button" onClick={openNewProject} disabled={!ready}><Plus size={16} />Start a project</button>
+        </>}
+
+        {(view === 'roadmap' || current) && !project && <section className="panel empty-state">
+          <FolderOpen size={28} /><h1>Create your research project</h1><p>Set a direction and keep your questions, evidence, and plans together.</p>
+          <button className="button" onClick={openNewProject} disabled={!ready}><Plus size={17} />Start a project</button>
+        </section>}
+
+        {view === 'roadmap' && project && <>
+          <div className="page-heading"><div><span className="eyebrow">PROJECT ROADMAP</span><h1>{project.title}</h1><p>{project.discipline}{project.goal ? ` · ${project.goal}` : ''}</p></div><button className="button secondary" onClick={() => go('projects')}><ArrowDownToLine size={16} />Export project</button></div>
+          {next && <section className="next-task"><div><span className="eyebrow">CONTINUE WHERE YOU LEFT OFF</span><h2>{next.title}</h2><p>{next.detail}</p></div><button className="button" onClick={() => go(next.id)}>Open next task <ArrowRight size={17} /></button></section>}
+          <div className="roadmap-grid">{[...new Set(roadmap.map(task => task.group))].map(group => <section className="panel roadmap-group" key={group}>
+            <h2>{group}</h2><ul>{roadmap.filter(task => task.group === group).map(task => <li key={task.id}><button className="task-link" onClick={() => go(task.id)}><span><strong>{task.title}</strong><small>{task.detail}</small></span><Status status={taskStatus(project, task.id)} /></button></li>)}</ul>
+          </section>)}</div>
+          <section className="panel"><h2>Decision log</h2><p>Keep a record of changes and why you made them.</p>
+            <form className="decision-form" onSubmit={event => { event.preventDefault(); if (!decision.trim()) return; update({ decisions: [...project.decisions.slice(-299), { at: new Date().toISOString(), note: decision.trim() }] }); setDecision(''); }}>
+              <label className="field"><span>Decision and rationale</span><input value={decision} onChange={event => setDecision(event.target.value)} maxLength={20000} /></label><button className="button secondary" disabled={!decision.trim()}>Record decision</button>
+            </form>
+            <ol className="decision-log">{[...project.decisions].reverse().map((entry, index) => <li key={`${entry.at}-${index}`}><time dateTime={entry.at}>{new Date(entry.at).toLocaleString()}</time><p>{entry.note}</p></li>)}</ol>
+          </section>
+        </>}
+
+        {project && current && <>
+          <div className="page-heading"><div><span className="eyebrow">{current.group.toUpperCase()} · {project.title}</span><h1>{current.title}</h1><p>{current.detail}</p></div>{status && <Status status={status} />}</div>
+          {status === 'Needs review' && <div className="review-banner" role="status"><p>Your question changed. Check this work against the revised question before proceeding.</p><button className="button secondary" onClick={() => update({ needsReview: project.needsReview.filter(id => id !== current.id) })}><Check size={16} />Mark reviewed</button></div>}
+          {view === 'profile' || view === 'topic' || view === 'question' || view === 'methods' ? <PlanningWorkspace key={`${project.id}-${view}`} project={project} mode={view} update={update} next={advance} /> : null}
+          {view === 'discover' || view === 'screen' || view === 'extract' ? <EvidenceWorkspace key={`${project.id}-${view}`} project={project} mode={view} update={update} notify={setNotice} /> : null}
+          {view === 'data' || view === 'writing' || view === 'publication' ? <ExecutionWorkspace key={`${project.id}-${view}`} project={project} mode={view} update={update} /> : null}
+          <div className="journey-actions"><button className="button secondary" onClick={() => go('roadmap')}>Back to roadmap</button>{view !== 'profile' && view !== 'topic' && view !== 'question' && view !== 'methods' && <button className="button" onClick={advance}>{view === 'publication' ? 'Return to roadmap' : 'Continue to next task'}<ArrowRight size={17} /></button>}</div>
+        </>}
+
+        {view === 'projects' && <>
+          <div className="page-heading"><div><span className="eyebrow">TRACK YOUR WORK</span><h1>My projects</h1><p>Open a project, review progress, and download a backup.</p></div></div>
+          <section className="panel"><h2>Back up and restore</h2><p>Projects are saved in this browser. A backup can restore them on another device. Only search terms and public identifiers are sent to scholarly services when you request results.</p>
+            <div className="button-row"><button className="button" onClick={backup}><ArrowDownToLine size={17} />Download backup</button><label className="button secondary upload">Import backup<input type="file" accept=".json,application/json" onChange={async event => {
+              const input = event.currentTarget;
+              const file = input.files?.[0];
+              input.value = '';
+              setImported(null);
+              if (!file) return;
+              try {
+                if (file.size > 10000000) throw Error('This backup exceeds the 10 MB import limit.');
+                setImported(parseBackup(await file.text()).projects);
+              } catch (error) { setNotice(error instanceof Error ? error.message : 'Could not read this backup.'); }
+            }} /></label></div>
+            {imported && <div className="recommendation"><h3>Import preview: {imported.length} projects</h3><p>{imported.map(item => item.title).join(', ') || 'This backup contains no projects.'}</p><div className="button-row"><button className="button" onClick={importBackup} disabled={!imported.length}>Import as new copies</button><button className="button secondary" onClick={() => setImported(null)}>Cancel</button></div></div>}
+          </section>
+          <div className="project-grid">{projects.map(item => <article key={item.id} className="panel journey-project"><h2>{item.title}</h2><p>{item.discipline} · {item.papers.length} saved references</p>
+            <div className="button-row"><button className="button" onClick={() => { selectProject(item.id); go('roadmap'); }}>Open roadmap</button><button className="button secondary" onClick={() => download('research-protocol.md', protocolMarkdown(item), 'text/markdown')}>Export protocol</button><button className="button secondary" onClick={() => download('evidence-matrix.csv', matrixCsv(item), 'text/csv')}>Export evidence</button><button className="text-button danger" onClick={() => removeProject(item)}>Delete project</button></div>
+          </article>)}</div>
+        </>}
+      </main>
+    </div>
+    <dialog ref={dialog} className="journey-dialog" aria-labelledby="project-dialog-title" onKeyDown={event => {
+      if (event.key !== 'Tab') return;
+      const boundary = event.shiftKey ? closeDialog.current : submitProject.current;
+      if (event.target !== boundary) return;
+      event.preventDefault();
+      (event.shiftKey ? submitProject.current : closeDialog.current)?.focus();
+    }}>
+      <form onSubmit={event => { event.preventDefault(); create(); }}>
+        <button ref={closeDialog} type="button" className="icon-button modal-close" onClick={() => dialog.current?.close()} aria-label="Close new project"><X size={20} /></button>
+        <h2 id="project-dialog-title">Start a research project</h2><p>You can rename the project as your question develops.</p>
+        <label className="field"><span>Working title</span><input ref={projectTitle} value={newTitle} maxLength={200} onChange={event => setNewTitle(event.target.value)} placeholder="For example, student well-being and digital habits" /></label>
+        <button ref={submitProject} type="submit" className="button">Create project <ArrowRight size={17} /></button>
+      </form>
+    </dialog>
+  </div>;
+}

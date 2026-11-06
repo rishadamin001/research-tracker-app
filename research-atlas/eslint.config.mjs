@@ -1,4 +1,12 @@
-import { defineConfig, globalIgnores } from 'eslint/config';
-import next from 'eslint-config-next/core-web-vitals';
-import ts from 'eslint-config-next/typescript';
-export default defineConfig([...next, ...ts, globalIgnores(['out/**','.next/**','test-results/**','playwright-report/**'])]);
+import tseslint from 'typescript-eslint';
+import hooks from 'eslint-plugin-react-hooks';
+
+export default [
+  { ignores: ['out/**', '.next/**', 'test-results*/**', 'playwright-report/**'] },
+  ...tseslint.configs.recommended,
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    plugins: { 'react-hooks': hooks },
+    rules: { 'react-hooks/rules-of-hooks': 'error', 'react-hooks/exhaustive-deps': 'warn' },
+  },
+];

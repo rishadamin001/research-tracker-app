@@ -1,9 +1,7 @@
 # Architecture
 
-Static Next.js App Router root renders a client workspace. Domain records and safe import/export helpers live in src/lib/model.ts; IndexedDB access in storage.ts; provider normalization in providers.ts; editable curriculum/taxonomy/design rules in content.ts. Atlas.tsx composes overview, guided forms, literature, and contribution panels.
+Vite serves a React and TypeScript application. `Atlas` manages the selected project, browser navigation, and autosave. Planning, evidence, and execution components all read and update the same project. `workflow.ts` derives task statuses and sets review flags when the question changes. Statuses indicate recorded progress and do not certify the work.
 
-No server-rendered private data, central research-data database, commercial LLM, or authentication service. The optional gateway uses a fixed endpoint allowlist, origin checking, bounded queries/responses, a 12-second fetch timeout, no arbitrary URL proxy, no paid fallback, and no query logging in code. Origin checks do not constitute authentication or prevent quota abuse. Upstream free limits remain the enforcement boundary.
+`model.ts` validates version 1 backups with defaults for newer fields, produces CSV and Markdown outputs, and checks duplicate identifiers. `storage.ts` saves projects in IndexedDB. Each reference stores metadata, user-authored extraction notes, screening decisions, and optional citation IDs. Search, screening, extraction, and writing reuse these records. Publication decisions use a separate journal shortlist within the project.
 
-UI state is per-tab; IndexedDB contains a versioned workspace. Save writes are serialized. Corrupt/unreadable storage disables overwriting for that session and asks for backup. The app is not a multi-tab or collaborative editor. A future refactor can split Atlas panels into separate files without changing the domain model.
-
-Static export was chosen deliberately over a full server framework runtime to minimize infrastructure and CPU requirements. D1/R2 are not used.
+`providers.ts` normalizes public records. The default static app calls OpenAlex and Crossref directly. The citation panel displays directed links between saved records using OpenAlex references already in the library. Project notes, drafts, and decisions stay in the browser.

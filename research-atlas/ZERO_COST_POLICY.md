@@ -1,9 +1,5 @@
 # Zero-cost policy
 
-No payment method, paid cloud plan, prepaid credit, commercial LLM API, R2 bucket, D1 database, paid analytics, or subscription product was configured. A local build has no service billing dependency.
+The default release requires no paid service, account, API key, or hosted database. The public repository can use GitHub Pages with GitHub Actions. The browser calls public scholarly services within their keyless usage limits and shows alternative source links when a request fails. See [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages) and [OpenAlex authentication and limits](https://help.openalex.org/api/authentication/).
 
-OpenAlex or gateway quota exhaustion stops online results and offers official links. Crossref failure stops the lookup. Without a gateway, OA resolution uses the public OpenAlex API; no unconfigured Unpaywall request is attempted. No automatic upgrade, paid substitution, or background retry loop exists.
-
-Cloudflare account identity was readable, but the subscriptions endpoint returned 403: OAuth cannot read billing subscriptions; an API token with Billing Read is required. workers/account-settings returned default_usage_model=standard, which is insufficient evidence of free-only billing. Consequently no Cloudflare resource was created and zero-cost deployment verification remains pending.
-
-Before deployment verify Workers Free and resource inventory with read-only billing access. Never deploy the optional gateway to a potentially billable account on an assumption. Application flags are not a billing control. Public request volume can exhaust free quotas and availability is not guaranteed.
+Back up browser-local projects regularly. Any optional gateway should be deployed only to a verified free account with hard spending limits and must keep keys server-side.
