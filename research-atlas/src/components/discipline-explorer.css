@@ -1,0 +1,52 @@
+.journey-shell .discipline-search-note {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  color: var(--muted);
+  margin: 0 0 1rem;
+}
+
+.journey-shell .discipline-search-note svg {
+  color: var(--green);
+  flex: none;
+}
+
+.journey-shell .discipline-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: .55rem;
+  border: 0;
+  border-radius: .3rem;
+  padding: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  font: inherit;
+}
+
+.journey-shell .discipline-title:hover {
+  color: var(--green);
+}
+
+.journey-shell .discipline-title svg {
+  color: var(--green);
+  flex: none;
+}
+
+.journey-shell .discipline-topic {
+  padding: .35rem .6rem;
+  min-height: 2rem;
+  border: 1px solid var(--line);
+  border-radius: .45rem;
+  background: var(--surface-soft);
+  color: var(--green);
+  font-weight: 600;
+  font-size: .78rem;
+}
+
+.journey-shell .discipline-topic:hover {
+  background: var(--accent-soft);
+  border-color: var(--green);
+}

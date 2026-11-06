@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
 import {createProject,parseBackup,normalizeDoi,addPaper,safeUrl,matrixCsv} from '../src/lib/model';
 import {checkJournalMetrics,parseWorks,searchPapers} from '../src/lib/providers';
 import {routeDesign,disciplines} from '../src/lib/content';
@@ -39,6 +40,29 @@ test('paper citation ranking preserves zero, puts unavailable data last, and lea
   assert.deepEqual(orderPapers(library, 'impact').map(item => item.id), ['high', 'zero', 'unavailable']);
   assert.deepEqual(library.map(item => item.id), ['unavailable', 'zero', 'high']);
 });
+async function quartileFixture(url: string) {
+  const file = /^\/data\/(journal-quartiles-[0-7]\.json)$/.exec(url)?.[1];
+  return file ? new Response(await readFile(new URL(`../public/data/${file}`, import.meta.url), 'utf8')) : undefined;
+}
+
+test('literature matches ranked journals by ISSN and sorts before higher-cited unranked sources', async () => {
+  const record = fixture.results[0];
+  const published = (id: string, issn: string, citations: number) => ({ ...record, id, cited_by_count: citations,
+    primary_location: { source: { display_name: 'Journal', type: 'journal', issn_l: issn, host_organization_name: 'Publisher' } } });
+  const old = globalThis.fetch;
+  globalThis.fetch = async input => await quartileFixture(String(input)) ?? Response.json({ results: [
+    { ...record, id: 'unranked', cited_by_count: 500 }, published('q4', '0002-3035', 100),
+    published('q1-low', '0272-4944', 0), published('q1-high', '0308-518X', 3),
+  ] });
+  try {
+    const papers = orderPapers(await searchPapers('student housing', '', false), 'quartile');
+    assert.deepEqual(papers.map(item => [item.id, item.journalQuartile?.quartile, item.citedByCount]), [
+      ['q1-high', 'Q1', 3], ['q1-low', 'Q1', 0], ['q4', 'Q4', 100], ['unranked', undefined, 500],
+    ]);
+    assert.equal(papers[1].publisher, 'Publisher');
+    assert.equal(papers[1].journalQuartile?.source, 'POSI');
+  } finally { globalThis.fetch = old; }
+});
 test('journal lookup checks ISSN identity and retains provenance for shortlist sorting', async () => {
   assert.equal(normalizeIssn('ISSN 00280836'), '0028-0836');
   assert.throws(() => normalizeIssn('0028-0835'), /check digit/);
@@ -46,12 +70,15 @@ test('journal lookup checks ISSN identity and retains provenance for shortlist s
   let response = { id: 'https://openalex.org/S1', display_name: 'Nature', type: 'journal',
     issn_l: '0028-0836', summary_stats: { '2yr_mean_citedness': 22.1, h_index: 110 } };
   globalThis.fetch = async url => {
+    const quartiles = await quartileFixture(String(url));
+    if (quartiles) return quartiles;
     assert.equal(url, 'https://api.openalex.org/sources/issn:0028-0836');
     return Response.json(response);
   };
   try {
     const metrics = await checkJournalMetrics('0028-0836');
     assert.equal(metrics.citedness, 22.1);
+    assert.equal(metrics.journalQuartile?.quartile, 'Q1');
     assert.equal(metrics.sourceId, 'https://openalex.org/S1');
     assert.ok(Number.isFinite(Date.parse(metrics.checkedAt)));
     const candidate = { title: 'Candidate', url: '', scope: '', cost: '', checks: [], verification: '' };

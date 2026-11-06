@@ -270,7 +270,7 @@ function PublicationWorkspace({ project, update }: WorkspaceProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [record, setRecord] = useState<DoiRecord>();
-  const [journalOrder, setJournalOrder] = useStoredOrder('atlas-journal-sort', journalOrderLabels, 'citedness');
+  const [journalOrder, setJournalOrder] = useStoredOrder('atlas-journal-sort-v2', journalOrderLabels, 'quartile');
   const journals = orderJournals(project.journalCandidates, journalOrder);
 
   function addJournal(event: FormEvent<HTMLFormElement>) {

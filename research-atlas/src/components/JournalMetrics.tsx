@@ -3,10 +3,12 @@ import type { JournalMetrics as MetricRecord } from '@/lib/model';
 import { checkJournalMetrics } from '@/lib/providers';
 import { metricNumber } from '@/lib/ranking';
 import { External } from './External';
+import { QuartileBadge } from './RankingControls';
 
 function SourceMetrics({ value }: { value: MetricRecord }) {
   return <>
     <p><strong>{value.title}</strong> · ISSN {value.issn}</p>
+    <QuartileBadge value={value.journalQuartile} />
     <div className="chips">
       <span className="tag">Recent citations per paper {value.citedness == null ? 'unavailable' : metricNumber(value.citedness)}</span>
       <span className="tag">Journal h-index {value.hIndex == null ? 'unavailable' : metricNumber(value.hIndex)}</span>

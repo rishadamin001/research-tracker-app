@@ -1,0 +1,35 @@
+.publication-identity {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin: 10px 0 12px;
+  color: var(--ink);
+}
+.publication-identity > span:last-child { display: grid; min-width: 0; }
+.publication-identity strong { overflow-wrap: anywhere; }
+.publication-identity small { color: var(--muted); }
+.publication-mark {
+  display: grid;
+  place-items: center;
+  flex: 0 0 70px;
+  height: 42px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: #224366;
+  font-weight: 750;
+}
+.publication-mark img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; }
+.paper-rank-row, .quartile-marker { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; }
+.paper-rank-row { gap: 10px 17px; margin: 10px 0; }
+.quartile-badge { border-radius: 7px; padding: 5px 9px; font-size: .9rem; font-weight: 750; }
+.quartile-badge.q1 { background: light-dark(#dff3e7, #24493b); color: light-dark(#174b36, #d8ffe9); }
+.quartile-badge.q2 { background: light-dark(#e3eeff, #213c66); color: light-dark(#1d437e, #d7e7ff); }
+.quartile-badge.q3 { background: light-dark(#fff0cd, #543e21); color: light-dark(#664600, #ffdf99); }
+.quartile-badge.q4 { background: light-dark(#f3e9fc, #493251); color: light-dark(#633575, #f2d6fc); }
+.quartile-badge.unavailable { background: var(--surface-soft); color: var(--muted); font-size: .77rem; }
+.quartile-provenance { display: grid; font-size: .78rem; }
+.quartile-provenance small { color: var(--muted); }
+.paper-citations { border: 1px solid var(--line); border-radius: 7px; padding: 4px 8px; color: var(--ink); }
+.paper-citations strong { font-variant-numeric: tabular-nums; }

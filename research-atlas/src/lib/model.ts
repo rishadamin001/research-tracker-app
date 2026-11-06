@@ -1,11 +1,24 @@
 import { z } from 'zod';
 const text = z.string().max(20000);
+const journalQuartile = z.object({
+  quartile: z.enum(['Q1', 'Q2', 'Q3', 'Q4']),
+  source: z.string().max(200),
+  year: z.number().int().min(1900).max(2200),
+  category: z.string().max(200),
+  url: z.string().max(1200),
+  provisional: z.boolean().optional(),
+});
 export const paperSchema = z.object({
   id:z.string().max(500),title:text,authors:text,year:z.number().nullable(),doi:z.string().nullable(),journal:text,url:z.string(),oa:z.string().nullable(),source:z.string(),notes:text.default(''),finding:text.default(''),methods:text.default(''),limitations:text.default(''),locator:text.default(''),decision:z.enum(['unreviewed','include','exclude']).default('unreviewed'),reason:text.default(''),referenceIds:z.array(z.string().max(500)).max(500).optional(),
   fwci: z.number().nonnegative().optional(),
   citedByCount: z.number().int().nonnegative().optional(),
   workType: z.string().max(100).optional(),
   isRetracted: z.boolean().optional(),
+  publisher: z.string().max(500).optional(),
+  venueType: z.string().max(100).optional(),
+  inDoaj: z.boolean().optional(),
+  issns: z.array(z.string().max(20)).max(12).optional(),
+  journalQuartile: journalQuartile.optional(),
 });
 export type Paper=z.infer<typeof paperSchema>;
 export const workflowStage = z.enum(['profile','topic','question','discover','screen','extract','methods','data','writing','publication']);
@@ -17,6 +30,7 @@ const journalMetrics = z.object({
   citedness: z.number().nonnegative().optional(),
   hIndex: z.number().int().nonnegative().optional(),
   checkedAt: z.string().datetime(),
+  journalQuartile: journalQuartile.optional(),
 });
 export type JournalMetrics = z.infer<typeof journalMetrics>;
 const journalCandidate = z.object({id:z.string(),title:text,url:text,scope:text,cost:text,checks:z.array(z.string()).max(30),verification:text,metrics:journalMetrics.optional()});

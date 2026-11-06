@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0 — 2026-11-06
+
+Literature results default to POSI journal quartile order. Result cards show the publication, publisher, ranking subject and edition, and the OpenAlex citation count. Discipline topics launch searches in one tap. The app is installable and its workspace can reopen offline after the first online visit.
+
 ## 0.3.0 — 2026-11-06
 
 Added a visual research guide, conference tracker and calendar exports, transparent OpenAlex sorting for papers and journals, and saved display preferences. Updated workspace navigation, color, density, and section transitions.

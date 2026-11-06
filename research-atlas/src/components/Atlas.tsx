@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowDownToLine, ArrowRight, BookOpen, CalendarDays, Check, ChevronRight, Compass, FolderOpen, LibraryBig, Map, Menu, Plus, Settings, X } from 'lucide-react';
+import { ArrowDownToLine, ArrowRight, BookOpen, CalendarDays, Check, ChevronRight, Compass, FolderOpen, LibraryBig, Map, Menu, Plus, Search, Settings, X } from 'lucide-react';
 import { createProject, matrixCsv, parseBackup, protocolMarkdown, type Project, type Stage } from '@/lib/model';
 import { download, loadProjects, saveProjects } from '@/lib/storage';
 import { disciplines } from '@/lib/content';
@@ -12,6 +12,8 @@ import { ExecutionWorkspace } from './ExecutionWorkspace';
 import { ResearchGuide } from './ResearchGuide';
 import { ConferencePlanner } from './ConferencePlanner';
 import { WorkspacePreferences } from './WorkspacePreferences';
+import { InstallApp } from './InstallApp';
+import './discipline-explorer.css';
 
 type View = 'overview' | 'primer' | 'explore' | 'guide' | 'conferences' | 'roadmap' | 'projects' | 'preferences' | Stage;
 const mainNav = [
@@ -25,9 +27,17 @@ const mainNav = [
 ] as const;
 
 function currentView(): View {
-  const page = window.location.hash.slice(1);
+  const page = window.location.hash.slice(1).split('?')[0];
   if (roadmap.some(task => task.id === page) || mainNav.some(tab => tab.id === page) || page === 'primer') return page as View;
   return 'overview';
+}
+
+function currentTopic() {
+  const [view, parameters] = window.location.hash.slice(1).split('?');
+  if (view !== 'discover' || !parameters) return undefined;
+  const topic = new URLSearchParams(parameters).get('topic');
+  if (topic && disciplines.some(item => item.name === topic || item.domains.includes(topic))) return topic;
+  return undefined;
 }
 
 function Status({ status }: { status: TaskStatus }) {
@@ -36,6 +46,7 @@ function Status({ status }: { status: TaskStatus }) {
 
 export default function Atlas() {
   const [view, setView] = useState<View>(currentView);
+  const [searchTopic, setSearchTopic] = useState(currentTopic);
   const [preferences, setPreferences] = useState(readPreferences);
   const [projects, setProjects] = useState<Project[]>([]);
   const [active, setActive] = useState('');
@@ -57,7 +68,7 @@ export default function Atlas() {
   const saveRevision = useRef(0);
 
   useEffect(() => {
-    const onHash = () => { setView(currentView()); setMobile(false); };
+    const onHash = () => { setView(currentView()); setSearchTopic(currentTopic()); setMobile(false); };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
@@ -111,9 +122,11 @@ export default function Atlas() {
     if (!writePreferences(updated)) setNotice('Your display changes apply until you close this page. Browser storage is unavailable.');
   }
 
-  function go(destination: View) {
-    if (view !== destination) window.history.pushState(null, '', `#${destination}`);
+  function go(destination: View, topic?: string) {
+    const hash = topic ? `#${destination}?${new URLSearchParams({ topic })}` : `#${destination}`;
+    if (view !== destination || searchTopic !== topic) window.history.pushState(null, '', hash);
     setView(destination);
+    setSearchTopic(topic);
     setMobile(false);
     window.scrollTo({ top: 0 });
     main.current?.focus({ preventScroll: true });
@@ -150,6 +163,28 @@ export default function Atlas() {
     selectProject(item.id);
     dialog.current?.close();
     go('profile');
+  }
+
+  function searchDiscipline(topic: string) {
+    if (!ready) return;
+    const discipline = disciplines.find(item => item.name === topic || item.domains.includes(topic));
+    if (!discipline) return;
+
+    if (!project) {
+      if (projects.length >= 100) {
+        setNotice('Open an existing project from My projects to start this search.');
+        return;
+      }
+      const newProject = createProject(`${topic} literature`);
+      newProject.discipline = discipline.name;
+      if (discipline.name !== topic) newProject.domain = topic;
+      markDirty();
+      setProjects(items => [newProject, ...items]);
+      selectProject(newProject.id);
+      setNotice(`Created a local project for ${topic} so you can save papers as you search.`);
+    }
+
+    go('discover', topic);
   }
 
   function backup() {
@@ -227,7 +262,7 @@ export default function Atlas() {
 
         {view === 'guide' && <ResearchGuide onStart={() => go('primer')} onConferences={() => go('conferences')} />}
         {view === 'conferences' && <ConferencePlanner />}
-        {view === 'preferences' && <WorkspacePreferences value={preferences} onChange={changePreferences} />}
+        {view === 'preferences' && <><WorkspacePreferences value={preferences} onChange={changePreferences} /><InstallApp /></>}
 
         {view === 'primer' && <section className="panel start-exercise">
           <span className="eyebrow">GET STARTED</span><h1>From a topic to a question</h1>
@@ -239,14 +274,21 @@ export default function Atlas() {
         </section>}
 
         {view === 'explore' && <>
-          <div className="page-heading"><div><span className="eyebrow">TOPIC EXPLORATION</span><h1>Explore disciplines</h1><p>Use these examples to find a direction you can investigate.</p></div></div>
-          <div className="discipline-grid">{disciplines.map(item => <article className="panel" key={item.name}><h2>{item.name}</h2><p>{item.example}</p><div className="chips">{item.domains.map(domain => <span key={domain} className="tag">{domain}</span>)}</div></article>)}</div>
+          <div className="page-heading"><div><span className="eyebrow">TOPIC EXPLORATION</span><h1>Explore disciplines</h1><p>Choose a field or a topic to search for papers right away.</p></div></div>
+          <p className="discipline-search-note"><Search size={16} aria-hidden="true" />{project ? `Searches open in ${project.title}.` : 'Your first search starts a local project where you can save papers.'}</p>
+          <div className="discipline-grid">{disciplines.map(item => <article className="panel" key={item.name}>
+            <h2><button type="button" className="discipline-title" disabled={!ready} onClick={() => searchDiscipline(item.name)}>{item.name}<ArrowRight size={17} aria-hidden="true" /></button></h2>
+            <p>{item.example}</p>
+            <div className="chips">{item.domains.map(domain => <button type="button" key={domain} className="discipline-topic" disabled={!ready} onClick={() => searchDiscipline(domain)}>{domain}</button>)}</div>
+          </article>)}</div>
           <button className="button" onClick={openNewProject} disabled={!ready}><Plus size={16} />Start a project</button>
         </>}
 
         {(view === 'roadmap' || current) && !project && <section className="panel empty-state">
           <FolderOpen size={28} /><h1>Create your research project</h1><p>Set a direction and keep your questions, evidence, and plans together.</p>
-          <button className="button" onClick={openNewProject} disabled={!ready}><Plus size={17} />Start a project</button>
+          {view === 'discover' && searchTopic
+            ? <button className="button" onClick={() => searchDiscipline(searchTopic)} disabled={!ready}><Search size={17} />Search {searchTopic}</button>
+            : <button className="button" onClick={openNewProject} disabled={!ready}><Plus size={17} />Start a project</button>}
         </section>}
 
         {view === 'roadmap' && project && <>
@@ -269,7 +311,7 @@ export default function Atlas() {
           <div className="page-heading"><div><span className="eyebrow">{current.group.toUpperCase()} · {project.title}</span><h1>{current.title}</h1><p>{current.detail}</p></div>{status && <Status status={status} />}</div>
           {status === 'Needs review' && <div className="review-banner" role="status"><p>Your question changed. Check this work against the revised question before proceeding.</p><button className="button secondary" onClick={() => update({ needsReview: project.needsReview.filter(id => id !== current.id) })}><Check size={16} />Mark reviewed</button></div>}
           {view === 'profile' || view === 'topic' || view === 'question' || view === 'methods' ? <PlanningWorkspace key={`${project.id}-${view}`} project={project} mode={view} update={update} next={advance} /> : null}
-          {view === 'discover' || view === 'screen' || view === 'extract' ? <EvidenceWorkspace key={`${project.id}-${view}`} project={project} mode={view} update={update} notify={setNotice} /> : null}
+          {view === 'discover' || view === 'screen' || view === 'extract' ? <EvidenceWorkspace key={`${project.id}-${view}-${searchTopic ?? ''}`} project={project} mode={view} update={update} notify={setNotice} initialQuery={view === 'discover' ? searchTopic : undefined} /> : null}
           {view === 'data' || view === 'writing' || view === 'publication' ? <ExecutionWorkspace key={`${project.id}-${view}`} project={project} mode={view} update={update} /> : null}
           <div className="journey-actions"><button className="button secondary" onClick={() => go('roadmap')}>Back to roadmap</button>{view !== 'profile' && view !== 'topic' && view !== 'question' && view !== 'methods' && <button className="button" onClick={advance}>{view === 'publication' ? 'Return to roadmap' : 'Continue to next task'}<ArrowRight size={17} /></button>}</div>
         </>}

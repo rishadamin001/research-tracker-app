@@ -1,6 +1,7 @@
 import type { Paper, Project } from './model';
 
 export const paperOrderLabels = {
+  quartile: 'Journal quartile · Q1 first',
   impact: 'Field-adjusted citations · highest first',
   citations: 'Citation count · highest first',
   newest: 'Publication year · newest first',
@@ -8,6 +9,7 @@ export const paperOrderLabels = {
 } as const;
 
 export const journalOrderLabels = {
+  quartile: 'Journal quartile · Q1 first',
   citedness: 'Recent citations per paper · highest first',
   hIndex: 'Journal h-index · highest first',
   original: 'Shortlist order',
@@ -22,8 +24,17 @@ function descending(a: number | null | undefined, b: number | null | undefined) 
   return b - a;
 }
 
+const quartilePosition = { Q1: 1, Q2: 2, Q3: 3, Q4: 4 } as const;
+
+function compareQuartile(a: Paper['journalQuartile'], b: Paper['journalQuartile']) {
+  return (a ? quartilePosition[a.quartile] : 5) - (b ? quartilePosition[b.quartile] : 5);
+}
+
 export function orderPapers(papers: Paper[], order: PaperOrder) {
   if (order === 'original') return papers;
+  if (order === 'quartile') {
+    return [...papers].sort((a, b) => compareQuartile(a.journalQuartile, b.journalQuartile) || descending(a.citedByCount, b.citedByCount));
+  }
   const key = { impact: 'fwci', citations: 'citedByCount', newest: 'year' } as const;
   return [...papers].sort((a, b) => descending(a[key[order]], b[key[order]]));
 }
@@ -32,6 +43,9 @@ type Journal = Project['journalCandidates'][number];
 
 export function orderJournals(journals: Journal[], order: JournalOrder) {
   if (order === 'original') return journals;
+  if (order === 'quartile') {
+    return [...journals].sort((a, b) => compareQuartile(a.metrics?.journalQuartile, b.metrics?.journalQuartile) || descending(a.metrics?.citedness, b.metrics?.citedness));
+  }
   return [...journals].sort((a, b) => descending(a.metrics?.[order], b.metrics?.[order]));
 }
 

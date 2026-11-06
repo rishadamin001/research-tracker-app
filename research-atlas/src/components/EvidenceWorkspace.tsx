@@ -1,20 +1,21 @@
 'use client';
 
 import { Download, Plus, Search } from 'lucide-react';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { searchWebsiteUrl } from '@/lib/links';
 import { addPaper, matrixCsv, type Paper, type Project } from '@/lib/model';
 import { searchPapers } from '@/lib/providers';
 import { orderPapers, paperOrderLabels } from '@/lib/ranking';
 import { download } from '@/lib/storage';
 import { External } from './External';
-import { OrderSelect, PaperImpact, PaperOrderHelp, usePaperOrder } from './RankingControls';
+import { OrderSelect, PaperImpact, PaperOrderHelp, PublicationIdentity, usePaperOrder } from './RankingControls';
 
 interface EvidenceWorkspaceProps {
   project: Project;
   update: (patch: Partial<Project>) => void;
   notify: (message: string) => void;
   mode: 'discover' | 'screen' | 'extract';
+  initialQuery?: string;
 }
 
 const decisionLabels: Record<Paper['decision'], string> = {
@@ -49,8 +50,8 @@ function SearchLog({ searches, reuseTerms }: { searches: Project['searches']; re
   );
 }
 
-function Discover({ project, update, notify }: Omit<EvidenceWorkspaceProps, 'mode'>) {
-  const [query, setQuery] = useState(project.searches.at(-1)?.query ?? '');
+function Discover({ project, update, notify, initialQuery }: Omit<EvidenceWorkspaceProps, 'mode'>) {
+  const [query, setQuery] = useState(initialQuery ?? project.searches.at(-1)?.query ?? '');
   const [year, setYear] = useState('');
   const [openAccess, setOpenAccess] = useState(false);
   const [results, setResults] = useState<{ query: string; papers: Paper[] } | null>(null);
@@ -66,8 +67,7 @@ function Discover({ project, update, notify }: Omit<EvidenceWorkspaceProps, 'mod
     request.current = null;
   }, []);
 
-  async function search(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function search(terms: string) {
     if (project.searches.length >= 1000) {
       setError('This project has reached its search-log limit. Export your work before starting a new project for additional searches.');
       return;
@@ -75,7 +75,6 @@ function Discover({ project, update, notify }: Omit<EvidenceWorkspaceProps, 'mod
 
     request.current?.abort();
     const controller = new AbortController();
-    const terms = query.trim();
     request.current = controller;
     setBusy(true);
     setError('');
@@ -117,6 +116,11 @@ function Discover({ project, update, notify }: Omit<EvidenceWorkspaceProps, 'mod
     }
   }
 
+  const startTopicSearch = useEffectEvent((topic: string) => { void search(topic); });
+  useEffect(() => {
+    if (initialQuery) startTopicSearch(initialQuery);
+  }, [initialQuery]);
+
   const savedPapersById = new Map(project.papers.map(paper => [paper.id, paper]));
   const savedDois = new Set(project.papers.flatMap(paper => paper.doi ? [paper.doi.toLowerCase()] : []));
   const libraryFull = project.papers.length >= 2000;
@@ -132,7 +136,7 @@ function Discover({ project, update, notify }: Omit<EvidenceWorkspaceProps, 'mod
           <summary>How to build a useful search</summary>
           <p>Pick two or three ideas from your question. Try a short keyword phrase such as “student housing insecurity” and record alternative terms in separate searches. Save promising sources and read the full text before relying on a finding.</p>
         </details>
-        <form onSubmit={search}>
+        <form onSubmit={event => { event.preventDefault(); void search(query.trim()); }}>
           <div className="search-row">
             <Search size={21} aria-hidden="true" />
             <input
@@ -179,13 +183,16 @@ function Discover({ project, update, notify }: Omit<EvidenceWorkspaceProps, 'mod
         const saved = isSaved(paper);
         const savedPaper = savedPapersById.get(paper.id);
         const canRefreshReferences = savedPaper && savedPaper.referenceIds === undefined && paper.referenceIds !== undefined;
-        const canRefreshMetrics = savedPaper && (savedPaper.fwci !== paper.fwci || savedPaper.citedByCount !== paper.citedByCount || savedPaper.isRetracted !== paper.isRetracted);
+        const canRefreshMetrics = savedPaper && (savedPaper.fwci !== paper.fwci || savedPaper.citedByCount !== paper.citedByCount || savedPaper.isRetracted !== paper.isRetracted
+          || (paper.journalQuartile && (savedPaper.journalQuartile?.year !== paper.journalQuartile.year || savedPaper.journalQuartile?.quartile !== paper.journalQuartile.quartile))
+          || savedPaper.publisher !== paper.publisher || savedPaper.venueType !== paper.venueType);
         return (
           <article className="panel paper" key={paper.id}>
             <span className="tag">{paper.source} · {paper.year ?? 'Year unknown'}</span>
             {paper.oa && <span className="oa-badge">Open-access link</span>}
+            <PublicationIdentity title={paper.journal} publisher={paper.publisher} type={paper.venueType} />
             <h3>{paper.title}</h3>
-            <p>{paper.authors || 'Authors not supplied'} · {paper.journal}</p>
+            <p>{paper.authors || 'Authors not supplied'}</p>
             <PaperImpact paper={paper} />
             {paper.doi && <p className="muted">DOI {paper.doi}</p>}
             <div className="paper-bottom">
@@ -212,8 +219,8 @@ function Discover({ project, update, notify }: Omit<EvidenceWorkspaceProps, 'mod
               )}
               {canRefreshMetrics && (
                 <button type="button" className="button secondary small" onClick={() => {
-                  const { fwci, citedByCount, isRetracted, workType } = paper;
-                  update({ papers: project.papers.map(item => item.id === paper.id ? { ...item, fwci, citedByCount, isRetracted, workType } : item) });
+                  const { fwci, citedByCount, isRetracted, workType, journal, journalQuartile, publisher, venueType, issns, inDoaj } = paper;
+                  update({ papers: project.papers.map(item => item.id === paper.id ? { ...item, fwci, citedByCount, isRetracted, workType, journal, journalQuartile: journalQuartile ?? item.journalQuartile, publisher, venueType, issns, inDoaj } : item) });
                   notify('Citation and publication status data refreshed.');
                 }}>Refresh paper metrics</button>
               )}
@@ -355,7 +362,8 @@ function Screen({ project, update }: Pick<EvidenceWorkspaceProps, 'project' | 'u
             <span><strong>{paper.title}</strong><small>{paper.year ?? 'Year unknown'} · {decisionLabels[paper.decision]}{paper.decision !== 'unreviewed' && !paper.reason.trim() ? ' · Reason needed' : ''}</small></span>
           </summary>
           <div className="lesson-body">
-            <p>{paper.authors || 'Authors not supplied'} · {paper.journal}</p>
+            <p>{paper.authors || 'Authors not supplied'}</p>
+            <PublicationIdentity title={paper.journal} publisher={paper.publisher} type={paper.venueType} />
             <PaperImpact paper={paper} />
             <SourceLinks paper={paper} />
             <label className="field">
@@ -438,8 +446,9 @@ function Extract({ project, update }: Pick<EvidenceWorkspaceProps, 'project' | '
             <span><strong>Edit notes for {paper.title}</strong><small>{paper.year ?? 'Year unknown'} · {decisionLabels[paper.decision]}</small></span>
           </summary>
           <div className="lesson-body">
-            <SourceLinks paper={paper} />
+            <PublicationIdentity title={paper.journal} publisher={paper.publisher} type={paper.venueType} />
             <PaperImpact paper={paper} />
+            <SourceLinks paper={paper} />
             {extractionFields.map(({ key, label, hint }) => (
               <label className="field" key={key}>
                 <span>{label}</span>
