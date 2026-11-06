@@ -1,4 +1,7 @@
 import { z } from 'zod';
+import { researchPlanSchema } from './research-plan';
+import { evidenceClaimLimit, evidenceClaimSchema, findingSummary, screeningCriterionLimit, screeningCriterionSchema, screeningDecisionSchema, screeningDraftSchema, screeningEventLimit, screeningEventSchema } from './evidence-ledger';
+import { searchRunSchema } from './search-provenance';
 const text = z.string().max(20000);
 const journalQuartile = z.object({
   quartile: z.enum(['Q1', 'Q2', 'Q3', 'Q4']),
@@ -8,8 +11,24 @@ const journalQuartile = z.object({
   url: z.string().max(1200),
   provisional: z.boolean().optional(),
 });
+const moneyEstimate = z.object({
+  amount: z.number().nonnegative(),
+  currency: z.string().regex(/^[A-Z]{3}$/),
+  source: z.string().max(100),
+  url: z.string().max(1200).optional(),
+});
+const journalFee = moneyEstimate.extend({ usd: z.number().nonnegative().optional() });
+export type JournalFee = z.infer<typeof journalFee>;
 export const paperSchema = z.object({
-  id:z.string().max(500),title:text,authors:text,year:z.number().nullable(),doi:z.string().nullable(),journal:text,url:z.string(),oa:z.string().nullable(),source:z.string(),notes:text.default(''),finding:text.default(''),methods:text.default(''),limitations:text.default(''),locator:text.default(''),decision:z.enum(['unreviewed','include','exclude']).default('unreviewed'),reason:text.default(''),referenceIds:z.array(z.string().max(500)).max(500).optional(),
+  id:z.string().max(500),title:text,authors:text,year:z.number().nullable(),doi:z.string().nullable(),journal:text,url:z.string(),oa:z.string().nullable(),source:z.string(),notes:text.default(''),finding:text.default(''),methods:text.default(''),limitations:text.default(''),locator:text.default(''),decision:screeningDecisionSchema.default('unreviewed'),reason:text.default(''),referenceIds:z.array(z.string().max(500)).max(500).optional(),
+  referenceKey: z.string().max(500).optional(),
+  referenceAuthors: z.array(z.string().max(500)).max(500).optional(),
+  isbn: z.string().max(40).optional(),
+  screeningEvents: z.array(screeningEventSchema).max(screeningEventLimit).optional(),
+  screeningDraft: screeningDraftSchema.optional(),
+  evidenceClaims: z.array(evidenceClaimSchema).max(evidenceClaimLimit).optional(),
+  researchProblem: text.default(''),
+  dataset: text.default(''),
   fwci: z.number().nonnegative().optional(),
   citedByCount: z.number().int().nonnegative().optional(),
   workType: z.string().max(100).optional(),
@@ -19,6 +38,9 @@ export const paperSchema = z.object({
   inDoaj: z.boolean().optional(),
   issns: z.array(z.string().max(20)).max(12).optional(),
   journalQuartile: journalQuartile.optional(),
+  publicationDate: z.iso.date().optional(),
+  readingCost: moneyEstimate.optional(),
+  journalFee: journalFee.optional(),
 });
 export type Paper=z.infer<typeof paperSchema>;
 export const workflowStage = z.enum(['profile','topic','question','discover','screen','extract','methods','data','writing','publication']);
@@ -31,13 +53,17 @@ const journalMetrics = z.object({
   hIndex: z.number().int().nonnegative().optional(),
   checkedAt: z.string().datetime(),
   journalQuartile: journalQuartile.optional(),
+  journalFee: journalFee.optional(),
 });
 export type JournalMetrics = z.infer<typeof journalMetrics>;
 const journalCandidate = z.object({id:z.string(),title:text,url:text,scope:text,cost:text,checks:z.array(z.string()).max(30),verification:text,metrics:journalMetrics.optional()});
 const decisionRecord = z.object({at:z.string(),note:text});
-export const projectSchema=z.object({id:z.string(),title:text,discipline:text,domain:text,problem:text,question:text,setting:text,purpose:z.enum(['explore','describe','causal','predict','interpret','synthesize','design']),data:z.enum(['existing','new']),design:text,ethics:text,analysis:text,gap:text,gapStatus:z.enum(['idea','search underway','evidence-supported candidate','human-reviewed candidate','contradicted','needs-update']),papers:z.array(paperSchema).max(2000),searches:z.array(z.object({query:text,source:text,date:text,count:z.number(),filters:text})).max(1000),lessons:z.array(z.string()).default([]),
+export const projectSchema=z.object({id:z.string(),title:text,discipline:text,domain:text,problem:text,question:text,setting:text,purpose:z.enum(['explore','describe','causal','predict','interpret','synthesize','design']),data:z.enum(['existing','new']),design:text,ethics:text,analysis:text,gap:text,gapStatus:z.enum(['idea','search underway','evidence-supported candidate','human-reviewed candidate','contradicted','needs-update']),papers:z.array(paperSchema).max(2000),searches:z.array(z.object({query:text,source:text,date:text,count:z.number(),filters:text,run:searchRunSchema.optional()})).max(1000),lessons:z.array(z.string()).default([]),
   experience:text.default(''),goal:text.default(''),institution:text.default(''),constraints:text.default(''),topic:text.default(''),topicIdeas:text.default(''),topicRationale:text.default(''),objectives:text.default(''),hypothesis:text.default(''),sampling:text.default(''),instruments:text.default(''),ethicsStatus:text.default(''),dataPlan:text.default(''),analysisRecord:text.default(''),manuscript:text.default(''),
   journalCandidates:z.array(journalCandidate).max(100).default([]),
+  researchPlan: researchPlanSchema.prefault({}),
+  screeningCriteria: z.array(screeningCriterionSchema).max(screeningCriterionLimit).optional(),
+  gapSearchLimits: text.default(''),
   needsReview:z.array(workflowStage).default([]),
   decisions:z.array(decisionRecord).max(300).default([]),
   updatedAt:z.string(),createdAt:z.string()});
@@ -49,5 +75,13 @@ export function normalizeDoi(input:string) {const value=input.trim().replace(/^h
 export function safeUrl(url:string|null|undefined) {if(!url)return undefined;try {const u=new URL(url);return ['https:','http:'].includes(u.protocol)?u.href:undefined;}catch{return undefined;}}
 export function addPaper(p:Project,paper:Paper):Project {if(p.papers.some(x=>x.id===paper.id||(x.doi&&paper.doi&&x.doi.toLowerCase()===paper.doi.toLowerCase())))return p;return {...p,papers:[...p.papers,paper]};}
 export function csvCell(v:unknown) {let s=String(v??'');if(/^[\s]*[=+@\-\t\r]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"';}
-export function matrixCsv(p:Project){return [['Title','Authors','Year','DOI','Source','Decision','Reason','Methods','Finding','Limitations','Evidence locator','Notes'],...p.papers.map(x=>[x.title,x.authors,x.year,x.doi,x.source,x.decision,x.reason,x.methods,x.finding,x.limitations,x.locator,x.notes])].map(row=>row.map(csvCell).join(',')).join('\r\n');}
+export function matrixCsv(project: Project) {
+  const headings = ['Title','Authors','Year','DOI','Source','Decision','Reason','Problem','Methods','Dataset','Finding','Limitations','Evidence locator','Notes'];
+  const rows = project.papers.map(paper => {
+    const finding = findingSummary(paper);
+    return [paper.title, paper.authors, paper.year, paper.doi, paper.source, paper.decision, paper.reason,
+      paper.researchProblem, paper.methods, paper.dataset, finding.text, paper.limitations, finding.locator, paper.notes];
+  });
+  return [headings, ...rows].map(row => row.map(csvCell).join(',')).join('\r\n');
+}
 export function protocolMarkdown(p:Project){return `# ${p.title}\n\nExported ${new Date().toISOString()}\n\n## Research profile\n${p.experience} · ${p.goal}\n${p.institution}\n${p.constraints}\n\n## Topic and rationale\n${p.topic}\n${p.topicRationale}\n\n## Research question\n${p.question||'Not yet specified'}\n\nObjectives: ${p.objectives}\nHypothesis: ${p.hypothesis}\n\n## Problem and setting\n${p.problem}\n\n${p.setting}\n\n## Discipline\n${p.discipline} / ${p.domain}\n\n## Study design\n${p.design||'Not selected'}\nPurpose: ${p.purpose}; data: ${p.data}\nSampling: ${p.sampling}\nInstruments: ${p.instruments}\n\n## Ethics and review\n${p.ethics||'Institutional requirements need review.'}\nStatus: ${p.ethicsStatus}\n\n## Analysis plan\n${p.analysis||'Not yet specified'}\n\n## Data management\n${p.dataPlan}\n\n## Analysis record\n${p.analysisRecord}\n\n## Candidate contribution (${p.gapStatus})\n${p.gap}\n\nThis is a scoped candidate, not a verified absence of prior research.\n\n## Evidence\n${p.papers.map(x=>`- ${x.title} (${x.year??'date unknown'}). ${x.doi??x.url}\n  Decision: ${x.decision}; ${x.reason}\n  Methods: ${x.methods}\n  Finding: ${x.finding}\n  Limitations: ${x.limitations}\n  Locator: ${x.locator}\n  Notes: ${x.notes}`).join('\n')}\n\n## Search log\n${p.searches.map(x=>`- ${x.date}: ${x.source}; query=${x.query}; ${x.filters}; returned=${x.count}`).join('\n')}\n\nGenerated from user-authored notes; check sources and methodological suitability before use.\n`;}

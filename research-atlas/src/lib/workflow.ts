@@ -1,4 +1,5 @@
 import type { Project, Stage } from './model';
+import { canSupportGap } from './evidence-ledger';
 
 export const roadmap: { id: Stage; title: string; detail: string; group: string }[] = [
   { id: 'profile', title: 'Set your research direction', detail: 'Choose your field, experience, and goal.', group: 'Define' },
@@ -27,8 +28,8 @@ function stageProgress(project: Project, stage: Stage): { started: boolean; comp
     case 'topic': return { started: present(project.topic) || present(project.topicIdeas), complete: present(project.topic) && present(project.topicRationale) };
     case 'question': return { started: present(project.question) || present(project.problem), complete: present(project.question) && present(project.objectives) };
     case 'discover': return { started: Boolean(project.searches.length || papers.length), complete: Boolean(papers.length) };
-    case 'screen': return { started: papers.some(paper => paper.decision !== 'unreviewed'), complete: papers.length > 0 && !needsReason && papers.every(paper => paper.decision !== 'unreviewed'), blocked: !papers.length };
-    case 'extract': return { started: present(project.gap) || papers.some(paper => present(paper.finding) || present(paper.methods) || present(paper.limitations)), complete: included.length > 0 && included.every(paper => present(paper.finding) && present(paper.locator)), blocked: !included.length };
+    case 'screen': return { started: papers.some(paper => paper.decision !== 'unreviewed' || paper.screeningEvents?.length), complete: papers.length > 0 && !needsReason && papers.every(paper => paper.decision === 'include' || paper.decision === 'exclude'), blocked: !papers.length };
+    case 'extract': return { started: present(project.gap) || papers.some(paper => paper.evidenceClaims?.length || present(paper.researchProblem) || present(paper.dataset) || present(paper.finding) || present(paper.methods) || present(paper.limitations)), complete: included.length > 0 && included.every(paper => paper.evidenceClaims?.some(claim => claim.claimType === 'finding' && claim.reviewStatus === 'reviewed') || (present(paper.finding) && present(paper.locator))), blocked: !included.length };
     case 'methods': return { started: present(project.design) || present(project.ethics) || present(project.analysis), complete: present(project.design) && present(project.ethics) && present(project.analysis) };
     case 'data': return { started: present(project.dataPlan) || present(project.analysisRecord), complete: hasDraftBody(project.dataPlan) && hasDraftBody(project.analysisRecord) };
     case 'writing': return { started: present(project.manuscript), complete: hasDraftBody(project.manuscript) };
@@ -51,10 +52,21 @@ export function nextTask(project: Project) {
 
 export function updateProject(project: Project, patch: Partial<Project>, at = new Date().toISOString()): Project {
   const next = { ...project, ...patch, updatedAt: at };
+  if ((next.gapStatus === 'evidence-supported candidate' || next.gapStatus === 'human-reviewed candidate') &&
+      ((patch.gapStatus && !canSupportGap(next)) || (patch.gap != null && patch.gap.trim() !== project.gap.trim()) ||
+        (patch.papers && canSupportGap(project) && !canSupportGap(next)))) next.gapStatus = 'needs-update';
   if (patch.question === undefined || !project.question.trim() || project.question.trim() === patch.question.trim()) return next;
+
+  if (next.gapStatus === 'evidence-supported candidate' || next.gapStatus === 'human-reviewed candidate') next.gapStatus = 'needs-update';
 
   const affected = roadmap.slice(3).filter(task => stageProgress(project, task.id).started || stageProgress(project, task.id).complete);
   const newlyFlagged = affected.map(task => task.id).filter(stage => !project.needsReview.includes(stage));
+  if (project.papers.some(paper => paper.evidenceClaims?.some(claim => claim.reviewStatus === 'reviewed'))) {
+    next.papers = next.papers.map(paper => paper.evidenceClaims?.some(claim => claim.reviewStatus === 'reviewed') ? {
+      ...paper,
+      evidenceClaims: paper.evidenceClaims.map(claim => claim.reviewStatus === 'reviewed' ? { ...claim, reviewStatus: 'needs_review' } : claim),
+    } : paper);
+  }
   if (!newlyFlagged.length) return next;
 
   next.needsReview = [...new Set([...project.needsReview, ...newlyFlagged])];

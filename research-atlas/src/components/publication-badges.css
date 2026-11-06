@@ -33,3 +33,16 @@
 .quartile-provenance small { color: var(--muted); }
 .paper-citations { border: 1px solid var(--line); border-radius: 7px; padding: 4px 8px; color: var(--ink); }
 .paper-citations strong { font-variant-numeric: tabular-nums; }
+.paper-costs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--surface-soft);
+  overflow-wrap: anywhere;
+}
+.paper-costs dt { color: var(--muted); font-size: .78rem; }
+.paper-costs dd { margin: 2px 0 0; font-size: .9rem; }
+.paper-costs small, .paper-costs .price-source { color: var(--muted); font-size: .78rem; }

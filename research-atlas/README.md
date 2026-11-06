@@ -18,9 +18,12 @@ For local development, use Node.js 24. Run `npm ci` and `npm run dev`, then open
 
 See [Workflow specification](WORKFLOW.md), [Architecture](ARCHITECTURE.md), and [Deployment](DEPLOYMENT.md). Scholarly search uses [OpenAlex](https://help.openalex.org/api/authentication/) and DOI metadata uses [Crossref](https://www.crossref.org/documentation/retrieve-metadata/rest-api/).
 
-## Research guide, conferences, and literature sorting
+See the [competitive audit implementation status](docs/REQUIREMENT_STATUS.md) for completed and deferred blueprint items. Use **Privacy & data** to see what is shared with providers and manage local backups.
 
-- **Research guide** explains papers, journals, proceedings, and review practices with diagrams, a sample paper, and verification checklists.
+## Research planner, conferences, and literature search
+
+- **Paper search** works before you create a project. Compare results by journal quartile, citations, publication date, reading price or estimated open-access publishing fee. Prices without a source stay unavailable. [How prices are sourced](docs/PUBLICATION-COSTS.md)
+- **Research planner** introduces the journey from idea through peer review, data and survey design, beginner-friendly tools, and publishing checks. Under **My plan**, set a deadline, work backward, record a budget and venue requirements, draft a submission pack, and export point-by-point reviewer replies. The original guide is under **Research basics**.
 - **Conference planner** separates events held in Bangladesh from events abroad. Browse organizer-checked listings, save or enter events, and choose an event date or deadline for Google Calendar or a standard `.ics` export. The upcoming view follows the device date. Organizer links and source check dates show when to recheck a listing. Exported calendar events are copies. Date changes at the source require updating the calendar entry.
 - **Explore disciplines** launches a literature search from a discipline or topic in one click.
 - **Literature results** default to journal quartile (Q1 to Q4, then unavailable) with OpenAlex citation count as the tie-breaker. Cards show the publication, publisher, and the subject and edition of each matched [POSI journal quartile](docs/JOURNAL-QUARTILES.md). Citation count and venue rank describe different things. You can also sort by field-adjusted citations, citation count, or publication date.

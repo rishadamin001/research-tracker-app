@@ -63,9 +63,36 @@ export function PublicationIdentity({ title, publisher, type }: { title: string;
 export function QuartileBadge({ value, fallback = 'Quartile unavailable' }: { value: Paper['journalQuartile']; fallback?: string }) {
   if (!value) return <span className="quartile-badge unavailable">{fallback}</span>;
   return <div className="quartile-marker">
-    <span className={`quartile-badge ${value.quartile.toLowerCase()}`} aria-label={`Journal quartile ${value.quartile}`}>{value.quartile}</span>
-    <div className="quartile-provenance"><External href={value.url}>{value.source} {value.year}</External><small>{value.category}{value.provisional ? ' · Provisional' : ''}</small></div>
+    <span className={`quartile-badge ${value.quartile.toLowerCase()}`} title={`${value.source} Citation Quartile for the journal in ${value.category}. SJR and JCR publish separate rankings.`}>{value.source} {value.quartile} · {value.year}</span>
+    <div className="quartile-provenance"><small>{value.category}{value.provisional ? ' · Provisional' : ''}</small><External href={value.url}>{value.source} ranking source</External></div>
   </div>;
+}
+
+function priceText(amount: number, currency: string) {
+  return new Intl.NumberFormat(undefined, { style: 'currency', currency, currencyDisplay: 'code' }).format(amount);
+}
+
+export function JournalFee({ fee }: { fee: Paper['journalFee'] }) {
+  return <div>
+    <dt>Journal publishing fee</dt>
+    <dd>{fee ? <><strong>{priceText(fee.amount, fee.currency)}</strong> <small>Listed open access APC</small></> : 'Price unavailable'}</dd>
+    {fee && <dd className="price-source">{fee.url ? <External href={fee.url}>{fee.source}</External> : fee.source}</dd>}
+  </div>;
+}
+
+function PaperCosts({ paper }: { paper: Paper }) {
+  const price = paper.readingCost;
+  const free = price?.amount === 0 || (!price && Boolean(paper.oa));
+  return <dl className="paper-costs">
+    <div>
+      <dt>Price to read</dt>
+      <dd>{free
+        ? <strong>{paper.oa ? 'Free open copy' : 'Open access reported'}</strong>
+        : price ? <strong>{priceText(price.amount, price.currency)}</strong> : 'Price unavailable'}</dd>
+      {price && !paper.oa && <dd className="price-source">{price.url ? <External href={price.url}>{price.source}</External> : price.source}</dd>}
+    </div>
+    {(paper.venueType === 'journal' || paper.journalFee) && <JournalFee fee={paper.journalFee} />}
+  </dl>;
 }
 
 export function PaperImpact({ paper }: { paper: Paper }) {
@@ -79,6 +106,7 @@ export function PaperImpact({ paper }: { paper: Paper }) {
       {paper.inDoaj && <span className="tag">DOAJ</span>}
       {paper.workType && <span className="tag">{paper.workType.replaceAll('-', ' ')}</span>}
     </div>
+    <PaperCosts paper={paper} />
     {paper.isRetracted && <p className="error">OpenAlex flags this work as retracted. Check the publisher’s notice.</p>}
   </div>;
 }
@@ -86,8 +114,9 @@ export function PaperImpact({ paper }: { paper: Paper }) {
 export function PaperOrderHelp() {
   return <details>
     <summary>What does this order measure?</summary>
-    <p>Quartile order matches the journal’s ISSN to the POSI citation ranking. Q1 comes first, then Q2–Q4, then venues without a match. Ties use the paper’s OpenAlex citation count. The quartile belongs to the journal in the displayed subject and edition. Use it alongside the paper’s relevance and methods.</p>
+    <p>Quartile order matches the journal’s ISSN to the POSI citation ranking. Q1 comes first, then Q2–Q4, then venues without a match. Ties use the paper’s OpenAlex citation count. Each badge gives the POSI subject and edition. SJR and JCR use separate ranking systems. Use venue rank alongside the paper’s relevance and methods.</p>
     <p>Field-adjusted citations compare a work with similar OpenAlex records. A value of 1× means the expected citation count.</p>
+    <p>Date sorting uses the recorded publication date when available, then the year. Price sorting puts unknown amounts last. Journal publishing fees are compared using available USD equivalents.</p>
     <External href="https://posi.panorama-sg.com/rankings/">POSI journal citation rankings</External>
     <External href="https://help.openalex.org/data/works/citations/">OpenAlex citation metrics</External>
   </details>;

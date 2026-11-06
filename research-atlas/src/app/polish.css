@@ -41,7 +41,7 @@
   top: 0;
   z-index: 20;
 }
-.journey-shell :is(.saved, .eyebrow, .muted, .audit, .copy-link, .link-feedback) { color: var(--muted); }
+.journey-shell :is(.saved, .eyebrow, .muted, .audit, .copy-link, .link-feedback, .filter-row) { color: var(--muted); }
 .journey-shell a:not(.brand), .journey-shell .text-button { color: var(--green); }
 .journey-shell .text-button { font-size: .82rem; }
 .journey-shell .button { min-height: 38px; white-space: normal; background: #24578f; border-color: #24578f; color: #fff; border-radius: 8px; }

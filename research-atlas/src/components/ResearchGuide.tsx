@@ -133,7 +133,7 @@ function ConferenceCheck({ onConferences, checked, onToggle, onReset }: { onConf
   </section>;
 }
 
-export function ResearchGuide({ onStart, onConferences }: { onStart: () => void; onConferences: () => void }) {
+export function ResearchGuide({ onStart, onConferences, embedded = false }: { onStart: () => void; onConferences: () => void; embedded?: boolean }) {
   const [chapter, setChapter] = useState<typeof chapters[number]['id']>('formats');
   const [checked, setChecked] = useState<string[]>([]);
 
@@ -142,10 +142,10 @@ export function ResearchGuide({ onStart, onConferences }: { onStart: () => void;
   }
 
   return <div className="research-guide">
-    <header className="guide-hero">
+    {!embedded && <header className="guide-hero">
       <div><span className="eyebrow">RESEARCH GUIDE</span><h1>Make sense of scholarly research</h1><p>Learn what you’re looking at, what to read first, and how to decide whether a paper or conference belongs in your plans.</p></div>
       <button type="button" className="button secondary" onClick={onStart}>Try the starter exercise <ArrowRight size={16} aria-hidden="true" /></button>
-    </header>
+    </header>}
     <nav className="guide-nav" aria-label="Research guide chapters">
       {chapters.map(({ id, label, icon: Icon }) => <button key={id} type="button" aria-pressed={chapter === id} onClick={() => setChapter(id)}><Icon size={17} aria-hidden="true" />{label}</button>)}
     </nav>

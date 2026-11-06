@@ -1,0 +1,16 @@
+{
+  "commitSha": null,
+  "packageVersion": "0.5.0",
+  "deploymentUrl": "http://127.0.0.1:4173/",
+  "checkedAt": "2026-11-06T21:29:03.500Z",
+  "appLoaded": true,
+  "projectPersistence": true,
+  "openAlexMode": "anonymous first page",
+  "openAlexSearchResultCount": 20,
+  "crossrefLookup": true,
+  "unpaywallLookupIfConfigured": null,
+  "backupRestore": true,
+  "offlineProjectOpen": true,
+  "mobileOverflow": false,
+  "consoleErrors": []
+}

@@ -1,5 +1,7 @@
 # Research Space
 
+The active Research Atlas workspace is in [research-atlas/](research-atlas/). [Open the published Research Atlas app](https://rishadamin001.github.io/research-tracker-app/). The root Research Space app below is the earlier standalone tracker.
+
 A student research dashboard built with React, Vite, Express, and SQLite. Track papers, see counts by status, and keep your library between sessions.
 
 ## Run locally

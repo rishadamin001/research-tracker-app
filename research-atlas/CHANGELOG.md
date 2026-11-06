@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0 — 2026-11-07
+
+Added a standalone Paper search page with newest and oldest ordering, reading access, and estimated journal publishing fees. Expanded the Research Guide into a visual Research Planner with a data and survey walkthrough, toolkit, publication checks, and project-specific timelines, budgets, submission drafts and reviewer replies. The evidence matrix now records the study problem and dataset.
+
+Search records show executed queries and anonymous coverage. Screening keeps a criterion and decision history. Evidence claims include a source level and locator and can support or challenge a candidate gap. Added local RIS and BibTeX exchange, explicit POSI badges, and privacy and backup recovery controls.
+
 ## 0.4.0 — 2026-11-06
 
 Literature results default to POSI journal quartile order. Result cards show the publication, publisher, ranking subject and edition, and the OpenAlex citation count. Discipline topics launch searches in one tap. The app is installable and its workspace can reopen offline after the first online visit.

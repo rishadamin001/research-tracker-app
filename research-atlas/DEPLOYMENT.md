@@ -12,4 +12,6 @@ For a local production preview, run `npm ci`, `npm run build`, and `npm run prev
 
 ## Optional gateway
 
-The existing gateway is optional for organizations operating a verified free deployment. Set `VITE_API_URL` to its public origin if you intentionally use it. Configure gateway secrets on the server. The `VITE_` value is public and must contain only a URL. The default Pages build uses direct keyless OpenAlex and Crossref requests.
+The default Pages build uses direct anonymous OpenAlex and public Crossref requests. OpenAlex discovery retrieves the first page. A verified-key gateway remains deferred. The existing template is available for independently operated deployments and keeps OpenAlex anonymous. Set `VITE_API_URL` only if you intentionally operate a gateway. The browser value is public and should contain only a URL. Optional Unpaywall configuration belongs on the server.
+
+After publishing, run `node scripts/smoke.mjs <published-url> <commit-sha>` from `research-atlas`. To verify a local production preview, run `node scripts/smoke.mjs` with the preview running. The two reports are written separately under `docs/smoke/`.

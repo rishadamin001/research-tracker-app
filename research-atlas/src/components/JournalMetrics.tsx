@@ -3,12 +3,13 @@ import type { JournalMetrics as MetricRecord } from '@/lib/model';
 import { checkJournalMetrics } from '@/lib/providers';
 import { metricNumber } from '@/lib/ranking';
 import { External } from './External';
-import { QuartileBadge } from './RankingControls';
+import { JournalFee, QuartileBadge } from './RankingControls';
 
 function SourceMetrics({ value }: { value: MetricRecord }) {
   return <>
     <p><strong>{value.title}</strong> · ISSN {value.issn}</p>
     <QuartileBadge value={value.journalQuartile} />
+    <dl className="paper-costs"><JournalFee fee={value.journalFee} /></dl>
     <div className="chips">
       <span className="tag">Recent citations per paper {value.citedness == null ? 'unavailable' : metricNumber(value.citedness)}</span>
       <span className="tag">Journal h-index {value.hIndex == null ? 'unavailable' : metricNumber(value.hIndex)}</span>
@@ -59,7 +60,7 @@ export function JournalMetrics({ value, onChange }: {
   }
 
   return <section className="recommendation" aria-label="Journal citation metrics">
-    <h3>Compare journal citation metrics</h3>
+    <h3>Compare journal rankings, citations and fees</h3>
     <p>Enter the journal’s print or online ISSN from the publisher’s page. Check the returned title before saving the match.</p>
     <form onSubmit={lookup}>
       <label className="field">

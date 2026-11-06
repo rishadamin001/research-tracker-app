@@ -1,13 +1,16 @@
 'use client';
 
 import { Download, Plus, Search } from 'lucide-react';
-import { useEffect, useEffectEvent, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from 'react';
 import { searchWebsiteUrl } from '@/lib/links';
 import { addPaper, matrixCsv, type Paper, type Project } from '@/lib/model';
-import { searchPapers } from '@/lib/providers';
+import { PaperSearchError, runPaperSearch } from '@/lib/providers';
 import { orderPapers, paperOrderLabels } from '@/lib/ranking';
+import { openAlexSearch, type SearchRun } from '@/lib/search-provenance';
 import { download } from '@/lib/storage';
 import { External } from './External';
+import { EvidenceClaims, evidenceLedgerCsv, GapEvidence, PaperScreening, ScreeningCriteria } from './EvidenceLedger';
+import { canSupportGap, decisionLabels, findingSummary, type ScreeningEvent } from '@/lib/evidence-ledger';
 import { OrderSelect, PaperImpact, PaperOrderHelp, PublicationIdentity, usePaperOrder } from './RankingControls';
 
 interface EvidenceWorkspaceProps {
@@ -18,11 +21,13 @@ interface EvidenceWorkspaceProps {
   initialQuery?: string;
 }
 
-const decisionLabels: Record<Paper['decision'], string> = {
-  unreviewed: 'Unreviewed',
-  include: 'Included',
-  exclude: 'Excluded',
-};
+interface PaperSearchProps {
+  project?: Project;
+  update?: EvidenceWorkspaceProps['update'];
+  notify: EvidenceWorkspaceProps['notify'];
+  initialQuery?: string;
+  openProjects: () => void;
+}
 
 function SourceLinks({ paper }: { paper: Paper }) {
   return (
@@ -34,15 +39,35 @@ function SourceLinks({ paper }: { paper: Paper }) {
   );
 }
 
-function SearchLog({ searches, reuseTerms }: { searches: Project['searches']; reuseTerms: (terms: string) => void }) {
+function SearchRunDetails({ run }: { run: SearchRun }) {
+  const [page] = run.pages;
+  return <details>
+    <summary>Search details</summary>
+    {run.userQuery !== run.executedQuery && <p>Entered query <code>{run.userQuery}</code></p>}
+    <p>Executed query <code>{run.executedQuery}</code></p>
+    <p>Provider filters {run.filters.length ? <code>{run.filters.join(', ')}</code> : 'None'}</p>
+    <p>{run.provider} · {run.mode === 'anonymous-first-page' ? 'Anonymous first page' : 'Configured gateway first page'} · Up to {run.pageSize} records · Cursor paging unused</p>
+    <p>Page {page.page} requested <time dateTime={page.requestedAt}>{new Date(page.requestedAt).toLocaleString()}</time>{page.returnedCount === undefined ? '' : ` · ${page.returnedCount} records returned`}{page.requestId && ` · Request ID ${page.requestId}`}</p>
+    <p>{run.error ? 'Ended' : 'Completed'} <time dateTime={run.completedAt}>{new Date(run.completedAt).toLocaleString()}</time>{run.resultCountReported !== undefined && ` · ${run.resultCountReported.toLocaleString()} matches reported by the provider`}</p>
+    {run.error && <p>Outcome · {run.error.message}</p>}
+    {run.quota?.remainingCredits !== undefined && <p>Provider credits remaining when checked · {run.quota.remainingCredits.toLocaleString()}{run.quota.dailyCredits !== undefined && ` of ${run.quota.dailyCredits.toLocaleString()}`}</p>}
+    {run.quota?.resetsAt && <p>Daily allowance resets <time dateTime={run.quota.resetsAt}>{new Date(run.quota.resetsAt).toLocaleString()}</time></p>}
+    {run.quota?.retryAfterUntil && <p>Provider asks you to wait until <time dateTime={run.quota.retryAfterUntil}>{new Date(run.quota.retryAfterUntil).toLocaleString()}</time></p>}
+    <p>Atlas uses keyword queries. It rejects {run.unsupportedOperators.join(', ')}.</p>
+    <p>Provider documentation checked <time dateTime={run.providerDocsDate}>{run.providerDocsDate}</time>.</p>
+  </details>;
+}
+
+function SearchLog({ searches, reuseSearch }: { searches: Project['searches']; reuseSearch: (search: Project['searches'][number]) => void }) {
   return (
     <details className="panel">
       <summary>Search audit trail ({searches.length})</summary>
-      {searches.length === 0 && <p>Completed searches will appear here.</p>}
+      {searches.length === 0 && <p>Search attempts will appear here.</p>}
       {searches.slice().reverse().map((search, index) => (
-        <div className="audit" key={`${search.date}-${index}`}>
-          <p>{new Date(search.date).toLocaleString()} · {search.source} · “{search.query}” · {search.filters} · {search.count} results</p>
-          <button type="button" className="text-button" onClick={() => reuseTerms(search.query)}>Reuse search terms</button>
+        <div className="audit" key={search.run?.id ?? `${search.date}-${index}`}>
+          <p>{new Date(search.date).toLocaleString()} · {search.source} · “{search.query}” · {search.filters} · {search.run?.error ? 'Search failed' : `${search.count} results`}</p>
+          {search.run && <SearchRunDetails run={search.run} />}
+          <button type="button" className="text-button" onClick={() => reuseSearch(search)}>{search.run ? 'Reuse search terms and filters' : 'Reuse search terms'}</button>
         </div>
       ))}
       <p className="muted">This log records the searches run here. A systematic review may need additional databases and full search strategies.</p>
@@ -50,11 +75,20 @@ function SearchLog({ searches, reuseTerms }: { searches: Project['searches']; re
   );
 }
 
-function Discover({ project, update, notify, initialQuery }: Omit<EvidenceWorkspaceProps, 'mode'>) {
-  const [query, setQuery] = useState(initialQuery ?? project.searches.at(-1)?.query ?? '');
+const publishedOn = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeZone: 'UTC' });
+
+function PaperPublished({ paper }: { paper: Paper }) {
+  return paper.publicationDate
+    ? <time dateTime={paper.publicationDate}>{publishedOn.format(new Date(paper.publicationDate))}</time>
+    : paper.year ?? 'Year unknown';
+}
+
+function Discover({ project, update, notify, initialQuery, openProjects }: Omit<PaperSearchProps, 'openProjects'> & { openProjects?: PaperSearchProps['openProjects'] }) {
+  const [query, setQuery] = useState(initialQuery ?? (openProjects ? '' : project?.searches.at(-1)?.query ?? ''));
   const [year, setYear] = useState('');
   const [openAccess, setOpenAccess] = useState(false);
-  const [results, setResults] = useState<{ query: string; papers: Paper[] } | null>(null);
+  const [results, setResults] = useState<{ run: SearchRun; papers: Paper[] } | null>(null);
+  const [failedRun, setFailedRun] = useState<SearchRun>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [order, setOrder] = usePaperOrder();
@@ -68,7 +102,7 @@ function Discover({ project, update, notify, initialQuery }: Omit<EvidenceWorksp
   }, []);
 
   async function search(terms: string) {
-    if (project.searches.length >= 1000) {
+    if (!openProjects && project && project.searches.length >= 1000) {
       setError('This project has reached its search-log limit. Export your work before starting a new project for additional searches.');
       return;
     }
@@ -78,37 +112,35 @@ function Discover({ project, update, notify, initialQuery }: Omit<EvidenceWorksp
     request.current = controller;
     setBusy(true);
     setError('');
-    const timeout = setTimeout(() => controller.abort(), 15000);
+    setFailedRun(undefined);
 
-    try {
-      const papers = await searchPapers(terms, year, openAccess, controller.signal);
-      if (request.current !== controller || controller.signal.aborted) return;
-
-      setResults({ query: terms, papers });
+    function recordRun(run: SearchRun) {
+      if (!project || !update || project.searches.length >= 1000) return;
       const filters = [year && `Published from ${year}`, openAccess && 'Open access only', 'First 20 results'].filter(Boolean).join(' · ');
       update({
-        searches: [...project.searches, {
-          query: terms,
-          source: 'OpenAlex',
-          date: new Date().toISOString(),
-          count: papers.length,
-          filters,
-        }],
-        gapStatus: project.gapStatus === 'idea' ? 'search underway' : project.gapStatus,
+        searches: [...project.searches, { query: run.executedQuery, source: run.provider, date: run.completedAt, count: run.pages[0].returnedCount ?? 0, filters, run }],
+        gapStatus: !run.error && project.gapStatus === 'idea' ? 'search underway' : project.gapStatus,
       });
+    }
+
+    try {
+      const { papers, run } = await runPaperSearch(terms, year, openAccess, controller.signal);
+      if (request.current !== controller || controller.signal.aborted) return;
+
+      setResults({ run, papers });
+      recordRun(run);
     } catch (failure) {
-      if (request.current !== controller) return;
-      if (controller.signal.aborted) {
-        setError('Search timed out. Try again or use the Crossref link below.');
-      } else if (failure instanceof TypeError) {
-        setError('Could not reach OpenAlex. Check your connection or use the Crossref link below.');
-      } else if (failure instanceof Error && failure.name !== 'ZodError') {
+      if (request.current !== controller || controller.signal.aborted) return;
+      if (failure instanceof PaperSearchError) {
         setError(failure.message);
+        if (failure.run) {
+          setFailedRun(failure.run);
+          recordRun(failure.run);
+        }
       } else {
-        setError('OpenAlex returned records the app could not read. Try another search or use the Crossref link below.');
+        setError('The search could not be completed. Try again or use the Crossref link below.');
       }
     } finally {
-      clearTimeout(timeout);
       if (request.current === controller) {
         request.current = null;
         setBusy(false);
@@ -121,22 +153,27 @@ function Discover({ project, update, notify, initialQuery }: Omit<EvidenceWorksp
     if (initialQuery) startTopicSearch(initialQuery);
   }, [initialQuery]);
 
-  const savedPapersById = new Map(project.papers.map(paper => [paper.id, paper]));
-  const savedDois = new Set(project.papers.flatMap(paper => paper.doi ? [paper.doi.toLowerCase()] : []));
-  const libraryFull = project.papers.length >= 2000;
+  const savedPapers = project?.papers ?? [];
+  const savedPapersById = new Map(savedPapers.map(paper => [paper.id, paper]));
+  const savedDois = new Set(savedPapers.flatMap(paper => paper.doi ? [paper.doi.toLowerCase()] : []));
+  const libraryFull = savedPapers.length >= 2000;
   const isSaved = (paper: Paper) => savedPapersById.has(paper.id) || (paper.doi !== null && savedDois.has(paper.doi.toLowerCase()));
   const visible = results ? orderPapers(results.papers.filter(paper => !hideSaved || !isSaved(paper)), order) : [];
 
   return (
     <>
       <section className="panel search-panel">
-        <h2>Find literature for your question</h2>
-        {project.question && <p><strong>Project question</strong><br />{project.question}</p>}
+        <h2>{openProjects ? 'Find papers by topic, title, or keyword' : 'Find literature for your question'}</h2>
+        {openProjects ? (
+          <p>{project ? <>Searches and saved papers go to <strong>{project.title}</strong>.</> : 'Browse freely. Choose a project when you want to save papers.'}</p>
+        ) : project?.question && <p><strong>Project question</strong><br />{project.question}</p>}
         <details>
           <summary>How to build a useful search</summary>
           <p>Pick two or three ideas from your question. Try a short keyword phrase such as “student housing insecurity” and record alternative terms in separate searches. Save promising sources and read the full text before relying on a finding.</p>
+          <p>This search shows one page of OpenAlex results. For a systematic review, document the sources you searched and what they might miss.</p>
+          <External href={openAlexSearch.docsUrl}>OpenAlex advanced search guidance</External>
         </details>
-        <form onSubmit={event => { event.preventDefault(); void search(query.trim()); }}>
+        <form role="search" aria-label="Search for research papers" onSubmit={event => { event.preventDefault(); void search(query); }}>
           <div className="search-row">
             <Search size={21} aria-hidden="true" />
             <input
@@ -160,21 +197,27 @@ function Discover({ project, update, notify, initialQuery }: Omit<EvidenceWorksp
               <input type="checkbox" checked={openAccess} onChange={event => setOpenAccess(event.target.checked)} />
               Open access only
             </label>
-            <span>OpenAlex · up to 20 results per search</span>
+            <span>OpenAlex · first page · up to {openAlexSearch.pageSize} results</span>
           </div>
         </form>
         <p className="muted">The search sends your keywords to OpenAlex. Leave out confidential project or participant details.</p>
         <External href={searchWebsiteUrl(query)}>Search on Crossref</External>
       </section>
 
-      {error && <p className="error" role="alert">{error}</p>}
+      {error && <section className="panel" aria-label="Search error"><p className="error" role="alert">{error}</p>{failedRun && <SearchRunDetails run={failedRun} />}</section>}
       {libraryFull && <p className="info-bar">Your project has reached its 2,000-source limit. You can still review and export the saved library.</p>}
       {results && (
         <section className="panel" aria-label="Search result controls">
-          <p role="status">{visible.length} of {results.papers.length} results shown for “{results.query}” · {project.papers.length} in your library</p>
+          <p role="status">{visible.length} of {results.papers.length} results shown for “{results.run.executedQuery}”{project && ` · ${savedPapers.length} in your library`}</p>
+          <SearchRunDetails run={results.run} />
           <OrderSelect label="Sort papers" labels={paperOrderLabels} order={order} onChange={setOrder} />
-          <label className="checkbox"><input type="checkbox" checked={hideSaved} onChange={event => setHideSaved(event.target.checked)} /> Hide saved papers</label>
+          {project && <label className="checkbox"><input type="checkbox" checked={hideSaved} onChange={event => setHideSaved(event.target.checked)} /> Hide saved papers</label>}
           <PaperOrderHelp />
+          <details>
+            <summary>What could I pay to read or publish?</summary>
+            <p>“Free open copy” means an open version is available. For other papers, the publisher or your library can confirm reading access and any price. A journal publishing fee is a separate charge to authors for publishing open access. It is a listed estimate. The journal can confirm current prices, waivers, and options for publishing through a subscription route.</p>
+          </details>
+          {!project && openProjects && visible.length > 0 && <button type="button" className="text-button" onClick={openProjects}>Open My projects to save papers</button>}
         </section>
       )}
       {results?.papers.length === 0 && <p className="panel">Try a broader phrase or a different source. An empty result set cannot establish a gap in the literature.</p>}
@@ -185,10 +228,13 @@ function Discover({ project, update, notify, initialQuery }: Omit<EvidenceWorksp
         const canRefreshReferences = savedPaper && savedPaper.referenceIds === undefined && paper.referenceIds !== undefined;
         const canRefreshMetrics = savedPaper && (savedPaper.fwci !== paper.fwci || savedPaper.citedByCount !== paper.citedByCount || savedPaper.isRetracted !== paper.isRetracted
           || (paper.journalQuartile && (savedPaper.journalQuartile?.year !== paper.journalQuartile.year || savedPaper.journalQuartile?.quartile !== paper.journalQuartile.quartile))
-          || savedPaper.publisher !== paper.publisher || savedPaper.venueType !== paper.venueType);
+          || savedPaper.publisher !== paper.publisher || savedPaper.venueType !== paper.venueType || savedPaper.publicationDate !== paper.publicationDate || savedPaper.oa !== paper.oa
+          || savedPaper.readingCost?.amount !== paper.readingCost?.amount || savedPaper.readingCost?.currency !== paper.readingCost?.currency
+          || savedPaper.journalFee?.amount !== paper.journalFee?.amount || savedPaper.journalFee?.currency !== paper.journalFee?.currency
+          || savedPaper.journalFee?.usd !== paper.journalFee?.usd);
         return (
           <article className="panel paper" key={paper.id}>
-            <span className="tag">{paper.source} · {paper.year ?? 'Year unknown'}</span>
+            <span className="tag">{paper.source} · <PaperPublished paper={paper} /></span>
             {paper.oa && <span className="oa-badge">Open-access link</span>}
             <PublicationIdentity title={paper.journal} publisher={paper.publisher} type={paper.venueType} />
             <h3>{paper.title}</h3>
@@ -197,7 +243,7 @@ function Discover({ project, update, notify, initialQuery }: Omit<EvidenceWorksp
             {paper.doi && <p className="muted">DOI {paper.doi}</p>}
             <div className="paper-bottom">
               <SourceLinks paper={paper} />
-              <button
+              {project && update && <button
                 type="button"
                 className="button secondary small"
                 disabled={saved || libraryFull}
@@ -210,30 +256,39 @@ function Discover({ project, update, notify, initialQuery }: Omit<EvidenceWorksp
                 }}
               >
                 <Plus size={15} aria-hidden="true" /> {saved ? 'Saved' : 'Save paper'}
-              </button>
-              {canRefreshReferences && (
+              </button>}
+              {update && canRefreshReferences && (
                 <button type="button" className="button secondary small" onClick={() => {
-                  update({ papers: project.papers.map(item => item.id === paper.id ? { ...item, referenceIds: paper.referenceIds } : item) });
+                  update({ papers: savedPapers.map(item => item.id === paper.id ? { ...item, referenceIds: paper.referenceIds } : item) });
                   notify('Citation links updated for this saved source.');
                 }}>Refresh citation links</button>
               )}
-              {canRefreshMetrics && (
+              {update && canRefreshMetrics && (
                 <button type="button" className="button secondary small" onClick={() => {
-                  const { fwci, citedByCount, isRetracted, workType, journal, journalQuartile, publisher, venueType, issns, inDoaj } = paper;
-                  update({ papers: project.papers.map(item => item.id === paper.id ? { ...item, fwci, citedByCount, isRetracted, workType, journal, journalQuartile: journalQuartile ?? item.journalQuartile, publisher, venueType, issns, inDoaj } : item) });
-                  notify('Citation and publication status data refreshed.');
+                  const { fwci, citedByCount, isRetracted, workType, journal, journalQuartile, publisher, venueType, issns, inDoaj, publicationDate, oa, readingCost, journalFee } = paper;
+                  update({ papers: savedPapers.map(item => item.id === paper.id ? { ...item, fwci, citedByCount, isRetracted, workType, journal, journalQuartile: journalQuartile ?? item.journalQuartile, publisher, venueType, issns, inDoaj, publicationDate, oa, readingCost, journalFee } : item) });
+                  notify('Citation, publication, and price information refreshed.');
                 }}>Refresh paper metrics</button>
               )}
             </div>
           </article>
         );
       })}
-      <SearchLog searches={project.searches} reuseTerms={terms => {
-        setQuery(terms);
+      {project && <SearchLog searches={project.searches} reuseSearch={search => {
+        setQuery(search.query);
+        if (search.run) {
+          const yearFilter = search.run.filters.find(filter => filter.startsWith('from_publication_date:'));
+          setYear(yearFilter?.split(':')[1]?.slice(0, 4) ?? '');
+          setOpenAccess(search.run.filters.includes('is_oa:true'));
+        }
         searchInput.current?.focus();
-      }} />
+      }} />}
     </>
   );
+}
+
+export function PaperSearch(props: PaperSearchProps) {
+  return <Discover {...props} />;
 }
 
 function PublicationTimeline({ papers }: { papers: Paper[] }) {
@@ -303,29 +358,37 @@ function CitationNeighborhood({ papers }: { papers: Paper[] }) {
   );
 }
 
+function PaperPanel({ title, detail, children }: { title: string; detail: ReactNode; children: ReactNode }) {
+  const [expanded, setExpanded] = useState(false);
+  return <details className="panel matrix-paper" onToggle={event => {
+    if (event.target === event.currentTarget) setExpanded(event.currentTarget.open);
+  }}>
+    <summary><span><strong>{title}</strong><small>{detail}</small></span></summary>
+    {expanded && <div className="lesson-body">{children}</div>}
+  </details>;
+}
+
 function Screen({ project, update }: Pick<EvidenceWorkspaceProps, 'project' | 'update'>) {
   const [filter, setFilter] = useState<Paper['decision'] | 'all'>('all');
   const [query, setQuery] = useState('');
   const [order, setOrder] = usePaperOrder();
-  const reviewed = project.papers.filter(paper => paper.decision !== 'unreviewed' && paper.reason.trim()).length;
+  const reviewed = project.papers.filter(paper => (paper.decision === 'include' || paper.decision === 'exclude') && paper.reason.trim()).length;
+  const criteria = project.screeningCriteria ?? [];
   const terms = query.trim().toLowerCase();
   const shown = orderPapers(project.papers.filter(paper =>
     (filter === 'all' || paper.decision === filter) &&
     (!terms || [paper.title, paper.authors, paper.journal, paper.doi].some(value => value?.toLowerCase().includes(terms))),
   ), order);
 
-  function editPaper(id: string, patch: Partial<Paper>) {
-    update({ papers: project.papers.map(paper => paper.id === id ? { ...paper, ...patch } : paper) });
-  }
-
-  function setDecision(paper: Paper, decision: Paper['decision']) {
-    if (decision !== 'unreviewed' && !paper.reason.trim()) return;
-    const note = decision === 'unreviewed'
+  function recordDecision(paper: Paper, event: ScreeningEvent) {
+    const note = event.decision === 'unreviewed'
       ? `Reopened screening for “${paper.title.slice(0, 500)}”.`
-      : `${decisionLabels[decision]} “${paper.title.slice(0, 500)}”. Reason: ${paper.reason.trim().slice(0, 18000)}`;
+      : `${decisionLabels[event.decision]} “${paper.title.slice(0, 500)}”. Reason: ${event.reason.slice(0, 18000)}`;
     update({
-      papers: project.papers.map(item => item.id === paper.id ? { ...item, decision } : item),
-      decisions: [...project.decisions.slice(-299), { at: new Date().toISOString(), note }],
+      papers: project.papers.map(item => item.id === paper.id ? {
+        ...item, decision: event.decision, reason: event.reason, screeningDraft: undefined, screeningEvents: [...(item.screeningEvents ?? []), event],
+      } : item),
+      decisions: [...project.decisions.slice(-299), { at: event.at, note }],
     });
   }
 
@@ -333,10 +396,11 @@ function Screen({ project, update }: Pick<EvidenceWorkspaceProps, 'project' | 'u
     <>
       <section className="panel">
         <h2>Screen your saved sources</h2>
-        <p>{reviewed} of {project.papers.length} saved sources have a decision and reason.</p>
+        <p>{reviewed} of {project.papers.length} saved sources have an inclusion or exclusion decision and reason.</p>
         <details>
           <summary>How to screen a source</summary>
-          <p>Apply the same inclusion and exclusion rules to each source. If the title and abstract leave you unsure, keep the source unreviewed until you can read the full text. Record a specific reason with each decision so you can review it later.</p>
+          <p>Apply the same inclusion and exclusion rules to each source. Use Maybe when the title and abstract leave you unsure. Record a specific reason with each decision so you can review it later.</p>
+          <External href="https://www.prisma-statement.org/prisma-2020-flow-diagram">PRISMA flow diagram for systematic reviews</External>
         </details>
         {!!project.papers.length && <>
           <label className="field"><span>Find in saved literature</span><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Title, author, journal, or DOI" /></label>
@@ -347,6 +411,7 @@ function Screen({ project, update }: Pick<EvidenceWorkspaceProps, 'project' | 'u
               <option value="unreviewed">Unreviewed</option>
               <option value="include">Included</option>
               <option value="exclude">Excluded</option>
+              <option value="maybe">Maybe</option>
             </select>
           </label>
           <OrderSelect label="Sort saved papers" labels={paperOrderLabels} order={order} onChange={setOrder} />
@@ -354,37 +419,22 @@ function Screen({ project, update }: Pick<EvidenceWorkspaceProps, 'project' | 'u
           <PaperOrderHelp />
         </>}
       </section>
+      <ScreeningCriteria criteria={criteria} onChange={screeningCriteria => update({ screeningCriteria })} />
       {project.papers.length === 0 && <p className="panel">Save a paper in literature discovery to start screening.</p>}
       {project.papers.length > 0 && !shown.length && <p className="panel">No saved sources match this filter.</p>}
       {shown.map(paper => (
-        <details className="panel matrix-paper" key={paper.id}>
-          <summary>
-            <span><strong>{paper.title}</strong><small>{paper.year ?? 'Year unknown'} · {decisionLabels[paper.decision]}{paper.decision !== 'unreviewed' && !paper.reason.trim() ? ' · Reason needed' : ''}</small></span>
-          </summary>
-          <div className="lesson-body">
+        <PaperPanel key={paper.id} title={paper.title} detail={<><PaperPublished paper={paper} /> · {decisionLabels[paper.decision]}{paper.decision !== 'unreviewed' && !paper.reason.trim() ? ' · Reason needed' : ''}</>}>
             <p>{paper.authors || 'Authors not supplied'}</p>
             <PublicationIdentity title={paper.journal} publisher={paper.publisher} type={paper.venueType} />
             <PaperImpact paper={paper} />
             <SourceLinks paper={paper} />
-            <label className="field">
-              <span>Decision reason</span>
-              <textarea maxLength={20000} rows={2} placeholder="Which inclusion or exclusion rule applies?" value={paper.reason} onChange={event => editPaper(paper.id, { reason: event.target.value })} />
-            </label>
-            <label className="field">
-              <span>Screening decision</span>
-              <select value={paper.decision} onChange={event => setDecision(paper, event.target.value as Paper['decision'])}>
-                <option value="unreviewed">Unreviewed</option>
-                <option value="include" disabled={!paper.reason.trim() && paper.decision !== 'include'}>Include</option>
-                <option value="exclude" disabled={!paper.reason.trim() && paper.decision !== 'exclude'}>Exclude</option>
-              </select>
-            </label>
+            <PaperScreening paper={paper} criteria={criteria} onDraft={screeningDraft => update({ papers: project.papers.map(item => item.id === paper.id ? { ...item, screeningDraft } : item) })} onRecord={event => recordDecision(paper, event)} />
             <button type="button" className="text-button danger" onClick={() => {
-              if (window.confirm('Remove this paper and its saved evidence notes?')) {
+              if (window.confirm('Remove this paper, its screening history, and its saved evidence notes?')) {
                 update({ papers: project.papers.filter(item => item.id !== paper.id) });
               }
             }}>Remove paper</button>
-          </div>
-        </details>
+        </PaperPanel>
       ))}
       <CitationNeighborhood papers={project.papers} />
       <PublicationTimeline papers={project.papers} />
@@ -393,7 +443,9 @@ function Screen({ project, update }: Pick<EvidenceWorkspaceProps, 'project' | 'u
 }
 
 const extractionFields = [
+  { key: 'researchProblem', label: 'Research problem', hint: 'What question or problem is this study trying to solve?' },
   { key: 'methods', label: 'Methods and sample', hint: 'Record the design, sample, and analysis used.' },
+  { key: 'dataset', label: 'Dataset or evidence', hint: 'Name the source, population or setting, and the period covered.' },
   { key: 'finding', label: 'Extracted finding', hint: 'Summarize what the authors reported in your own words.' },
   { key: 'limitations', label: 'Limitations', hint: 'Record weaknesses or limits the authors identify.' },
   { key: 'locator', label: 'Evidence level and page / section', hint: 'For example, full text, page 8, Table 2.' },
@@ -404,48 +456,51 @@ function Extract({ project, update }: Pick<EvidenceWorkspaceProps, 'project' | '
   const [order, setOrder] = usePaperOrder();
   const ordered = orderPapers(project.papers, order);
   const active = ordered.filter(paper => paper.decision !== 'exclude');
+  const supported = canSupportGap(project);
 
   return (
     <>
       <section className="panel">
         <div className="section-heading">
           <h2>Evidence matrix</h2>
-          <button type="button" className="button secondary" disabled={!project.papers.length} onClick={() => download('literature-matrix.csv', matrixCsv({ ...project, papers: ordered }), 'text/csv;charset=utf-8')}>
-            <Download size={16} aria-hidden="true" /> Export CSV
-          </button>
+          <div className="button-row">
+            <button type="button" className="button secondary" disabled={!project.papers.length} onClick={() => download('literature-matrix.csv', matrixCsv({ ...project, papers: ordered }), 'text/csv;charset=utf-8')}>
+              <Download size={16} aria-hidden="true" /> Export CSV
+            </button>
+            {ordered.some(paper => paper.evidenceClaims?.length) && <button type="button" className="button secondary" onClick={() => download('evidence-ledger.csv', evidenceLedgerCsv({ ...project, papers: ordered }), 'text/csv;charset=utf-8')}>Export evidence claims</button>}
+          </div>
         </div>
         <details>
           <summary>How to extract comparable evidence</summary>
-          <p>Read the source and record its methods, findings, limitations, and the page or section you checked. If you only read an abstract, say so. Keep a note of findings that challenge your interpretation.</p>
+          <p>Compare papers that ask similar questions. Look for patterns across methods and datasets, and note disagreements or gaps. Record the page or section you checked, or indicate if you only read the abstract.</p>
         </details>
         {project.papers.length > 0 && <OrderSelect label="Sort evidence" labels={paperOrderLabels} order={order} onChange={setOrder} />}
-        <p className="muted">The matrix displays included and unreviewed sources. The export includes every saved record and its screening decision.</p>
+        <p className="muted">The matrix displays included, maybe and unreviewed sources. The export includes every saved record and its screening decision.</p>
         {active.length === 0 ? <p>Save or include a source to populate the matrix.</p> : (
           <div style={{ overflowX: 'auto' }} role="region" aria-label="Evidence comparison table" tabIndex={0}>
-            <table style={{ width: '100%', textAlign: 'left', borderSpacing: '12px', tableLayout: 'fixed', minWidth: '40rem', overflowWrap: 'anywhere' }}>
+            <table style={{ width: '100%', textAlign: 'left', borderSpacing: '12px', tableLayout: 'fixed', minWidth: '56rem', overflowWrap: 'anywhere' }}>
               <caption>Compare {active.length} sources</caption>
-              <thead><tr><th scope="col">Source</th><th scope="col">Methods</th><th scope="col">Finding</th><th scope="col">Limitations</th><th scope="col">Locator</th></tr></thead>
+              <thead><tr><th scope="col">Source</th><th scope="col">Problem</th><th scope="col">Methods</th><th scope="col">Dataset</th><th scope="col">Finding</th><th scope="col">Limitations</th><th scope="col">Locator</th></tr></thead>
               <tbody>
-                {active.map(paper => (
-                  <tr key={paper.id}>
+                {active.map(paper => {
+                  const finding = findingSummary(paper);
+                  return <tr key={paper.id}>
                     <th scope="row">{paper.title}<br /><small>{decisionLabels[paper.decision]}</small></th>
+                    <td>{paper.researchProblem || '—'}</td>
                     <td>{paper.methods || '—'}</td>
-                    <td>{paper.finding || '—'}</td>
+                    <td>{paper.dataset || '—'}</td>
+                    <td>{finding.text || '—'}</td>
                     <td>{paper.limitations || '—'}</td>
-                    <td>{paper.locator || '—'}</td>
-                  </tr>
-                ))}
+                    <td>{finding.locator || '—'}</td>
+                  </tr>;
+                })}
               </tbody>
             </table>
           </div>
         )}
       </section>
       {active.map(paper => (
-        <details className="panel matrix-paper" key={paper.id}>
-          <summary>
-            <span><strong>Edit notes for {paper.title}</strong><small>{paper.year ?? 'Year unknown'} · {decisionLabels[paper.decision]}</small></span>
-          </summary>
-          <div className="lesson-body">
+        <PaperPanel key={paper.id} title={`Edit notes for ${paper.title}`} detail={<><PaperPublished paper={paper} /> · {decisionLabels[paper.decision]}</>}>
             <PublicationIdentity title={paper.journal} publisher={paper.publisher} type={paper.venueType} />
             <PaperImpact paper={paper} />
             <SourceLinks paper={paper} />
@@ -461,8 +516,8 @@ function Extract({ project, update }: Pick<EvidenceWorkspaceProps, 'project' | '
                 />
               </label>
             ))}
-          </div>
-        </details>
+            <EvidenceClaims paper={paper} onChange={evidenceClaims => update({ papers: project.papers.map(item => item.id === paper.id ? { ...item, evidenceClaims } : item) })} />
+        </PaperPanel>
       ))}
       <section className="panel">
         <h2>Document a possible research gap</h2>
@@ -471,17 +526,22 @@ function Extract({ project, update }: Pick<EvidenceWorkspaceProps, 'project' | '
           <span>Candidate gap and supporting / conflicting evidence</span>
           <textarea rows={5} maxLength={20000} value={project.gap} onChange={event => update({ gap: event.target.value })} placeholder="Within the searches I ran, these sources agree on … but leave … unclear." />
         </label>
+        <GapEvidence papers={project.papers} />
+        <h3>What have you searched?</h3>
+        <p>{project.searches.length ? `${project.searches.length} recorded search attempts. Open the search audit trail in Discover literature to inspect terms, filters and outcomes.` : 'Completed search attempts will appear in the Discover literature audit trail.'}</p>
+        <label className="field"><span>What has not been searched?</span><textarea maxLength={20000} rows={3} value={project.gapSearchLimits ?? ''} onChange={event => update({ gapSearchLimits: event.target.value })} placeholder="For example, other languages, years, databases, or conference proceedings." /></label>
         <label className="field">
           <span>Review state</span>
           <select value={project.gapStatus} onChange={event => update({ gapStatus: event.target.value as Project['gapStatus'] })}>
             <option value="idea">Provisional idea</option>
             <option value="search underway">Search underway</option>
-            <option value="evidence-supported candidate">Evidence-supported candidate</option>
-            <option value="human-reviewed candidate">Human-reviewed candidate</option>
+            <option value="evidence-supported candidate" disabled={!supported}>Evidence-supported candidate</option>
+            <option value="human-reviewed candidate" disabled={!supported}>Human-reviewed candidate</option>
             <option value="contradicted">Contradicted by evidence</option>
             <option value="needs-update">Needs review</option>
           </select>
         </label>
+        {!supported && <p className="muted">Write a candidate gap and link at least one reviewed supporting claim from a source you kept. Use evidence beyond bibliographic metadata.</p>}
         <p className="muted">This records your review state. A claim of novelty requires a thorough search and human judgment.</p>
       </section>
     </>

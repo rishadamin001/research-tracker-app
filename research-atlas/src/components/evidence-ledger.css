@@ -1,0 +1,9 @@
+.evidence-ledger-fields { border: 1px solid var(--line); border-radius: 10px; margin: 14px 0; padding: 12px 16px; min-width: 0; }
+.evidence-ledger-fields legend { padding: 0 6px; font-weight: 700; }
+.evidence-ledger-list { display: grid; gap: 10px; padding-left: 20px; overflow-wrap: anywhere; }
+.evidence-ledger-list li { padding: 9px 11px; background: var(--surface-soft); border-radius: 8px; }
+.evidence-ledger-list p { margin: 4px 0; }
+.evidence-ledger-claims { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 16px; }
+.evidence-ledger-gap { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
+.evidence-ledger-gap > section { border: 1px solid var(--line); padding: 13px; border-radius: 10px; }
+@media (max-width: 640px) { .evidence-ledger-gap { grid-template-columns: 1fr; } }

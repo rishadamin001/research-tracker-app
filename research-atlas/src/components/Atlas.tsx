@@ -1,29 +1,35 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowDownToLine, ArrowRight, BookOpen, CalendarDays, Check, ChevronRight, Compass, FolderOpen, LibraryBig, Map, Menu, Plus, Search, Settings, X } from 'lucide-react';
+import { ArrowDownToLine, ArrowRight, BookOpen, CalendarDays, Check, ChevronRight, ClipboardCheck, Compass, FolderOpen, LibraryBig, Map, Menu, Plus, Search, Settings, X } from 'lucide-react';
 import { createProject, matrixCsv, parseBackup, protocolMarkdown, type Project, type Stage } from '@/lib/model';
 import { download, loadProjects, saveProjects } from '@/lib/storage';
 import { disciplines } from '@/lib/content';
 import { nextTask, roadmap, taskStatus, updateProject, type TaskStatus } from '@/lib/workflow';
 import { readPreferences, writePreferences, type Preferences } from '@/lib/preferences';
 import { PlanningWorkspace } from './PlanningWorkspace';
-import { EvidenceWorkspace } from './EvidenceWorkspace';
+import { EvidenceWorkspace, PaperSearch } from './EvidenceWorkspace';
 import { ExecutionWorkspace } from './ExecutionWorkspace';
-import { ResearchGuide } from './ResearchGuide';
+import { ResearchPlanner } from './ResearchPlanner';
+import { PlannerWorkbench } from './PlannerWorkbench';
+import { BackupStatus, PrivacyData, backupDateKey, lastBackupDate } from './PrivacyData';
 import { ConferencePlanner } from './ConferencePlanner';
+import { ContextGuide } from './ContextGuide';
+import { ReferenceExchange } from './ReferenceExchange';
 import { WorkspacePreferences } from './WorkspacePreferences';
 import { InstallApp } from './InstallApp';
 import './discipline-explorer.css';
 
-type View = 'overview' | 'primer' | 'explore' | 'guide' | 'conferences' | 'roadmap' | 'projects' | 'preferences' | Stage;
+type View = 'overview' | 'primer' | 'explore' | 'guide' | 'conferences' | 'paper-search' | 'roadmap' | 'projects' | 'preferences' | 'privacy' | Stage;
 const mainNav = [
   { id: 'overview', title: 'Home', icon: Compass },
-  { id: 'guide', title: 'Research guide', icon: BookOpen },
+  { id: 'paper-search', title: 'Paper search', icon: Search },
+  { id: 'guide', title: 'Research planner', icon: BookOpen },
   { id: 'conferences', title: 'Conference planner', icon: CalendarDays },
   { id: 'explore', title: 'Explore disciplines', icon: Compass },
   { id: 'roadmap', title: 'Project roadmap', icon: Map },
   { id: 'projects', title: 'My projects', icon: FolderOpen },
   { id: 'preferences', title: 'Preferences', icon: Settings },
+  { id: 'privacy', title: 'Privacy & data', icon: ClipboardCheck },
 ] as const;
 
 function currentView(): View {
@@ -52,6 +58,7 @@ export default function Atlas() {
   const [active, setActive] = useState('');
   const [ready, setReady] = useState(false);
   const [saveState, setSaveState] = useState('Opening local workspace…');
+  const [backupDate, setBackupDate] = useState(lastBackupDate);
   const [notice, setNotice] = useState('');
   const [mobile, setMobile] = useState(false);
   const [newTitle, setNewTitle] = useState('');
@@ -162,7 +169,7 @@ export default function Atlas() {
     setProjects(items => [item, ...items]);
     selectProject(item.id);
     dialog.current?.close();
-    go('profile');
+    if (view !== 'guide') go('profile');
   }
 
   function searchDiscipline(topic: string) {
@@ -190,6 +197,8 @@ export default function Atlas() {
   function backup() {
     const data = { schemaVersion: 1, exportedAt: new Date().toISOString(), projects };
     download('research-atlas-backup.json', JSON.stringify(data, null, 2), 'application/json');
+    setBackupDate(data.exportedAt);
+    try { localStorage.setItem(backupDateKey, data.exportedAt); } catch { /* Backup still downloads. */ }
   }
 
   function importBackup() {
@@ -241,6 +250,7 @@ export default function Atlas() {
         <button className="button small" onClick={openNewProject} disabled={!ready}><Plus size={16} />New project</button>
       </header>
       <main id="main" ref={main} tabIndex={-1}>
+        {ready && projects.length > 0 && (saveState === 'Local storage unavailable' || saveState.startsWith('Could not save')) && <section className="error" role="alert"><p>Changes are still available in this tab. Download a recovery copy before reloading.</p><button type="button" className="button secondary" onClick={backup}>Download recovery backup</button></section>}
         {notice && <div className="notice" role="status">{notice}<button className="icon-button" onClick={() => setNotice('')} aria-label="Dismiss notice"><X size={16} /></button></div>}
         <div className="stage-frame" key={view}>
 
@@ -252,17 +262,29 @@ export default function Atlas() {
             <button className="button light" onClick={project ? () => go('roadmap') : openNewProject} disabled={!ready}>{project ? 'Resume your project' : 'Start a research project'}<ArrowRight size={18} /></button>
           </section>
           <section className="entry-grid" aria-label="Choose a starting point">
+            <button className="entry-card" onClick={() => go('paper-search')}><Search /><strong>Search for papers</strong><span>Compare journals, citations, dates and costs.</span><ArrowRight size={17} /></button>
             <button className="entry-card" onClick={() => go('primer')}><BookOpen /><strong>I’m new to research</strong><span>Try turning a topic into a question.</span><ArrowRight size={17} /></button>
             <button className="entry-card" onClick={openNewProject} disabled={!ready}><Plus /><strong>I want to start a project</strong><span>Choose a direction and get a roadmap.</span><ArrowRight size={17} /></button>
             <button className="entry-card" onClick={() => go('explore')}><Compass /><strong>I want to explore research</strong><span>Browse examples from different disciplines.</span><ArrowRight size={17} /></button>
-            <button className="entry-card" onClick={() => go('guide')}><LibraryBig /><strong>Understand scholarly publishing</strong><span>See how papers, journals, and conferences fit together.</span><ArrowRight size={17} /></button>
+            <button className="entry-card" onClick={() => go('guide')}><LibraryBig /><strong>Plan your research</strong><span>Follow a beginner’s path from a question to peer review.</span><ArrowRight size={17} /></button>
             <button className="entry-card" onClick={() => go('conferences')}><CalendarDays /><strong>Find a conference</strong><span>Browse Bangladesh and international events and save a date.</span><ArrowRight size={17} /></button>
           </section>
         </>}
 
-        {view === 'guide' && <ResearchGuide onStart={() => go('primer')} onConferences={() => go('conferences')} />}
+        {view === 'paper-search' && <>
+          <div className="page-heading"><div><span className="eyebrow">LITERATURE</span><h1>Paper search</h1><p>Look up papers by topic or title. Start with journal quartile, or sort by date, citations or available prices.</p></div></div>
+          {ready ? <PaperSearch key={project?.id ?? 'standalone'} project={project} update={project ? update : undefined} notify={setNotice} openProjects={() => go('projects')} />
+            : <p className="panel" role="status">Opening paper search…</p>}
+        </>}
+        {view === 'guide' && <ResearchPlanner
+          onStart={() => go('primer')}
+          onConferences={() => go('conferences')}
+          openSection={target => go(target === 'analysis' ? 'data' : target === 'draft' ? 'writing' : target === 'publish' ? 'publication' : target)}
+          workbench={<PlannerWorkbench key={project?.id ?? 'no-project'} project={project} update={update} onStart={openNewProject} onProjects={() => go('projects')} ready={ready} />}
+        />}
         {view === 'conferences' && <ConferencePlanner />}
         {view === 'preferences' && <><WorkspacePreferences value={preferences} onChange={changePreferences} /><InstallApp /></>}
+        {view === 'privacy' && <PrivacyData backupDate={backupDate} onBackup={backup} />}
 
         {view === 'primer' && <section className="panel start-exercise">
           <span className="eyebrow">GET STARTED</span><h1>From a topic to a question</h1>
@@ -310,6 +332,7 @@ export default function Atlas() {
         {project && current && <>
           <div className="page-heading"><div><span className="eyebrow">{current.group.toUpperCase()} · {project.title}</span><h1>{current.title}</h1><p>{current.detail}</p></div>{status && <Status status={status} />}</div>
           {status === 'Needs review' && <div className="review-banner" role="status"><p>Your question changed. Check this work against the revised question before proceeding.</p><button className="button secondary" onClick={() => update({ needsReview: project.needsReview.filter(id => id !== current.id) })}><Check size={16} />Mark reviewed</button></div>}
+          <ContextGuide stage={current.id} />
           {view === 'profile' || view === 'topic' || view === 'question' || view === 'methods' ? <PlanningWorkspace key={`${project.id}-${view}`} project={project} mode={view} update={update} next={advance} /> : null}
           {view === 'discover' || view === 'screen' || view === 'extract' ? <EvidenceWorkspace key={`${project.id}-${view}-${searchTopic ?? ''}`} project={project} mode={view} update={update} notify={setNotice} initialQuery={view === 'discover' ? searchTopic : undefined} /> : null}
           {view === 'data' || view === 'writing' || view === 'publication' ? <ExecutionWorkspace key={`${project.id}-${view}`} project={project} mode={view} update={update} /> : null}
@@ -318,7 +341,7 @@ export default function Atlas() {
 
         {view === 'projects' && <>
           <div className="page-heading"><div><span className="eyebrow">TRACK YOUR WORK</span><h1>My projects</h1><p>Open a project, review progress, and download a backup.</p></div></div>
-          <section className="panel"><h2>Back up and restore</h2><p>Projects are saved in this browser. A backup can restore them on another device. Only search terms and public identifiers are sent to scholarly services when you request results.</p>
+          <section className="panel"><h2>Back up and restore</h2><p>Projects are saved in this browser. A backup can restore them on another device.</p><BackupStatus date={backupDate} />
             <div className="button-row"><button className="button" onClick={backup}><ArrowDownToLine size={17} />Download backup</button><label className="button secondary upload">Import backup<input type="file" accept=".json,application/json" onChange={async event => {
               const input = event.currentTarget;
               const file = input.files?.[0];
@@ -332,6 +355,7 @@ export default function Atlas() {
             }} /></label></div>
             {imported && <div className="recommendation"><h3>Import preview: {imported.length} projects</h3><p>{imported.map(item => item.title).join(', ') || 'This backup contains no projects.'}</p><div className="button-row"><button className="button" onClick={importBackup} disabled={!imported.length}>Import as new copies</button><button className="button secondary" onClick={() => setImported(null)}>Cancel</button></div></div>}
           </section>
+          {project && <ReferenceExchange key={project.id} project={project} onImport={papers => update({ papers })} />}
           <div className="project-grid">{projects.map(item => <article key={item.id} className="panel journey-project"><h2>{item.title}</h2><p>{item.discipline} · {item.papers.length} saved references</p>
             <div className="button-row"><button className="button" onClick={() => { selectProject(item.id); go('roadmap'); }}>Open roadmap</button><button className="button secondary" onClick={() => download('research-protocol.md', protocolMarkdown(item), 'text/markdown')}>Export protocol</button><button className="button secondary" onClick={() => download('evidence-matrix.csv', matrixCsv(item), 'text/csv')}>Export evidence</button><button className="text-button danger" onClick={() => removeProject(item)}>Delete project</button></div>
           </article>)}</div>

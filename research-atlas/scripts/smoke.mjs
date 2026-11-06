@@ -1,45 +1,90 @@
+import assert from 'node:assert/strict';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { chromium, devices } from 'playwright';
-import { writeFile } from 'node:fs/promises';
-const browser=await chromium.launch();
-const diagnostics=[];
-const page=await browser.newPage({viewport:{width:1440,height:1000}});
-page.on('console',m=>{if(['error','warning'].includes(m.type()))diagnostics.push({type:m.type(),text:m.text()});});
-page.on('pageerror',e=>diagnostics.push({type:'exception',text:e.message}));
-await page.goto('http://127.0.0.1:4173');
-await page.getByRole('button',{name:'New project',exact:true}).waitFor();
-await page.getByText('Saved on this device',{exact:true}).waitFor({state:'attached'});
-await page.screenshot({path:'../desktop-preview.png',fullPage:true});
-await page.getByRole('button',{name:'New project',exact:true}).click();
-await page.getByLabel('Working title').fill('Live source verification');
-await page.getByRole('button',{name:'Create project',exact:true}).click();
-await page.getByRole('button',{name:'Back to roadmap'}).click();
-await page.screenshot({path:'../roadmap-preview.png',fullPage:true});
-await page.getByRole('button',{name:/^Discover literature/}).click();
-await page.getByRole('textbox',{name:'Search literature'}).fill('digital financial inclusion Bangladesh');
-await page.getByRole('button',{name:'Search papers'}).click();
-await page.getByRole('button',{name:'Search papers'}).waitFor();
-const searchCount=await page.locator('.paper').count();
-const searchError=await page.locator('.error').allTextContents();
-const oaLinks=await page.getByRole('link',{name:'Read open copy'}).count();
-await page.screenshot({path:'../literature-preview.png',fullPage:true});
-await page.getByRole('button',{name:'Back to roadmap'}).click();
-await page.getByRole('button',{name:/^Evaluate publication options/}).click();
-await page.getByLabel('Article DOI').fill('10.1038/nature12373');
-await page.getByRole('button',{name:'Check DOI metadata'}).click();
-await page.getByRole('button',{name:'Check DOI metadata'}).waitFor();
-const doiVerified=await page.getByText('VERIFIED METADATA · CROSSREF',{exact:true}).count();
-if(doiVerified){
-  await page.getByRole('button',{name:'Resolve open-access copy'}).click();
-  await page.getByRole('link',{name:'Open legal OA copy',exact:true}).waitFor();
+
+const url = new URL(process.argv[2] || 'http://127.0.0.1:4173/');
+const local = ['127.0.0.1', 'localhost'].includes(url.hostname);
+const label = local ? 'local' : 'production';
+const packageVersion = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version;
+const report = { commitSha: process.argv[3] ?? process.env.GITHUB_SHA ?? null, packageVersion, deploymentUrl: url.href,
+  checkedAt: new Date().toISOString(), appLoaded: false, projectPersistence: false, openAlexMode: 'anonymous first page',
+  openAlexSearchResultCount: 0, crossrefLookup: false, unpaywallLookupIfConfigured: null, backupRestore: false,
+  offlineProjectOpen: false, mobileOverflow: null, consoleErrors: [] };
+
+const browser = await chromium.launch();
+function observe(page) {
+  page.on('pageerror', error => report.consoleErrors.push(error.message));
+  page.on('console', message => { if (message.type() === 'error') report.consoleErrors.push(message.text()); });
 }
-const doiError=await page.locator('.error').allTextContents();
-const mobile=await browser.newPage({...devices['Pixel 7']});
-await mobile.goto('http://127.0.0.1:4173');
-await mobile.getByText('Saved on this device',{exact:true}).waitFor({state:'attached'});
-await mobile.screenshot({path:'../mobile-preview.png',fullPage:true});
-const overflow=await mobile.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth);
-const oaVerified=await page.getByRole('link',{name:'Open legal OA copy',exact:true}).count();
-const report={url:'http://127.0.0.1:4173',timestamp:new Date().toISOString(),searchCount,searchError,oaLinks,doiVerified,oaVerified,doiError,mobileOverflow:overflow,diagnostics};
-await writeFile('../live-smoke-report.json',JSON.stringify(report,null,2));
-console.log(JSON.stringify(report,null,2));
-await browser.close();
+
+try {
+  const desktop = await browser.newContext({ viewport: { width: 1440, height: 1020 } });
+  const page = await desktop.newPage();
+  observe(page);
+  assert.equal((await page.goto(new URL('#paper-search', url).href)).status(), 200);
+  await page.getByRole('heading', { name: 'Paper search', exact: true }).waitFor();
+  report.appLoaded = true;
+  await page.getByRole('textbox', { name: 'Search literature' }).fill('student housing');
+  await page.getByRole('button', { name: 'Search papers', exact: true }).click();
+  await page.getByRole('region', { name: 'Search result controls' }).waitFor({ timeout: 20000 });
+  report.openAlexSearchResultCount = await page.locator('article.paper').count();
+  assert.ok(report.openAlexSearchResultCount > 0);
+  assert.equal(await page.getByLabel('Sort papers').inputValue(), 'quartile');
+  await page.getByText('POSI Q1 · 2026', { exact: true }).first().waitFor();
+  await page.getByRole('region', { name: 'Search result controls' }).evaluate(element => {
+    window.scrollTo(0, element.getBoundingClientRect().top + window.scrollY - 95);
+  });
+  await page.screenshot({ path: `../atlas-${label}-paper-search.png` });
+  await page.getByLabel('Sort papers').selectOption('journalFee');
+  await page.locator('article.paper').first().getByText('Listed open access APC').waitFor();
+  await page.getByRole('button', { name: 'New project', exact: true }).click();
+  await page.getByLabel('Working title').fill('Student housing smoke project');
+  await page.getByRole('button', { name: 'Create project', exact: true }).click();
+  await page.getByText('Saved on this device', { exact: true }).waitFor({ state: 'attached' });
+  await page.reload();
+  await page.getByText('Student housing smoke project', { exact: true }).first().waitFor();
+  report.projectPersistence = true;
+
+  await page.goto(new URL('#publication', url).href);
+  await page.getByLabel('Article DOI').fill('10.1038/nature12373');
+  await page.getByRole('button', { name: 'Check DOI metadata' }).click();
+  await page.getByText('VERIFIED METADATA · CROSSREF', { exact: true }).waitFor({ timeout: 20000 });
+  report.crossrefLookup = true;
+
+  await page.goto(new URL('#projects', url).href);
+  const backup = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download backup', exact: true }).click();
+  await page.locator('input[accept=".json,application/json"]').setInputFiles(await (await backup).path());
+  await page.getByRole('button', { name: 'Import as new copies' }).click();
+  await page.getByRole('heading', { name: 'Student housing smoke project (imported)', exact: true }).waitFor();
+  await page.getByText('Saved on this device', { exact: true }).waitFor({ state: 'attached' });
+  report.backupRestore = true;
+
+  await page.goto(new URL('#guide', url).href);
+  await page.getByRole('button', { name: 'Data, surveys & analysis', exact: true }).click();
+  await page.screenshot({ path: `../atlas-${label}-planner.png` });
+  await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
+  await desktop.setOffline(true);
+  await page.goto(new URL('#projects', url).href);
+  await page.reload();
+  await page.getByRole('heading', { name: 'Student housing smoke project (imported)', exact: true }).waitFor();
+  report.offlineProjectOpen = true;
+  await desktop.close();
+
+  const mobile = await browser.newPage(devices['Pixel 7']);
+  observe(mobile);
+  await mobile.goto(new URL('#guide', url).href);
+  await mobile.getByRole('button', { name: 'Toolkit', exact: true }).click();
+  report.mobileOverflow = await mobile.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+  await mobile.screenshot({ path: `../atlas-${label}-mobile.png` });
+  assert.equal(report.mobileOverflow, false);
+  assert.deepEqual(report.consoleErrors, []);
+} catch (error) {
+  report.failure = error.message;
+  process.exitCode = 1;
+} finally {
+  await browser.close();
+  await mkdir('docs/smoke', { recursive: true });
+  await writeFile(`docs/smoke/${label}-latest.json`, `${JSON.stringify(report, null, 2)}\n`);
+  console.log(JSON.stringify(report, null, 2));
+}
