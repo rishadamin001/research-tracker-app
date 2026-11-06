@@ -1,6 +1,106 @@
-# Research Space
+# Research Atlas
 
-The active Research Atlas workspace is in [research-atlas/](research-atlas/). [Open the published Research Atlas app](https://rishadamin001.github.io/research-tracker-app/). The root Research Space app below is the earlier standalone tracker.
+**Find literature, organize evidence, and plan your first research paper.**
+
+A free, browser-local academic research workspace for students and early-career researchers. Research Atlas connects paper discovery, literature screening, study planning, writing, and publication checks in one guided workflow.
+
+**[Open Research Atlas](https://rishadamin001.github.io/research-tracker-app/)** · [App guide](research-atlas/README.md) · [Implementation status](research-atlas/docs/REQUIREMENT_STATUS.md) · [Report an issue](https://github.com/rishadamin001/research-tracker-app/issues)
+
+## What you can do
+
+| Workspace | What it helps you do |
+| --- | --- |
+| **Paper search** | Search OpenAlex without creating a project; compare journal quartiles, citation counts, publication dates, and available cost information. |
+| **Literature & evidence** | Save references, record screening decisions, compare findings, and connect evidence claims to their sources. Import and export RIS and BibTeX references. |
+| **Research planner** | Follow beginner-friendly guidance from research question to peer review; work backward from deadlines, plan a budget, and prepare submission materials. |
+| **Conferences** | Browse Bangladesh and international conference sources, track dates, and export calendar entries. |
+| **Your workspace** | Customize theme, density, and motion; keep projects in your browser and export backups. Install the app in a supported browser. |
+
+## Start using the app
+
+1. [Open the live app](https://rishadamin001.github.io/research-tracker-app/).
+2. Use **Paper search** to explore literature, or create a project to follow the research roadmap.
+3. Visit **Research planner** for guidance and **Privacy & data** for storage and backup information.
+4. Export project backups regularly. Browser data does not automatically sync between devices.
+
+The published app requires no paid subscription, payment card, or personal API key. Search requests go to external scholarly providers and are subject to their availability and limits. Project records stay in your browser.
+
+## Run Research Atlas locally
+
+Use **Node.js 24** and npm. The active app is in `research-atlas/`; run these commands from the repository root:
+
+```sh
+cd research-atlas
+npm ci
+npm run dev
+```
+
+Open **http://127.0.0.1:5174**.
+
+```sh
+npm run build
+npm run preview
+```
+
+The production preview opens at **http://127.0.0.1:4173**. Local previews and the published site use separate browser storage; move projects with backup export/import.
+
+## Repository map
+
+```text
+research-atlas/       Active Research Atlas app (React, TypeScript, Vite)
+  src/               Application source
+  public/            Static assets and installable app resources
+  tests/             Automated checks
+  docs/              Data-source notes, implementation status, smoke reports
+.github/workflows/   Research Atlas checks and GitHub Pages publishing
+client/              Earlier Research Space tracker frontend
+server/              Earlier Research Space tracker API and SQLite storage
+package.json         Earlier tracker's workspace commands
+```
+
+## Documentation
+
+| Read this | For |
+| --- | --- |
+| [App overview](research-atlas/README.md) | Features, preferences, and everyday use |
+| [Research workflow](research-atlas/WORKFLOW.md) | How the guided research stages fit together |
+| [Architecture](research-atlas/ARCHITECTURE.md) | Application structure and data design |
+| [Journal quartiles](research-atlas/docs/JOURNAL-QUARTILES.md) | Ranking sources, matching, and limitations |
+| [Publication costs](research-atlas/docs/PUBLICATION-COSTS.md) | Reading prices versus author publishing fees |
+| [Implementation status](research-atlas/docs/REQUIREMENT_STATUS.md) | Completed, partial, and deferred improvements |
+| [Testing](research-atlas/TESTING.md) | Verification coverage and results |
+| [Deployment](research-atlas/DEPLOYMENT.md) | GitHub Pages publishing |
+| [Contributing](research-atlas/CONTRIBUTING.md) | Development conventions |
+
+## Data you can interpret
+
+- **Quartiles:** matched POSI journal quartiles include their subject and edition. They are not interchangeable with SJR or JCR rankings and do not establish the quality of an individual paper.
+- **Citations:** counts come from the scholarly provider and may differ from other databases.
+- **Costs:** reading access and author publishing fees are separate. Missing prices remain unavailable rather than being treated as zero.
+- **Conference dates:** source links and check dates help you verify listings. Calendar exports are copies and do not automatically update.
+- **Storage:** browser storage can be cleared. Keep downloaded backups of important work.
+
+## Development checks
+
+Run inside `research-atlas/`:
+
+```sh
+npm run typecheck
+npm run lint
+npm test
+npm run build
+npx playwright install
+npm run test:e2e
+```
+
+See [Contributing](research-atlas/CONTRIBUTING.md) before changing application behavior. Do not commit credentials or private research data, and keep the public app free of paid runtime requirements.
+
+## Earlier Research Space tracker
+
+The original React + Express + SQLite tracker is retained in `client/` and `server/`. Its root-level commands run that earlier app. The published GitHub Pages site runs **Research Atlas**.
+
+<details>
+<summary>Open the earlier tracker's setup, API, and storage instructions</summary>
 
 A student research dashboard built with React, Vite, Express, and SQLite. Track papers, see counts by status, and keep your library between sessions.
 
@@ -94,14 +194,4 @@ package-lock.json    Frozen workspace dependency tree
 
 Use the existing checkout for cloud tasks; each task already has an isolated environment. No additional Git worktree is needed.
 
-## Research Atlas — research planning workspace
-
-The [Research Atlas app](research-atlas/README.md) connects setup, literature screening, evidence extraction, methods, writing, and publication checks through one project roadmap.
-
-```sh
-cd research-atlas
-npm ci
-npm run dev
-```
-
-Open http://127.0.0.1:5174. For a static preview, run `npm run build` and `npm run preview`, then open http://127.0.0.1:4173. Atlas keeps project data in browser IndexedDB. See [workflow](research-atlas/WORKFLOW.md), [verification](research-atlas/TESTING.md), and [GitHub Pages setup](research-atlas/DEPLOYMENT.md).
+</details>
