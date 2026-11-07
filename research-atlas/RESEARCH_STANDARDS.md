@@ -1,14 +1,17 @@
 # Research standards
 
-The application separates conditional design suggestions from reporting links. It does not score study quality or conduct risk-of-bias appraisal.
+Atlas separates **study-design guidance**, **reporting guidance** and **critical appraisal**. Registry **1.0** in `src/lib/study-planning.ts` records each selected resource's source URL, scope, edition and check date. It is a starting collection, not a comprehensive or independently reviewed multidisciplinary catalogue. The app neither performs risk-of-bias appraisal nor converts checklist completion into a quality score.
 
-- Exploration: interviews/case study; COREQ or SRQR only when applicable.
-- Synthesis: scoping/systematic review; PRISMA-ScR or PRISMA 2020 as appropriate.
-- Description: STROBE only for relevant observational epidemiology, not every survey.
-- Causal estimation: experiments/quasi-experiments; CONSORT/SPIRIT only for randomized trials.
-- Prediction: TRIPOD+AI only for clinical prediction scope.
-- Legal/textual interpretation and artifact design: no universal checklist claimed.
+The methods router asks about knowledge goal, unit of analysis, evidence access, measurement/interpretation, causal intent, intervention feasibility, ethics and resources. Missing or unresolved essentials produce **More information is needed** with no candidate design. Other outcomes remain conditional and require human review; a topic alone never selects methodology. A user explicitly chooses any draft starting point, and an existing design is not automatically overwritten.
 
-Reference shelf links include ARRIVE, CHEERS, CARE, and STARD. These are outbound references, not implemented item-by-item reporting audits. Registry content is in src/lib/content.ts. Source links: https://www.equator-network.org/ , https://www.prisma-statement.org/ , https://www.consort-spirit.org/ . No copyrighted checklist text is reproduced.
+## Applicability
 
-Ethics review, preregistration, power/sample planning, and study validity require appropriate disciplinary oversight. The app cannot approve research or guarantee publication.
+- Design resources include the CDC Field Epidemiology Manual (health-specific) and JBI's living evidence-synthesis manual.
+- Reporting resources include PRISMA 2020 for systematic reviews, STROBE for appropriate observational epidemiology, CONSORT/SPIRIT 2025 for randomized trial results/protocols, and EQUATOR's directory for other designs and extensions.
+- Appraisal resources include RoB 2 and design-specific JBI tools. Users must choose the appropriate variant and current version.
+- Earlier conditional links to COREQ/SRQR, PRISMA-ScR, TRIPOD+AI, ARRIVE, CHEERS, CARE and STARD remain references where applicable. They are not implemented item-by-item reporting audits.
+- Legal/textual interpretation, artifact design and general surveys have no universal health-reporting checklist assigned.
+
+The local structured DMP supports thirteen planning areas and exports a draft. DMP Tool provides an optional external route for funder-specific requirements; OSF Registrations is an optional preregistration handoff. Atlas does not upload a plan, create a registration or depend on OSF Projects.
+
+Ethics approval, suitable design, sampling/power, inference and publication require appropriate disciplinary and institutional oversight. Completing an Atlas form supplies neither approval nor a guarantee of validity, novelty or acceptance. Source/version details and coverage limits are recorded in [Study planning](docs/STUDY-PLANNING.md). No third-party full checklist text is reproduced.

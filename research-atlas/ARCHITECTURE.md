@@ -1,11 +1,23 @@
 # Architecture
 
-Vite serves a React and TypeScript application. `Atlas` manages the selected project, browser navigation, and autosave. Planning, evidence, and execution components all read and update the same project. `workflow.ts` derives task statuses and sets review flags when the question changes. Statuses indicate recorded progress and do not certify the work.
+Vite serves a React and TypeScript application. `Atlas` owns browser navigation, selected project and queued autosave. Planning, evidence and execution components update the same project. Home offers three intent-based entry points; the short beginner journey leads into project creation. `ContextGuide` places Understand / See / Do / Review guidance beside all ten project stages. `workflow.ts` derives task statuses and downstream review flags. Statuses record activity; they do not certify research quality.
 
-`model.ts` validates version 1 backups with defaults for newer fields, produces CSV and Markdown outputs, and checks duplicate identifiers. `storage.ts` saves projects in IndexedDB. Each reference stores metadata, user-authored extraction notes, screening decisions, and optional citation IDs. Search, screening, extraction, and writing reuse these records. Publication decisions use a separate journal shortlist within the project.
+## Local data and portable backups
 
-`providers.ts` normalizes public records. The default static app calls OpenAlex and Crossref directly. The citation panel displays directed links between saved records using OpenAlex references already in the library. Project notes, drafts, and decisions stay in the browser.
+`model.ts` validates the additive project schema (version 1). `storage.ts` writes the complete workspace in an IndexedDB transaction, and `Atlas` queues writes and exposes save failures with recovery export. `backup.ts` separately defines the version 2 portable envelope, app version, source origin, counts and SHA-256 integrity checksum. Validation precedes preview; import adds new project copies. Legacy version 1 backups remain readable. A checksum detects changes, not authenticity. [Backup/migration design](docs/BACKUP-MIGRATION.md)
 
-`search-provenance.ts` defines the search attempt and first-page record. `evidence-ledger.ts` defines reusable criteria, decision events and located claims within a project. Screening keeps a convenience decision for the library view. Events retain the criterion as it was when applied. Claims can mark evidence for or against a candidate gap. Changing a question flags existing reviewed claims for another look.
+Each project reference stores metadata, user-authored extraction, screening events, evidence claims and citation IDs. Discovery, screening, extraction and writing reuse that record. `duplicates.ts` and `DuplicateReview` provide conservative candidate review, bounded audit archives and undo. References are still project-scoped; there is no shared cross-project bibliographic entity or cloud synchronization.
 
-`research-plan.ts` defines deadline, budget and submission fields with defaults for older backups. `reference-exchange.ts` handles bounded local RIS and BibTeX parsing, duplicate previews and exports. Bibliographic records remain scoped to a project.
+## Discovery and evidence
+
+`providers.ts` validates public scholarly metadata. The default static app calls anonymous OpenAlex and public Crossref directly. `search-provenance.ts` defines bounded basic page continuation and reconstructed search runs. Project logs travel with backups; standalone search keeps at most 50 local run records. Refresh compares IDs with a previous matching snapshot. Neither a permanent result cache nor exhaustive search is claimed. [Search continuation](docs/SEARCH-CONTINUATION.md)
+
+Related-paper discovery explicitly retrieves up to 20 citation/reference suggestions from OpenAlex. It is distinct from the citation panel, which displays relationships among already-saved records. No private project notes or drafts are automatically submitted to scholarly services.
+
+`evidence-ledger.ts` defines reusable screening criteria, stage-specific decision events and located claims. Events retain the criterion as applied. Claims distinguish evidence level, interpretation, uncertainty and review state, and can support or challenge a scoped gap candidate. A changed research question flags reviewed claims for another look.
+
+## Planning and interoperability
+
+`research-plan.ts` defines deadlines, budgets and submission drafts. `study-planning.ts` defines structured methods context, an abstaining conditional router, thirteen data-management prompts and separate sourced design/reporting/appraisal registries. Existing freeform plans remain available and are included in exports. `reference-exchange.ts` handles bounded local RIS/BibTeX parsing, recognized-field round trips and duplicate previews. External DMP Tool and OSF Registrations links are optional handoffs; Atlas does not submit registrations or create OSF Projects.
+
+Publisher marks and the POSI journal index are bundled assets. Browser-local preferences and PWA shell caching require no runtime font service, account, hosted database, analytics or advertising. Public Privacy, Terms and Support routes are accessible without a project. [PDF implementation coverage](docs/PDF-AUDIT-STATUS.md)

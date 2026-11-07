@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowDownToLine, ArrowRight, BookOpen, CalendarDays, Check, ChevronRight, ClipboardCheck, Compass, FolderOpen, LibraryBig, Map, Menu, Plus, Search, Settings, X } from 'lucide-react';
-import { createProject, matrixCsv, parseBackup, protocolMarkdown, type Project, type Stage } from '@/lib/model';
+import { createProject, matrixCsv, protocolMarkdown, type Project, type Stage } from '@/lib/model';
+import { createBackup, parseBackupFile, type BackupManifest } from '@/lib/backup';
 import { download, loadProjects, saveProjects } from '@/lib/storage';
 import { disciplines } from '@/lib/content';
 import { nextTask, roadmap, taskStatus, updateProject, type TaskStatus } from '@/lib/workflow';
@@ -18,8 +19,10 @@ import { ReferenceExchange } from './ReferenceExchange';
 import { WorkspacePreferences } from './WorkspacePreferences';
 import { InstallApp } from './InstallApp';
 import './discipline-explorer.css';
+import { DuplicateReview } from './DuplicateReview';
+import { PublicInformation } from './PublicInformation';
 
-type View = 'overview' | 'primer' | 'explore' | 'guide' | 'conferences' | 'paper-search' | 'roadmap' | 'projects' | 'preferences' | 'privacy' | Stage;
+type View = 'overview' | 'primer' | 'explore' | 'guide' | 'conferences' | 'paper-search' | 'roadmap' | 'projects' | 'preferences' | 'privacy' | 'terms' | 'support' | Stage;
 const mainNav = [
   { id: 'overview', title: 'Home', icon: Compass },
   { id: 'paper-search', title: 'Paper search', icon: Search },
@@ -34,7 +37,7 @@ const mainNav = [
 
 function currentView(): View {
   const page = window.location.hash.slice(1).split('?')[0];
-  if (roadmap.some(task => task.id === page) || mainNav.some(tab => tab.id === page) || page === 'primer') return page as View;
+  if (roadmap.some(task => task.id === page) || mainNav.some(tab => tab.id === page) || ['primer', 'terms', 'support'].includes(page)) return page as View;
   return 'overview';
 }
 
@@ -62,9 +65,13 @@ export default function Atlas() {
   const [notice, setNotice] = useState('');
   const [mobile, setMobile] = useState(false);
   const [newTitle, setNewTitle] = useState('');
+  const [newDiscipline, setNewDiscipline] = useState('');
+  const [newGoal, setNewGoal] = useState('');
+  const [newExperience, setNewExperience] = useState('');
   const [draftQuestion, setDraftQuestion] = useState('');
   const [decision, setDecision] = useState('');
   const [imported, setImported] = useState<Project[] | null>(null);
+  const [importManifest, setImportManifest] = useState<BackupManifest | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const projectTitle = useRef<HTMLInputElement>(null);
   const closeDialog = useRef<HTMLButtonElement>(null);
@@ -73,9 +80,10 @@ export default function Atlas() {
   const saveQueue = useRef(Promise.resolve());
   const loadFailed = useRef(false);
   const saveRevision = useRef(0);
+  const importRevision = useRef(0);
 
   useEffect(() => {
-    const onHash = () => { setView(currentView()); setSearchTopic(currentTopic()); setMobile(false); };
+    const onHash = () => { setView(currentView()); setSearchTopic(currentTopic()); setMobile(false); window.scrollTo({ top: 0 }); main.current?.focus({ preventScroll: true }); };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
@@ -158,12 +166,18 @@ export default function Atlas() {
     if (!ready) return;
     if (projects.length >= 100) { setNotice('Back up and remove an old project before adding another.'); return; }
     setNewTitle('');
+    setNewDiscipline('');
+    setNewGoal('');
+    setNewExperience(view === 'primer' ? 'Beginner' : '');
     dialog.current?.showModal();
     projectTitle.current?.focus();
   }
 
   function create() {
     const item = createProject(newTitle.trim() || 'Untitled research project');
+    item.discipline = newDiscipline;
+    item.goal = newGoal;
+    item.experience = newExperience;
     if (view === 'primer') item.question = draftQuestion.trim();
     markDirty();
     setProjects(items => [item, ...items]);
@@ -194,11 +208,13 @@ export default function Atlas() {
     go('discover', topic);
   }
 
-  function backup() {
-    const data = { schemaVersion: 1, exportedAt: new Date().toISOString(), projects };
-    download('research-atlas-backup.json', JSON.stringify(data, null, 2), 'application/json');
-    setBackupDate(data.exportedAt);
-    try { localStorage.setItem(backupDateKey, data.exportedAt); } catch { /* Backup still downloads. */ }
+  async function backup() {
+    try {
+      const data = await createBackup(projects, { sourceOrigin: window.location.origin, preferences });
+      download('research-atlas-backup.json', JSON.stringify(data, null, 2), 'application/json');
+      setBackupDate(data.createdAt);
+      try { localStorage.setItem(backupDateKey, data.createdAt); } catch { /* Backup still downloads. */ }
+    } catch (error) { setNotice(error instanceof Error ? error.message : 'Could not prepare this backup. Your projects remain in this tab.'); }
   }
 
   function importBackup() {
@@ -209,6 +225,7 @@ export default function Atlas() {
     setProjects(items => [...copies, ...items]);
     if (copies[0]) selectProject(copies[0].id);
     setImported(null);
+    setImportManifest(null);
     setNotice(`${copies.length} project${copies.length === 1 ? '' : 's'} imported as new copies.`);
   }
 
@@ -261,14 +278,13 @@ export default function Atlas() {
             <p>Research answers a focused question using evidence and a method you can explain. Start with an idea, then save your sources and decisions as the project takes shape.</p>
             <button className="button light" onClick={project ? () => go('roadmap') : openNewProject} disabled={!ready}>{project ? 'Resume your project' : 'Start a research project'}<ArrowRight size={18} /></button>
           </section>
-          <section className="entry-grid" aria-label="Choose a starting point">
-            <button className="entry-card" onClick={() => go('paper-search')}><Search /><strong>Search for papers</strong><span>Compare journals, citations, dates and costs.</span><ArrowRight size={17} /></button>
-            <button className="entry-card" onClick={() => go('primer')}><BookOpen /><strong>I’m new to research</strong><span>Try turning a topic into a question.</span><ArrowRight size={17} /></button>
-            <button className="entry-card" onClick={openNewProject} disabled={!ready}><Plus /><strong>I want to start a project</strong><span>Choose a direction and get a roadmap.</span><ArrowRight size={17} /></button>
-            <button className="entry-card" onClick={() => go('explore')}><Compass /><strong>I want to explore research</strong><span>Browse examples from different disciplines.</span><ArrowRight size={17} /></button>
-            <button className="entry-card" onClick={() => go('guide')}><LibraryBig /><strong>Plan your research</strong><span>Follow a beginner’s path from a question to peer review.</span><ArrowRight size={17} /></button>
-            <button className="entry-card" onClick={() => go('conferences')}><CalendarDays /><strong>Find a conference</strong><span>Browse Bangladesh and international events and save a date.</span><ArrowRight size={17} /></button>
+          <section className="entry-grid intent-grid" aria-label="Choose a starting point">
+            <button className="entry-card" onClick={() => go('primer')}><BookOpen /><strong>I’m new to research</strong><span>See how research works and try your first question.</span><span className="intent-action">Start guided path <ArrowRight size={17} /></span></button>
+            <button className="entry-card" onClick={openNewProject} disabled={!ready}><Plus /><strong>I already have a topic or question</strong><span>Build a project roadmap around what you want to understand.</span><span className="intent-action">Start a project <ArrowRight size={17} /></span></button>
+            <button className="entry-card" onClick={() => go('paper-search')}><Search /><strong>I need to find papers</strong><span>Search first. Create a project when you want to save evidence.</span><span className="intent-action">Search for papers <ArrowRight size={17} /></span></button>
           </section>
+          <nav className="secondary-paths" aria-label="More ways to explore"><button className="text-button" onClick={() => go('explore')}>Explore disciplines</button><button className="text-button" onClick={() => go('conferences')}>Find a conference</button><button className="text-button" onClick={() => go('projects')}>Open saved projects</button><button className="text-button" onClick={() => go('guide')}>Research planner</button></nav>
+          <p className="muted">Your projects stay in this browser. Search sends only the terms you enter to the scholarly provider.</p>
         </>}
 
         {view === 'paper-search' && <>
@@ -285,12 +301,16 @@ export default function Atlas() {
         {view === 'conferences' && <ConferencePlanner />}
         {view === 'preferences' && <><WorkspacePreferences value={preferences} onChange={changePreferences} /><InstallApp /></>}
         {view === 'privacy' && <PrivacyData backupDate={backupDate} onBackup={backup} />}
+        {(view === 'terms' || view === 'support') && <PublicInformation page={view} />}
 
         {view === 'primer' && <section className="panel start-exercise">
           <span className="eyebrow">GET STARTED</span><h1>From a topic to a question</h1>
+          <p className="eyebrow">ABOUT 5 MINUTES · LEAVE WITH A DRAFT QUESTION</p>
           <p>A topic names an area. A research question tells you what evidence to look for and what you want to understand.</p>
+          <ol className="research-journey" aria-label="The research journey">{(['Interest', 'Problem', 'Question', 'Find evidence', 'Choose design', 'Collect / analyse', 'Interpret', 'Write', 'Choose venue', 'Revise'] as const).map((step, index) => <li key={step}><span>{index + 1}</span>{step}</li>)}</ol>
+          <p><strong>Research is not a straight line.</strong> New evidence or practical limits may change your question. Your earlier work stays available, and affected project stages are marked for review.</p>
           <dl><dt>Topic</dt><dd>Social media and university students</dd><dt>Question</dt><dd>How do university students describe the influence of social media on their study habits?</dd></dl>
-          <p>This question asks about experiences. Interviews could help, depending on the study’s objectives and access to participants.</p>
+          <p>This question asks about experiences. Interviews are one possibility. Before choosing, consider evidence access, ethics, time, and what conclusions the design could support.</p>
           <label className="field"><span>Try your own research question</span><textarea value={draftQuestion} onChange={event => setDraftQuestion(event.target.value)} maxLength={20000} rows={4} placeholder="What will you investigate, and in which setting?" /></label>
           <button className="button" onClick={openNewProject} disabled={!ready}>{draftQuestion.trim() ? 'Start a project with this question' : 'Start a project'}<ArrowRight size={17} /></button>
         </section>}
@@ -315,7 +335,7 @@ export default function Atlas() {
 
         {view === 'roadmap' && project && <>
           <div className="page-heading"><div><span className="eyebrow">PROJECT ROADMAP</span><h1>{project.title}</h1><p>{project.discipline}{project.goal ? ` · ${project.goal}` : ''}</p></div><button className="button secondary" onClick={() => go('projects')}><ArrowDownToLine size={16} />Export project</button></div>
-          {next && <section className="next-task"><div><span className="eyebrow">CONTINUE WHERE YOU LEFT OFF</span><h2>{next.title}</h2><p>{next.detail}</p></div><button className="button" onClick={() => go(next.id)}>Open next task <ArrowRight size={17} /></button></section>}
+          {next && <section className="next-task"><div><span className="eyebrow">YOUR NEXT USEFUL STEP</span><h2>{next.title}</h2><p>{next.detail}</p><small>Work at your own pace. Recorded progress is a planning aid, not a research-quality score.</small></div><button className="button" onClick={() => go(next.id)}>Open next task <ArrowRight size={17} /></button></section>}
           <div className="roadmap-toolbar"><h2>Project tasks</h2><label className="preference-check"><input type="checkbox" checked={preferences.openTasksOnly} onChange={event => changePreferences({ openTasksOnly: event.target.checked })} /> Show unfinished tasks only</label></div>
           {!visibleTasks.length && <p className="notice">All tasks have recorded progress. Turn off the filter to see them.</p>}
           <div className="roadmap-grid">{[...new Set(visibleTasks.map(task => task.group))].map(group => <section className="panel roadmap-group" key={group}>
@@ -333,6 +353,7 @@ export default function Atlas() {
           <div className="page-heading"><div><span className="eyebrow">{current.group.toUpperCase()} · {project.title}</span><h1>{current.title}</h1><p>{current.detail}</p></div>{status && <Status status={status} />}</div>
           {status === 'Needs review' && <div className="review-banner" role="status"><p>Your question changed. Check this work against the revised question before proceeding.</p><button className="button secondary" onClick={() => update({ needsReview: project.needsReview.filter(id => id !== current.id) })}><Check size={16} />Mark reviewed</button></div>}
           <ContextGuide stage={current.id} />
+          {view === 'screen' && <DuplicateReview project={project} update={update} />}
           {view === 'profile' || view === 'topic' || view === 'question' || view === 'methods' ? <PlanningWorkspace key={`${project.id}-${view}`} project={project} mode={view} update={update} next={advance} /> : null}
           {view === 'discover' || view === 'screen' || view === 'extract' ? <EvidenceWorkspace key={`${project.id}-${view}-${searchTopic ?? ''}`} project={project} mode={view} update={update} notify={setNotice} initialQuery={view === 'discover' ? searchTopic : undefined} /> : null}
           {view === 'data' || view === 'writing' || view === 'publication' ? <ExecutionWorkspace key={`${project.id}-${view}`} project={project} mode={view} update={update} /> : null}
@@ -345,15 +366,23 @@ export default function Atlas() {
             <div className="button-row"><button className="button" onClick={backup}><ArrowDownToLine size={17} />Download backup</button><label className="button secondary upload">Import backup<input type="file" accept=".json,application/json" onChange={async event => {
               const input = event.currentTarget;
               const file = input.files?.[0];
+              const revision = ++importRevision.current;
               input.value = '';
               setImported(null);
               if (!file) return;
               try {
                 if (file.size > 10000000) throw Error('This backup exceeds the 10 MB import limit.');
-                setImported(parseBackup(await file.text()).projects);
-              } catch (error) { setNotice(error instanceof Error ? error.message : 'Could not read this backup.'); }
+                const backupFile = await parseBackupFile(await file.text());
+                if (revision !== importRevision.current) return;
+                setImported(backupFile.projects);
+                setImportManifest(backupFile.manifest);
+              } catch (error) { if (revision === importRevision.current) setNotice(error instanceof Error ? error.message : 'Could not read this backup.'); }
             }} /></label></div>
-            {imported && <div className="recommendation"><h3>Import preview: {imported.length} projects</h3><p>{imported.map(item => item.title).join(', ') || 'This backup contains no projects.'}</p><div className="button-row"><button className="button" onClick={importBackup} disabled={!imported.length}>Import as new copies</button><button className="button secondary" onClick={() => setImported(null)}>Cancel</button></div></div>}
+            {imported && <div className="recommendation"><h3>Import preview: {imported.length} projects</h3><p>{imported.map(item => item.title).join(', ') || 'This backup contains no projects.'}</p>
+              {importManifest && <><p>Backup v{importManifest.backupVersion} · app {importManifest.appVersion} · created {new Date(importManifest.createdAt).toLocaleString()} · source: {importManifest.sourceOrigin}</p>
+                <p>{importManifest.paperCount} references · {importManifest.screeningEventCount} screening events · {importManifest.evidenceClaimCount} evidence claims. {importManifest.integrity === 'verified' ? 'Integrity checksum verified.' : 'Older backup: no checksum was recorded.'}</p>
+                <p>Your existing projects and display preferences stay in place. {importManifest.preferencesIncluded && 'Display preferences are present in the backup for reference.'} New project copies receive new identifiers.</p></>}
+              <div className="button-row"><button className="button" onClick={importBackup} disabled={!imported.length}>Import as new copies</button><button className="button secondary" onClick={() => { ++importRevision.current; setImported(null); setImportManifest(null); }}>Cancel</button></div></div>}
           </section>
           {project && <ReferenceExchange key={project.id} project={project} onImport={papers => update({ papers })} />}
           <div className="project-grid">{projects.map(item => <article key={item.id} className="panel journey-project"><h2>{item.title}</h2><p>{item.discipline} · {item.papers.length} saved references</p>
@@ -361,6 +390,7 @@ export default function Atlas() {
           </article>)}</div>
         </>}
         </div>
+        <footer className="public-footer" aria-label="Research Atlas information"><a href="#privacy" onClick={event => { event.preventDefault(); go('privacy'); }}>Privacy & data</a><a href="#terms" onClick={event => { event.preventDefault(); go('terms'); }}>Terms</a><a href="#support" onClick={event => { event.preventDefault(); go('support'); }}>Support</a><span className="muted">Research Atlas 0.6.0 · Free · Stored on your device</span></footer>
       </main>
     </div>
     <dialog ref={dialog} className="journey-dialog" aria-labelledby="project-dialog-title" onKeyDown={event => {
@@ -374,6 +404,9 @@ export default function Atlas() {
         <button ref={closeDialog} type="button" className="icon-button modal-close" onClick={() => dialog.current?.close()} aria-label="Close new project"><X size={20} /></button>
         <h2 id="project-dialog-title">Start a research project</h2><p>You can rename the project as your question develops.</p>
         <label className="field"><span>Working title</span><input ref={projectTitle} value={newTitle} maxLength={200} onChange={event => setNewTitle(event.target.value)} placeholder="For example, student well-being and digital habits" /></label>
+        <label className="field"><span>Broad discipline</span><select value={newDiscipline} onChange={event => setNewDiscipline(event.target.value)}><option value="">Choose later</option>{disciplines.map(item => <option key={item.name}>{item.name}</option>)}</select></label>
+        <label className="field"><span>What are you trying to understand?</span><input value={newGoal} onChange={event => setNewGoal(event.target.value)} maxLength={500} placeholder="A topic, experience, pattern, or problem — not sure is fine" /></label>
+        <label className="field"><span>Your experience</span><select value={newExperience} onChange={event => setNewExperience(event.target.value)}><option value="">Choose later</option><option value="Beginner">First research project</option><option value="Some experience">Some experience</option><option value="Experienced">Experienced researcher</option></select></label>
         <button ref={submitProject} type="submit" className="button">Create project <ArrowRight size={17} /></button>
       </form>
     </dialog>

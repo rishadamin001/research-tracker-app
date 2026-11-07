@@ -7,7 +7,7 @@ const local = ['127.0.0.1', 'localhost'].includes(url.hostname);
 const label = local ? 'local' : 'production';
 const packageVersion = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version;
 const report = { commitSha: process.argv[3] ?? process.env.GITHUB_SHA ?? null, packageVersion, deploymentUrl: url.href,
-  checkedAt: new Date().toISOString(), appLoaded: false, projectPersistence: false, openAlexMode: 'anonymous first page',
+  checkedAt: new Date().toISOString(), appLoaded: false, projectPersistence: false, openAlexMode: 'anonymous bounded basic pages',
   openAlexSearchResultCount: 0, crossrefLookup: false, unpaywallLookupIfConfigured: null, backupRestore: false,
   offlineProjectOpen: false, mobileOverflow: null, consoleErrors: [] };
 
@@ -29,6 +29,12 @@ try {
   await page.getByRole('region', { name: 'Search result controls' }).waitFor({ timeout: 20000 });
   report.openAlexSearchResultCount = await page.locator('article.paper').count();
   assert.ok(report.openAlexSearchResultCount > 0);
+  const firstPageCount = report.openAlexSearchResultCount;
+  await page.getByRole('button', { name: 'Load next page', exact: true }).click();
+  await page.getByText(/2 pages retrieved/).waitFor({ timeout: 20000 });
+  report.openAlexSearchResultCount = await page.locator('article.paper').count();
+  report.openAlexSecondPage = report.openAlexSearchResultCount > firstPageCount;
+  assert.ok(report.openAlexSecondPage);
   assert.equal(await page.getByLabel('Sort papers').inputValue(), 'quartile');
   await page.getByText('POSI Q1 · 2026', { exact: true }).first().waitFor();
   await page.getByRole('region', { name: 'Search result controls' }).evaluate(element => {
@@ -60,6 +66,10 @@ try {
   await page.getByText('Saved on this device', { exact: true }).waitFor({ state: 'attached' });
   report.backupRestore = true;
 
+  await page.goto(new URL('#overview', url).href);
+  await page.getByRole('heading', { name: /Turn curiosity/ }).waitFor();
+  await page.screenshot({ path: `../atlas-${label}-home-desktop.png` });
+
   await page.goto(new URL('#guide', url).href);
   await page.getByRole('button', { name: 'Data, surveys & analysis', exact: true }).click();
   await page.screenshot({ path: `../atlas-${label}-planner.png` });
@@ -77,6 +87,9 @@ try {
   await mobile.getByRole('button', { name: 'Toolkit', exact: true }).click();
   report.mobileOverflow = await mobile.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
   await mobile.screenshot({ path: `../atlas-${label}-mobile.png` });
+  await mobile.goto(new URL('#overview', url).href);
+  await mobile.getByRole('heading', { name: /Turn curiosity/ }).waitFor();
+  await mobile.screenshot({ path: `../atlas-${label}-home.png` });
   assert.equal(report.mobileOverflow, false);
   assert.deepEqual(report.consoleErrors, []);
 } catch (error) {

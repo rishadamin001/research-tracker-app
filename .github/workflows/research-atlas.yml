@@ -24,7 +24,8 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
-      - run: npx playwright install --with-deps chromium firefox
+      - run: npx playwright install --with-deps chromium firefox webkit
       - run: npm run test:e2e
         env:
           ATLAS_FIREFOX: '1'
+          ATLAS_WEBKIT: '1'

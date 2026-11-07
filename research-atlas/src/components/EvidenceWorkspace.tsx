@@ -3,10 +3,10 @@
 import { Download, Plus, Search } from 'lucide-react';
 import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from 'react';
 import { searchWebsiteUrl } from '@/lib/links';
-import { addPaper, matrixCsv, type Paper, type Project } from '@/lib/model';
-import { PaperSearchError, runPaperSearch } from '@/lib/providers';
+import { addPaper, csvCell, matrixCsv, type Paper, type Project } from '@/lib/model';
+import { continuePaperSearch, PaperSearchError, relatedPapers, runPaperSearch } from '@/lib/providers';
 import { orderPapers, paperOrderLabels } from '@/lib/ranking';
-import { openAlexSearch, type SearchRun } from '@/lib/search-provenance';
+import { openAlexSearch, searchRunSchema, type SearchRun } from '@/lib/search-provenance';
 import { download } from '@/lib/storage';
 import { External } from './External';
 import { EvidenceClaims, evidenceLedgerCsv, GapEvidence, PaperScreening, ScreeningCriteria } from './EvidenceLedger';
@@ -40,19 +40,21 @@ function SourceLinks({ paper }: { paper: Paper }) {
 }
 
 function SearchRunDetails({ run }: { run: SearchRun }) {
-  const [page] = run.pages;
   return <details>
     <summary>Search details</summary>
     {run.userQuery !== run.executedQuery && <p>Entered query <code>{run.userQuery}</code></p>}
     <p>Executed query <code>{run.executedQuery}</code></p>
     <p>Provider filters {run.filters.length ? <code>{run.filters.join(', ')}</code> : 'None'}</p>
-    <p>{run.provider} · {run.mode === 'anonymous-first-page' ? 'Anonymous first page' : 'Configured gateway first page'} · Up to {run.pageSize} records · Cursor paging unused</p>
-    <p>Page {page.page} requested <time dateTime={page.requestedAt}>{new Date(page.requestedAt).toLocaleString()}</time>{page.returnedCount === undefined ? '' : ` · ${page.returnedCount} records returned`}{page.requestId && ` · Request ID ${page.requestId}`}</p>
+    <p>{run.provider} · {run.mode === 'anonymous-first-page' ? 'Anonymous public API' : 'Configured gateway'} · {run.pageSize} records per page · Basic page continuation, bounded to {openAlexSearch.maxPages} pages</p>
+    {run.pages.map((page, index) => <p key={`${page.page}-${index}`}>Page {page.page} requested <time dateTime={page.requestedAt}>{new Date(page.requestedAt).toLocaleString()}</time>{page.returnedCount === undefined ? ' · no readable response' : ` · ${page.returnedCount} records returned`}{page.requestId && ` · Request ID ${page.requestId}`}{page.failure && ` · ${page.failure}`}</p>)}
+    {run.stopReason && <p>Continuation state · {run.stopReason === 'provider-end' ? 'End of provider results reached at retrieval time' : run.stopReason === 'app-limit' ? '100-record app limit reached' : 'Stopped by you; you may resume'}</p>}
     <p>{run.error ? 'Ended' : 'Completed'} <time dateTime={run.completedAt}>{new Date(run.completedAt).toLocaleString()}</time>{run.resultCountReported !== undefined && ` · ${run.resultCountReported.toLocaleString()} matches reported by the provider`}</p>
     {run.error && <p>Outcome · {run.error.message}</p>}
     {run.quota?.remainingCredits !== undefined && <p>Provider credits remaining when checked · {run.quota.remainingCredits.toLocaleString()}{run.quota.dailyCredits !== undefined && ` of ${run.quota.dailyCredits.toLocaleString()}`}</p>}
     {run.quota?.resetsAt && <p>Daily allowance resets <time dateTime={run.quota.resetsAt}>{new Date(run.quota.resetsAt).toLocaleString()}</time></p>}
     {run.quota?.retryAfterUntil && <p>Provider asks you to wait until <time dateTime={run.quota.retryAfterUntil}>{new Date(run.quota.retryAfterUntil).toLocaleString()}</time></p>}
+    <p>This is a bounded discovery search, not an exhaustive review. Cursor continuation requires a provider API key; this public app uses documented basic paging without one.</p>
+    {run.parserVersion && <p>Atlas parser {run.parserVersion} · provider default relevance order. OpenAlex did not report a response schema version.</p>}
     <p>Atlas uses keyword queries. It rejects {run.unsupportedOperators.join(', ')}.</p>
     <p>Provider documentation checked <time dateTime={run.providerDocsDate}>{run.providerDocsDate}</time>.</p>
   </details>;
@@ -63,6 +65,7 @@ function SearchLog({ searches, reuseSearch }: { searches: Project['searches']; r
     <details className="panel">
       <summary>Search audit trail ({searches.length})</summary>
       {searches.length === 0 && <p>Search attempts will appear here.</p>}
+      {searches.length > 0 && <div className="button-row"><button type="button" className="button secondary small" onClick={() => download('search-history.json', JSON.stringify({ format: 'research-atlas-search-log', exportedAt: new Date().toISOString(), searches }, null, 2), 'application/json')}>Export search JSON</button><button type="button" className="button secondary small" onClick={() => download('search-history.csv', [['Provider', 'Entered query', 'Executed query', 'Filters', 'Completed at', 'Retrieved', 'Reported matches', 'Page numbers', 'Outcome'], ...searches.map(item => [item.source, item.run?.userQuery ?? item.query, item.run?.executedQuery ?? item.query, item.run?.filters.join(',') ?? item.filters, item.date, item.count, item.run?.resultCountReported, item.run?.pages.map(page => `${page.page}:${page.returnedCount ?? 'failed'}`).join(';'), item.run?.error?.message ?? 'completed'])].map(row => row.map(csvCell).join(',')).join('\r\n'), 'text/csv;charset=utf-8')}>Export search CSV</button></div>}
       {searches.slice().reverse().map((search, index) => (
         <div className="audit" key={search.run?.id ?? `${search.date}-${index}`}>
           <p>{new Date(search.date).toLocaleString()} · {search.source} · “{search.query}” · {search.filters} · {search.run?.error ? 'Search failed' : `${search.count} results`}</p>
@@ -73,6 +76,20 @@ function SearchLog({ searches, reuseSearch }: { searches: Project['searches']; r
       <p className="muted">This log records the searches run here. A systematic review may need additional databases and full search strategies.</p>
     </details>
   );
+}
+
+const searchHistoryKey = 'research-atlas-search-history-v1';
+function readLocalSearches(): Project['searches'] {
+  try {
+    const raw: unknown = JSON.parse(localStorage.getItem(searchHistoryKey) ?? '[]');
+    if (!Array.isArray(raw)) return [];
+    return raw.slice(-50).flatMap(item => {
+      const parsed = searchRunSchema.safeParse(item);
+      if (!parsed.success) return [];
+      const run = parsed.data;
+      return [{ query: run.executedQuery, source: run.provider, date: run.completedAt, count: run.resultIds?.length ?? run.pages.reduce((sum, page) => sum + (page.returnedCount ?? 0), 0), filters: run.filters.join(', '), run }];
+    });
+  } catch { return []; }
 }
 
 const publishedOn = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeZone: 'UTC' });
@@ -89,6 +106,8 @@ function Discover({ project, update, notify, initialQuery, openProjects }: Omit<
   const [openAccess, setOpenAccess] = useState(false);
   const [results, setResults] = useState<{ run: SearchRun; papers: Paper[] } | null>(null);
   const [failedRun, setFailedRun] = useState<SearchRun>();
+  const [localSearches, setLocalSearches] = useState(readLocalSearches);
+  const [newIds, setNewIds] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [order, setOrder] = usePaperOrder();
@@ -101,8 +120,19 @@ function Discover({ project, update, notify, initialQuery, openProjects }: Omit<
     request.current = null;
   }, []);
 
-  async function search(terms: string) {
-    if (!openProjects && project && project.searches.length >= 1000) {
+  function recordRun(run: SearchRun) {
+    const searches = project?.searches ?? localSearches;
+    const item = { query: run.executedQuery, source: run.provider, date: run.completedAt, count: run.resultIds?.length ?? run.pages.reduce((sum, page) => sum + (page.returnedCount ?? 0), 0), filters: run.filters.join(' · '), run };
+    const next = [...searches.filter(item => item.run?.id !== run.id), item];
+    if (project && update && (searches.length < 1000 || searches.some(item => item.run?.id === run.id))) update({ searches: next, gapStatus: !run.error && project.gapStatus === 'idea' ? 'search underway' : project.gapStatus });
+    if (!project) {
+      setLocalSearches(next.slice(-50));
+      try { localStorage.setItem(searchHistoryKey, JSON.stringify(next.slice(-50).map(item => item.run))); } catch { notify('Search history could not be saved on this browser. Export the search log to keep a copy.'); }
+    }
+  }
+
+  async function search(terms: string, fromYear = year, onlyOpen = openAccess) {
+    if (project && project.searches.length >= 1000) {
       setError('This project has reached its search-log limit. Export your work before starting a new project for additional searches.');
       return;
     }
@@ -114,19 +144,13 @@ function Discover({ project, update, notify, initialQuery, openProjects }: Omit<
     setError('');
     setFailedRun(undefined);
 
-    function recordRun(run: SearchRun) {
-      if (!project || !update || project.searches.length >= 1000) return;
-      const filters = [year && `Published from ${year}`, openAccess && 'Open access only', 'First 20 results'].filter(Boolean).join(' · ');
-      update({
-        searches: [...project.searches, { query: run.executedQuery, source: run.provider, date: run.completedAt, count: run.pages[0].returnedCount ?? 0, filters, run }],
-        gapStatus: !run.error && project.gapStatus === 'idea' ? 'search underway' : project.gapStatus,
-      });
-    }
 
     try {
-      const { papers, run } = await runPaperSearch(terms, year, openAccess, controller.signal);
+      const { papers, run } = await runPaperSearch(terms, fromYear, onlyOpen, controller.signal);
       if (request.current !== controller || controller.signal.aborted) return;
 
+      const earlier = [...(project?.searches ?? localSearches)].reverse().find(item => !item.run?.error && item.run?.executedQuery === run.executedQuery && item.run?.filters.join(',') === run.filters.join(',') && item.run.resultIds);
+      setNewIds(earlier?.run?.resultIds ? new Set(papers.filter(paper => !earlier.run!.resultIds!.includes(paper.id)).map(paper => paper.id)) : new Set());
       setResults({ run, papers });
       recordRun(run);
     } catch (failure) {
@@ -145,6 +169,26 @@ function Discover({ project, update, notify, initialQuery, openProjects }: Omit<
         request.current = null;
         setBusy(false);
       }
+    }
+  }
+
+  async function loadNext() {
+    if (!results || busy || !results.run.nextPage) return;
+    const controller = new AbortController();
+    request.current = controller;
+    setBusy(true); setError(''); setFailedRun(undefined);
+    try {
+      const next = await continuePaperSearch(results.run, controller.signal);
+      if (request.current !== controller || controller.signal.aborted) return;
+      const unique = new Map([...results.papers, ...next.papers].map(paper => [paper.id, paper]));
+      setResults({ run: next.run, papers: [...unique.values()] });
+      recordRun(next.run);
+    } catch (failure) {
+      if (request.current !== controller || controller.signal.aborted) return;
+      setError(failure instanceof Error ? failure.message : 'Could not load this page. Earlier results are still available.');
+      if (failure instanceof PaperSearchError && failure.run) { setFailedRun(failure.run); setResults({ ...results, run: failure.run }); recordRun(failure.run); }
+    } finally {
+      if (request.current === controller) { request.current = null; setBusy(false); }
     }
   }
 
@@ -170,7 +214,7 @@ function Discover({ project, update, notify, initialQuery, openProjects }: Omit<
         <details>
           <summary>How to build a useful search</summary>
           <p>Pick two or three ideas from your question. Try a short keyword phrase such as “student housing insecurity” and record alternative terms in separate searches. Save promising sources and read the full text before relying on a finding.</p>
-          <p>This search shows one page of OpenAlex results. For a systematic review, document the sources you searched and what they might miss.</p>
+          <p>This search starts with 20 OpenAlex records. Load additional pages when useful, up to 100 records per search. For a systematic review, document the sources you searched and what they might miss.</p>
           <External href={openAlexSearch.docsUrl}>OpenAlex advanced search guidance</External>
         </details>
         <form role="search" aria-label="Search for research papers" onSubmit={event => { event.preventDefault(); void search(query); }}>
@@ -197,7 +241,7 @@ function Discover({ project, update, notify, initialQuery, openProjects }: Omit<
               <input type="checkbox" checked={openAccess} onChange={event => setOpenAccess(event.target.checked)} />
               Open access only
             </label>
-            <span>OpenAlex · first page · up to {openAlexSearch.pageSize} results</span>
+            <span>OpenAlex · {openAlexSearch.pageSize} per page · up to 100 retrieved</span>
           </div>
         </form>
         <p className="muted">The search sends your keywords to OpenAlex. Leave out confidential project or participant details.</p>
@@ -209,6 +253,14 @@ function Discover({ project, update, notify, initialQuery, openProjects }: Omit<
       {results && (
         <section className="panel" aria-label="Search result controls">
           <p role="status">{visible.length} of {results.papers.length} results shown for “{results.run.executedQuery}”{project && ` · ${savedPapers.length} in your library`}</p>
+          <p className="muted">{results.run.pages.filter(page => page.returnedCount !== undefined).length} pages retrieved · checked {new Date(results.run.completedAt).toLocaleString()}. Ranking applies to retrieved records only.</p>
+          {newIds.size > 0 && <p role="status">{newIds.size} newly discovered records compared with your previous search snapshot. These may include older publications.</p>}
+          <div className="button-row">
+            {results.run.nextPage && results.run.stopReason !== 'user-stopped' && <button type="button" className="button secondary" disabled={busy || results.run.quota?.remainingCredits === 0} onClick={() => void loadNext()}>Load next page</button>}
+            {results.run.nextPage && <button type="button" className="text-button" disabled={busy} onClick={() => { const run = { ...results.run, stopReason: results.run.stopReason === 'user-stopped' ? undefined : 'user-stopped' as const }; setResults({ ...results, run }); recordRun(run); }}>{results.run.stopReason === 'user-stopped' ? 'Resume page loading' : 'Stop here'}</button>}
+            <button type="button" className="text-button" disabled={busy} onClick={() => { const fromYear = results.run.filters.find(filter => filter.startsWith('from_publication_date:'))?.split(':')[1]?.slice(0, 4) ?? ''; setQuery(results.run.userQuery); setYear(fromYear); setOpenAccess(results.run.filters.includes('is_oa:true')); void search(results.run.userQuery, fromYear, results.run.filters.includes('is_oa:true')); }}>Refresh this search</button>
+          </div>
+          {results.run.stopReason === 'app-limit' && <p>Stopped at the 100-record app limit. Refine the query or continue on the official provider website.</p>}
           <SearchRunDetails run={results.run} />
           <OrderSelect label="Sort papers" labels={paperOrderLabels} order={order} onChange={setOrder} />
           {project && <label className="checkbox"><input type="checkbox" checked={hideSaved} onChange={event => setHideSaved(event.target.checked)} /> Hide saved papers</label>}
@@ -235,12 +287,14 @@ function Discover({ project, update, notify, initialQuery, openProjects }: Omit<
         return (
           <article className="panel paper" key={paper.id}>
             <span className="tag">{paper.source} · <PaperPublished paper={paper} /></span>
+            {newIds.has(paper.id) && <span className="tag">New to this search snapshot</span>}
             {paper.oa && <span className="oa-badge">Open-access link</span>}
             <PublicationIdentity title={paper.journal} publisher={paper.publisher} type={paper.venueType} />
             <h3>{paper.title}</h3>
             <p>{paper.authors || 'Authors not supplied'}</p>
             <PaperImpact paper={paper} />
             {paper.doi && <p className="muted">DOI {paper.doi}</p>}
+            <RelatedDiscovery paper={paper} project={project} update={update} notify={notify} />
             <div className="paper-bottom">
               <SourceLinks paper={paper} />
               {project && update && <button
@@ -274,7 +328,7 @@ function Discover({ project, update, notify, initialQuery, openProjects }: Omit<
           </article>
         );
       })}
-      {project && <SearchLog searches={project.searches} reuseSearch={search => {
+      <SearchLog searches={project?.searches ?? localSearches} reuseSearch={search => {
         setQuery(search.query);
         if (search.run) {
           const yearFilter = search.run.filters.find(filter => filter.startsWith('from_publication_date:'));
@@ -282,9 +336,41 @@ function Discover({ project, update, notify, initialQuery, openProjects }: Omit<
           setOpenAccess(search.run.filters.includes('is_oa:true'));
         }
         searchInput.current?.focus();
-      }} />}
+      }} />
+      {!project && <p className="muted">Recent search records (up to 50) stay on this browser. They contain your search terms; export them above or clear them here. <button type="button" className="text-button" onClick={() => { try { localStorage.removeItem(searchHistoryKey); setLocalSearches([]); } catch { notify('Could not clear search history. Your browser may have blocked storage access.'); } }}>Clear search history</button></p>}
     </>
   );
+}
+
+function RelatedDiscovery({ paper, project, update, notify }: { paper: Paper; project?: Project; update?: EvidenceWorkspaceProps['update']; notify: EvidenceWorkspaceProps['notify'] }) {
+  const [papers, setPapers] = useState<Paper[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const [relation, setRelation] = useState('');
+  const controller = useRef<AbortController | null>(null);
+  useEffect(() => () => controller.current?.abort(), []);
+  if (!/^https:\/\/openalex\.org\/W\d+$/.test(paper.id)) return null;
+  async function explore(kind: 'references' | 'citations') {
+    controller.current?.abort();
+    const request = new AbortController(); controller.current = request;
+    setBusy(true); setMessage('');
+    try {
+      const found = await relatedPapers(paper, kind, request.signal);
+      if (controller.current !== request || request.signal.aborted) return;
+      setPapers(orderPapers(found, 'quartile'));
+      setRelation(kind === 'references' ? 'References from this paper' : 'Papers citing this paper');
+      setMessage(found.length ? `Showing ${found.length} records checked ${new Date().toLocaleString()}.` : 'No matching citation records returned. This does not establish that no related research exists.');
+    } catch (failure) { if (!request.signal.aborted) setMessage(failure instanceof Error ? failure.message : 'Citation discovery could not be loaded.'); }
+    finally { if (controller.current === request) { setBusy(false); controller.current = null; } }
+  }
+  return <details>
+    <summary>Explore related papers</summary>
+    <p>Search beyond the saved-library map. Clicking sends this OpenAlex work ID or up to 20 reference IDs to OpenAlex. Results are discovery suggestions; read and screen them before using them as evidence.</p>
+    <div className="button-row"><button type="button" className="button secondary small" disabled={busy || !paper.referenceIds?.length} onClick={() => void explore('references')}>Find references</button><button type="button" className="button secondary small" disabled={busy} onClick={() => void explore('citations')}>Find citing papers</button></div>
+    {busy && <p role="status">Loading citation links…</p>}{message && <p role="status">{message}</p>}
+    {relation && <h4>{relation}</h4>}
+    {papers.map(item => <section className="audit" key={item.id}><h5>{item.title}</h5><PublicationIdentity title={item.journal} publisher={item.publisher} type={item.venueType} /><PaperImpact paper={item} /><SourceLinks paper={item} />{project && update && <button type="button" className="button secondary small" disabled={project.papers.length >= 2000 || project.papers.some(saved => saved.id === item.id || !!saved.doi && saved.doi === item.doi)} onClick={() => { const next = addPaper(project, item); update({ papers: next.papers }); notify('Related source saved. Screen it before treating it as evidence.'); }}>Save related paper</button>}</section>)}
+  </details>;
 }
 
 export function PaperSearch(props: PaperSearchProps) {

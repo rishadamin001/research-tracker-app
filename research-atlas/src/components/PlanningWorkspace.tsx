@@ -1,11 +1,12 @@
 import { useId } from 'react';
-import { ArrowRight, Check, Download } from 'lucide-react';
-import { disciplines, routeDesign } from '@/lib/content';
+import { ArrowRight, Download } from 'lucide-react';
+import { disciplines } from '@/lib/content';
 import { sourceLinks } from '@/lib/links';
 import { protocolMarkdown, type Project } from '@/lib/model';
 import { exampleTopics, methodsPrompts, studyPurposes } from '@/lib/planning-content';
 import { download } from '@/lib/storage';
 import { External } from './External';
+import { MethodPlanner } from './StudyPlanning';
 
 type PlanningMode = 'profile' | 'topic' | 'question' | 'methods';
 
@@ -200,7 +201,6 @@ function Question({ project, update, next }: PlanningProps) {
 }
 
 function Methods({ project, update, next }: PlanningProps) {
-  const suggestion = routeDesign(project.purpose, project.discipline);
   const prompts = methodsPrompts(project.purpose);
 
   return (
@@ -218,20 +218,7 @@ function Methods({ project, update, next }: PlanningProps) {
         {project.goal === 'Literature review' && project.purpose !== 'synthesize' && (
           <p className="info-bar">For your literature review goal, select <strong>Synthesize existing studies</strong> to see review-specific prompts.</p>
         )}
-        {suggestion && (
-          <div className="recommendation">
-            <span className="tag">POSSIBLE APPROACH</span>
-            <h3>{suggestion.design}</h3>
-            <p>{suggestion.why}</p>
-            <p>{suggestion.standard}</p>
-            <External href={suggestion.url}>Check guidance and applicability</External>
-            {!project.design.trim() && (
-              <button type="button" className="button secondary" onClick={() => update({ design: suggestion.design })}>
-                Use as a starting point <Check size={15} aria-hidden="true" />
-              </button>
-            )}
-          </div>
-        )}
+        <MethodPlanner project={project} update={update} />
         <TextField label="Chosen design and justification" value={project.design} onChange={design => update({ design })}
           hint="Explain how the design answers your question and works within your constraints." multiline />
         <TextField label="Sampling and selection" value={project.sampling} onChange={sampling => update({ sampling })}

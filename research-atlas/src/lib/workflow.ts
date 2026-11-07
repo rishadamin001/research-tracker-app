@@ -1,5 +1,6 @@
 import type { Project, Stage } from './model';
 import { canSupportGap } from './evidence-ledger';
+import { dmpFields } from './study-planning';
 
 export const roadmap: { id: Stage; title: string; detail: string; group: string }[] = [
   { id: 'profile', title: 'Set your research direction', detail: 'Choose your field, experience, and goal.', group: 'Define' },
@@ -30,8 +31,8 @@ function stageProgress(project: Project, stage: Stage): { started: boolean; comp
     case 'discover': return { started: Boolean(project.searches.length || papers.length), complete: Boolean(papers.length) };
     case 'screen': return { started: papers.some(paper => paper.decision !== 'unreviewed' || paper.screeningEvents?.length), complete: papers.length > 0 && !needsReason && papers.every(paper => paper.decision === 'include' || paper.decision === 'exclude'), blocked: !papers.length };
     case 'extract': return { started: present(project.gap) || papers.some(paper => paper.evidenceClaims?.length || present(paper.researchProblem) || present(paper.dataset) || present(paper.finding) || present(paper.methods) || present(paper.limitations)), complete: included.length > 0 && included.every(paper => paper.evidenceClaims?.some(claim => claim.claimType === 'finding' && claim.reviewStatus === 'reviewed') || (present(paper.finding) && present(paper.locator))), blocked: !included.length };
-    case 'methods': return { started: present(project.design) || present(project.ethics) || present(project.analysis), complete: present(project.design) && present(project.ethics) && present(project.analysis) };
-    case 'data': return { started: present(project.dataPlan) || present(project.analysisRecord), complete: hasDraftBody(project.dataPlan) && hasDraftBody(project.analysisRecord) };
+    case 'methods': return { started: present(project.design) || present(project.ethics) || present(project.analysis) || Boolean(project.methodContext && Object.values(project.methodContext).some(present)), complete: present(project.design) && present(project.ethics) && present(project.analysis) };
+    case 'data': return { started: present(project.dataPlan) || present(project.analysisRecord) || Boolean(project.structuredDmp && dmpFields.some(([key]) => present(project.structuredDmp![key]))), complete: (hasDraftBody(project.dataPlan) || Boolean(project.structuredDmp && dmpFields.every(([key]) => present(project.structuredDmp![key])))) && hasDraftBody(project.analysisRecord) };
     case 'writing': return { started: present(project.manuscript), complete: hasDraftBody(project.manuscript) };
     case 'publication': return { started: Boolean(project.journalCandidates.length), complete: project.journalCandidates.some(venue => present(venue.verification) && venue.checks.length > 0) };
   }

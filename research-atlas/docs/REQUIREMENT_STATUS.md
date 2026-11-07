@@ -1,5 +1,7 @@
 # Competitive audit implementation status
 
+This is the historical **0.5.0** matrix for the earlier pasted blueprint. The supplied PDF's newer requirements and the current **0.6.0** scope are tracked in [PDF audit implementation status](PDF-AUDIT-STATUS.md).
+
 This release applies the foundation and evidence priorities of the November 2026 blueprint to Research Atlas. The legacy tracker is a separate app at the repository root.
 
 | Requirement | Status | Current scope |

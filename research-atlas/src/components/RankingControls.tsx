@@ -63,7 +63,7 @@ export function PublicationIdentity({ title, publisher, type }: { title: string;
 export function QuartileBadge({ value, fallback = 'Quartile unavailable' }: { value: Paper['journalQuartile']; fallback?: string }) {
   if (!value) return <span className="quartile-badge unavailable">{fallback}</span>;
   return <div className="quartile-marker">
-    <span className={`quartile-badge ${value.quartile.toLowerCase()}`} title={`${value.source} Citation Quartile for the journal in ${value.category}. SJR and JCR publish separate rankings.`}>{value.source} {value.quartile} · {value.year}</span>
+    <span className={`quartile-badge ${value.quartile.toLowerCase()}`} title={`Venue metric, not a paper-quality score. ${value.source} Citation Quartile for the journal in ${value.category}. SJR and JCR publish separate rankings.`}>{value.source} {value.quartile} · {value.year}</span>
     <div className="quartile-provenance"><small>{value.category}{value.provisional ? ' · Provisional' : ''}</small><External href={value.url}>{value.source} ranking source</External></div>
   </div>;
 }
@@ -74,9 +74,10 @@ function priceText(amount: number, currency: string) {
 
 export function JournalFee({ fee }: { fee: Paper['journalFee'] }) {
   return <div>
-    <dt>Journal publishing fee</dt>
-    <dd>{fee ? <><strong>{priceText(fee.amount, fee.currency)}</strong> <small>Listed open access APC</small></> : 'Price unavailable'}</dd>
+    <dt>Author publication fee</dt>
+    <dd>{fee ? <><strong>{priceText(fee.amount, fee.currency)}</strong> <small>Listed open access APC</small></> : 'Unknown — verify with publisher'}</dd>
     {fee && <dd className="price-source">{fee.url ? <External href={fee.url}>{fee.source}</External> : fee.source}</dd>}
+    {fee?.checkedAt && <dd className="muted">Retrieved <time dateTime={fee.checkedAt}>{new Date(fee.checkedAt).toLocaleDateString()}</time> · confirm current options with publisher</dd>}
   </div>;
 }
 
@@ -85,7 +86,7 @@ function PaperCosts({ paper }: { paper: Paper }) {
   const free = price?.amount === 0 || (!price && Boolean(paper.oa));
   return <dl className="paper-costs">
     <div>
-      <dt>Price to read</dt>
+      <dt>Access status</dt>
       <dd>{free
         ? <strong>{paper.oa ? 'Free open copy' : 'Open access reported'}</strong>
         : price ? <strong>{priceText(price.amount, price.currency)}</strong> : 'Price unavailable'}</dd>

@@ -30,7 +30,16 @@ test('beginner onboarding, research plan, backup and restore', async ({ page }) 
   await expect(page.getByLabel('Your research question')).toHaveValue(/small retailers/);
   await page.getByLabel('Research objectives').fill('Identify common barriers reported by owners.');
   await openStage(page, 'Plan methods and ethics');
-  await page.getByRole('button', { name: 'Use as a starting point' }).click();
+  await page.getByText('Work through the design questions', { exact: true }).click();
+  await page.getByLabel('Knowledge goal').selectOption('understand');
+  await page.getByLabel('Unit of analysis').fill('Small retailers in Dhaka');
+  await page.getByLabel('Evidence access').selectOption('new');
+  await page.getByLabel('Measurement or interpretation').selectOption('text');
+  await page.getByLabel('Do you intend to claim cause and effect?').selectOption('no');
+  await page.getByLabel('Can you assign an intervention or controlled comparison?').selectOption('not-applicable');
+  await page.getByLabel('Ethics and access assessment').selectOption('consultation');
+  await page.getByLabel('Time and resource limits').fill('A course project with supervisor review before recruitment.');
+  await page.getByRole('button', { name: 'Use as a draft starting point' }).click();
   await page.getByLabel('Ethics, consent').fill('Seek institutional review before recruiting participants.');
   await page.getByLabel('Analysis and reproducibility').fill('Document sampling and reflexive analysis.');
   const protocol = page.waitForEvent('download');

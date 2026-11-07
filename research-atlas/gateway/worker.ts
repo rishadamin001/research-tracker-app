@@ -12,6 +12,9 @@ const worker = {async fetch(request:Request,env:Env):Promise<Response>{
   upstream=new URL('https://api.openalex.org/works');
   upstream.searchParams.set('search',query);
   upstream.searchParams.set('per_page','20');
+  const page=url.searchParams.get('page')||'1';
+  if(!/^[1-5]$/.test(page))return reply({error:'Page must be between 1 and 5'},400);
+  if(page!=='1')upstream.searchParams.set('page',page);
   const filter=url.searchParams.get('filter');
   if(filter){
    if(!/^(from_publication_date:\d{4}-01-01(,is_oa:true)?|is_oa:true)$/.test(filter))return reply({error:'Unsupported filter'},400);

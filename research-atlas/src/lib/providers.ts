@@ -49,11 +49,11 @@ function journalListPrice(
   url?: string,
 ): JournalFee | undefined {
   if (amount != null && currency) {
-    return { amount, currency, source: 'OpenAlex', usd: amount === 0 || currency === 'USD' ? amount : usd ?? undefined, url };
+    return { amount, currency, source: 'OpenAlex', usd: amount === 0 || currency === 'USD' ? amount : usd ?? undefined, url, checkedAt: new Date().toISOString() };
   }
   // A zero value is currency independent, including when the provider omits its currency.
-  if (amount === 0) return { amount, currency: 'USD', source: 'OpenAlex', usd: 0, url };
-  if (usd != null) return { amount: usd, currency: 'USD', source: 'OpenAlex', usd, url };
+  if (amount === 0) return { amount, currency: 'USD', source: 'OpenAlex', usd: 0, url, checkedAt: new Date().toISOString() };
+  if (usd != null) return { amount: usd, currency: 'USD', source: 'OpenAlex', usd, url, checkedAt: new Date().toISOString() };
   return undefined;
 }
 
@@ -114,6 +114,15 @@ const searchMeta = z.object({ meta: z.object({ count: z.number().int().nonnegati
 const quotaMessage = 'The free research service is at its limit.';
 const offlineMessage = 'Your project is available offline. Online literature search resumes when you reconnect.';
 let retryAfterUntil: string | undefined;
+let exhaustedUntil: string | undefined;
+function rememberQuota(quota: SearchRun['quota']) {
+  if (quota?.remainingCredits === 0 && quota.resetsAt) exhaustedUntil = quota.resetsAt;
+  else if (quota?.remainingCredits !== undefined && quota.remainingCredits > 0) exhaustedUntil = undefined;
+}
+function checkKnownQuota() {
+  if (exhaustedUntil && Date.parse(exhaustedUntil) > Date.now()) throw new PaperSearchError(searchErrorMessage(exhaustedUntil));
+  exhaustedUntil = undefined;
+}
 
 function searchErrorMessage(retryAt?: string) {
   return retryAt
@@ -121,7 +130,7 @@ function searchErrorMessage(retryAt?: string) {
     : `${quotaMessage} Try later or use the Crossref link below. Your work is safe.`;
 }
 
-export async function runPaperSearch(query: string, year: string, oa: boolean, signal?: AbortSignal): Promise<{ papers: Paper[]; run: SearchRun }> {
+export async function runPaperSearch(query: string, year: string, oa: boolean, signal?: AbortSignal, previous?: SearchRun): Promise<{ papers: Paper[]; run: SearchRun }> {
   const executedQuery = query.trim();
   if (executedQuery.length < 3 || query.length > 300) throw new PaperSearchError('Use a search between 3 and 300 characters.');
   if (/\b(AND|OR|NOT)\b|[()*]/.test(query)) throw new PaperSearchError('Atlas searches keyword phrases. OpenAlex’s website supports advanced Boolean syntax.');
@@ -130,6 +139,7 @@ export async function runPaperSearch(query: string, year: string, oa: boolean, s
     if (Date.parse(retryAfterUntil) > Date.now()) throw new PaperSearchError(searchErrorMessage(retryAfterUntil));
     retryAfterUntil = undefined;
   }
+  checkKnownQuota();
   signal?.throwIfAborted();
 
   const params = new URLSearchParams({ search: executedQuery, per_page: String(openAlexSearch.pageSize) });
@@ -140,16 +150,26 @@ export async function runPaperSearch(query: string, year: string, oa: boolean, s
   }
   if (oa) filters.push('is_oa:true');
   if (filters.length) params.set('filter', filters.join(','));
+  if (previous && (previous.executedQuery !== executedQuery || previous.filters.join(',') !== filters.join(','))) throw new PaperSearchError('The query changed. Start a new search before loading more.');
+  const pageNumber = previous?.nextPage ?? 1;
+  if (previous && previous.pages.length >= 25) throw new PaperSearchError('This run has reached its retry limit. Start a fresh search to continue.');
+  if (previous && (!previous.nextPage || pageNumber > openAlexSearch.maxPages)) throw new PaperSearchError('This search has reached its page limit. Refine the terms or use the official provider website.');
+  if (previous?.quota?.remainingCredits === 0) throw new PaperSearchError(searchErrorMessage(previous.quota.resetsAt));
+  if (pageNumber > 1) params.set('page', String(pageNumber));
   const endpoint = API ? `${API}/openalex` : 'https://api.openalex.org/works';
   const startedAt = new Date(Date.now()).toISOString();
-  const page: SearchRun['pages'][number] = { page: 1, requestedAt: startedAt };
+  const page: SearchRun['pages'][number] = { page: pageNumber, requestedAt: startedAt };
   const run: SearchRun = {
     id: crypto.randomUUID(), provider: 'OpenAlex', mode: API ? 'gateway-first-page' : 'anonymous-first-page',
     userQuery: query, executedQuery, filters, supportedOperators: [], unsupportedOperators: openAlexSearch.unsupportedOperators,
     startedAt, completedAt: startedAt, pageSize: openAlexSearch.pageSize, cursorState: 'not-requested',
-    pages: [page], providerDocsDate: openAlexSearch.docsDate,
+    pages: [...(previous?.pages ?? []), page], providerDocsDate: openAlexSearch.docsDate,
+    pagingMode: 'basic', parserVersion: 'atlas-openalex-parser-1', providerSort: 'provider-default-relevance',
+    ...(previous && { id: previous.id, startedAt: previous.startedAt, resultCountReported: previous.resultCountReported, resultIds: previous.resultIds, nextPage: pageNumber }),
   };
   const fail = (kind: NonNullable<SearchRun['error']>['kind'], message: string, status?: number) => {
+    page.failure = message;
+    page.status = status;
     throw new PaperSearchError(message, { ...run, completedAt: new Date(Date.now()).toISOString(), error: { kind, message, status } });
   };
   const timeout = AbortSignal.timeout(15000);
@@ -160,6 +180,7 @@ export async function runPaperSearch(query: string, year: string, oa: boolean, s
     const requestId = response.headers.get('X-Request-ID');
     if (requestId && /^[\w:-]{1,160}$/.test(requestId)) page.requestId = requestId;
     run.quota = readSearchQuota(response.headers, Date.now(), response.status === 429);
+    rememberQuota(run.quota);
     if (response.status === 429) {
       const retryAt = run.quota?.retryAfterUntil;
       if (retryAt && (!retryAfterUntil || retryAt > retryAfterUntil)) retryAfterUntil = retryAt;
@@ -175,7 +196,12 @@ export async function runPaperSearch(query: string, year: string, oa: boolean, s
       ? { ...paper, journalQuartile: await findJournalQuartile(paper.issns) }
       : paper));
     requestSignal.throwIfAborted();
-    return { papers, run: { ...run, completedAt: new Date(Date.now()).toISOString() } };
+    const reachedEnd = results.length < openAlexSearch.pageSize || (run.resultCountReported !== undefined && pageNumber * openAlexSearch.pageSize >= run.resultCountReported);
+    return { papers, run: { ...run, completedAt: new Date(Date.now()).toISOString(),
+      nextPage: !reachedEnd && pageNumber < openAlexSearch.maxPages ? pageNumber + 1 : undefined,
+      stopReason: reachedEnd ? 'provider-end' : pageNumber >= openAlexSearch.maxPages ? 'app-limit' : undefined,
+      resultIds: [...new Set([...(previous?.resultIds ?? []), ...papers.map(paper => paper.id)])],
+    } };
   } catch (failure) {
     if (failure instanceof PaperSearchError) throw failure;
     if (timeout.aborted) return fail('timeout', 'Search timed out. Try again or use the Crossref link below.');
@@ -184,6 +210,29 @@ export async function runPaperSearch(query: string, year: string, oa: boolean, s
     if (failure instanceof TypeError) return fail('network', 'Could not reach OpenAlex. Check your connection or use the Crossref link below.');
     return fail('invalid-response', 'OpenAlex returned records the app could not read. Try another search or use the Crossref link below.');
   }
+}
+
+export async function continuePaperSearch(run: SearchRun, signal?: AbortSignal) {
+  const year = run.filters.find(filter => filter.startsWith('from_publication_date:'))?.split(':')[1]?.slice(0, 4) ?? '';
+  return runPaperSearch(run.userQuery, year, run.filters.includes('is_oa:true'), signal, run);
+}
+
+export async function relatedPapers(paper: Paper, relation: 'references' | 'citations', signal?: AbortSignal): Promise<Paper[]> {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new Error(offlineMessage);
+  if (retryAfterUntil && Date.parse(retryAfterUntil) > Date.now()) throw new Error(searchErrorMessage(retryAfterUntil));
+  checkKnownQuota();
+  const id = /^https:\/\/openalex\.org\/(W\d+)$/.exec(paper.id)?.[1];
+  if (!id) throw new Error('This source needs an OpenAlex work identifier to explore citation links.');
+  const references = paper.referenceIds?.map(item => /^https:\/\/openalex\.org\/(W\d+)$/.exec(item)?.[1]).filter((item): item is string => !!item).slice(0, 20) ?? [];
+  if (relation === 'references' && !references.length) return [];
+  const params = new URLSearchParams({ filter: relation === 'references' ? `openalex:${references.join('|')}` : `cites:${id}`, per_page: '20', sort: 'cited_by_count:desc' });
+  const response = await fetch(`https://api.openalex.org/works?${params}`, { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000), credentials: 'omit' });
+  const quota = readSearchQuota(response.headers, Date.now(), response.status === 429);
+  rememberQuota(quota);
+  if (response.status === 429) { retryAfterUntil = quota?.retryAfterUntil; throw new Error(searchErrorMessage(retryAfterUntil)); }
+  if (!response.ok) throw new Error(`OpenAlex citation discovery is unavailable (${response.status}). Your saved sources are unchanged.`);
+  const papers = parseWorks(await response.json()).slice(0, 20);
+  return Promise.all(papers.map(async item => item.venueType === 'journal' && item.issns?.length ? { ...item, journalQuartile: await findJournalQuartile(item.issns) } : item));
 }
 
 export async function searchPapers(query: string, year: string, oa: boolean, signal?: AbortSignal) {

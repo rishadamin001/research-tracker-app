@@ -47,7 +47,9 @@ test('provider keeps a paper’s reading cost separate from a journal’s open-a
   assert.equal(closed.readingCost, undefined);
   assert.deepEqual(closed.journalFee, {
     amount: 700, currency: 'EUR', usd: 770, source: 'OpenAlex', url: 'https://api.openalex.org/works/W1',
+    checkedAt: closed.journalFee?.checkedAt,
   });
+  assert.ok(Number.isFinite(Date.parse(closed.journalFee!.checkedAt!)));
   assert.equal(open.readingCost?.amount, 0);
   assert.equal(open.oa, openCopy);
   assert.equal(open.readingCost?.url, 'https://api.openalex.org/works/W1');
@@ -194,7 +196,9 @@ test('journal lookup checks ISSN identity and retains provenance for shortlist s
     assert.equal(metrics.journalQuartile?.quartile, 'Q1');
     assert.deepEqual(metrics.journalFee, {
       amount: 700, currency: 'EUR', usd: 770, source: 'OpenAlex', url: 'https://api.openalex.org/sources/S1',
+      checkedAt: metrics.journalFee?.checkedAt,
     });
+    assert.ok(Number.isFinite(Date.parse(metrics.journalFee!.checkedAt!)));
     assert.equal(metrics.sourceId, 'https://openalex.org/S1');
     assert.ok(Number.isFinite(Date.parse(metrics.checkedAt)));
     const candidate = { title: 'Candidate', url: '', scope: '', cost: '', checks: [], verification: '' };

@@ -1,6 +1,18 @@
 import type { Stage } from '@/lib/model';
 
 const lessons: Partial<Record<Stage, { concept: string; example: string; task: string; check: string }>> = {
+  profile: {
+    concept: 'A working title and practical goal give you somewhere to start. Both can change as you learn.',
+    example: 'A course project with six weeks available needs a narrower scope than a multi-year thesis.',
+    task: 'Record your field, experience, goal, and practical constraints.',
+    check: 'Can you explain what you hope to understand and which evidence you can realistically access?',
+  },
+  topic: {
+    concept: 'A topic is an area of interest. Narrow it using a setting, population, material, or time period.',
+    example: '“Student housing” can become “commuter students choosing study spaces at one campus”.',
+    task: 'Compare a few possible topics and record why one is feasible.',
+    check: 'Is there a route to evidence within your time, access, and permission limits?',
+  },
   question: {
     concept: 'A research question identifies something you can learn from a defined population, place, document collection or system.',
     example: '“How do students study?” is broad. “How do first-year commuters at one campus choose study spaces?” gives you a group and a behavior to investigate.',
@@ -37,6 +49,18 @@ const lessons: Partial<Record<Stage, { concept: string; example: string; task: s
     task: 'Name your raw and working files, record who can access them, and log how you handled missing data.',
     check: 'Could another authorized researcher reproduce the figures or themes from your notes and files?',
   },
+  writing: {
+    concept: 'A research paper connects a question, a transparent method, the results, and a cautious interpretation.',
+    example: 'Describe how interviews were selected before presenting the themes. Link each interpretation to located evidence.',
+    task: 'Draft from your actual study record and insert references you have checked.',
+    check: 'Are findings distinguishable from interpretation, and are limitations and required disclosures clear?',
+  },
+  publication: {
+    concept: 'A suitable venue fits your subject and article type and has transparent editorial practices and fees.',
+    example: 'A relevant journal may use a subscription route and an optional paid open-access route. Confirm each option at the publisher.',
+    task: 'Record scope fit, official indexing checks, fee sources, unknowns, and the date you checked them.',
+    check: 'Can every claimed fact be traced to its source? Leave unverified facts unknown and review with a supervisor or librarian.',
+  },
 };
 
 export function ContextGuide({ stage }: { stage: Stage }) {
@@ -44,9 +68,9 @@ export function ContextGuide({ stage }: { stage: Stage }) {
   if (!lesson) return null;
   return <details className="panel">
     <summary>Learn and check this step</summary>
-    <p><strong>Learn.</strong> {lesson.concept}</p>
+    <p><strong>Understand.</strong> {lesson.concept}</p>
     <p><strong>See.</strong> {lesson.example}</p>
     <p><strong>Do.</strong> {lesson.task}</p>
-    <p><strong>Check.</strong> {lesson.check}</p>
+    <p><strong>Review.</strong> {lesson.check}</p>
   </details>;
 }

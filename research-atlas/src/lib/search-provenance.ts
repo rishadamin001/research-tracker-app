@@ -4,6 +4,8 @@ export const openAlexSearch = {
   docsDate: '2026-11-07',
   docsUrl: 'https://help.openalex.org/api/searching/',
   pageSize: 20,
+  maxPages: 5,
+  pagingDocsUrl: 'https://help.openalex.org/api/paging/',
   unsupportedOperators: ['AND', 'OR', 'NOT', 'parentheses', 'wildcards'],
 };
 
@@ -31,12 +33,20 @@ export const searchRunSchema = z.object({
   resultCountReported: count.optional(),
   pageSize: count.max(100),
   cursorState: z.literal('not-requested'),
+  pagingMode: z.literal('basic').optional(),
+  nextPage: count.min(2).max(5).optional(),
+  stopReason: z.enum(['provider-end', 'app-limit', 'user-stopped']).optional(),
+  resultIds: z.array(z.string().max(500)).max(100).optional(),
+  parserVersion: z.literal('atlas-openalex-parser-1').optional(),
+  providerSort: z.literal('provider-default-relevance').optional(),
   pages: z.array(z.object({
-    page: z.literal(1),
+    page: count.min(1).max(5),
     requestedAt: timestamp,
     returnedCount: count.max(100).optional(),
     requestId: z.string().max(160).optional(),
-  })).length(1),
+    failure: z.string().max(500).optional(),
+    status: z.number().int().min(400).max(599).optional(),
+  })).min(1).max(25),
   providerDocsDate: z.iso.date(),
   quota: quotaSchema.optional(),
   error: z.object({
