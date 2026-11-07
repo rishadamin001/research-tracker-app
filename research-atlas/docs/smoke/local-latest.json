@@ -1,8 +1,8 @@
 {
-  "commitSha": "55c9498c7fe37496a9e87b151228ee94fd886c32",
-  "packageVersion": "0.6.0",
+  "commitSha": "271e2182ca22f1fe58422cd06a3197c93893a59a",
+  "packageVersion": "0.7.0",
   "deploymentUrl": "http://127.0.0.1:4173/",
-  "checkedAt": "2026-11-07T11:05:02.558Z",
+  "checkedAt": "2026-11-07T20:48:10.128Z",
   "appLoaded": true,
   "projectPersistence": true,
   "openAlexMode": "anonymous bounded basic pages",
@@ -13,5 +13,9 @@
   "offlineProjectOpen": true,
   "mobileOverflow": false,
   "consoleErrors": [],
-  "openAlexSecondPage": true
+  "openAlexSecondPage": true,
+  "returningDashboard": true,
+  "guidanceModePersists": true,
+  "libraryOpens": true,
+  "projectHistoryOpens": true
 }
