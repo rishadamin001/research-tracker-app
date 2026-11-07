@@ -1,16 +1,17 @@
 {
-  "commitSha": "4e2d19789dfcde741032e66dd7c8bd5cf2e11991",
-  "packageVersion": "0.5.0",
+  "commitSha": "55c9498c7fe37496a9e87b151228ee94fd886c32",
+  "packageVersion": "0.6.0",
   "deploymentUrl": "http://127.0.0.1:4173/",
-  "checkedAt": "2026-11-06T21:43:31.611Z",
+  "checkedAt": "2026-11-07T11:05:02.558Z",
   "appLoaded": true,
   "projectPersistence": true,
-  "openAlexMode": "anonymous first page",
-  "openAlexSearchResultCount": 20,
+  "openAlexMode": "anonymous bounded basic pages",
+  "openAlexSearchResultCount": 40,
   "crossrefLookup": true,
   "unpaywallLookupIfConfigured": null,
   "backupRestore": true,
   "offlineProjectOpen": true,
   "mobileOverflow": false,
-  "consoleErrors": []
+  "consoleErrors": [],
+  "openAlexSecondPage": true
 }
