@@ -91,6 +91,7 @@ export function parseWorks(raw: unknown): Paper[] {
       referenceIds: item.referenced_works?.filter(id => /^https:\/\/openalex\.org\/W\d+$/.test(id)).slice(0, 500),
       fwci: item.fwci ?? undefined,
       citedByCount: item.cited_by_count ?? undefined,
+      metricsRetrievedAt: new Date().toISOString(),
       workType: item.type ?? undefined,
       isRetracted: item.is_retracted ?? undefined,
       publisher: (source?.host_organization_name || source?.host_organization_lineage_names?.[0])?.slice(0, 500),

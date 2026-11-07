@@ -63,10 +63,10 @@ const lessons: Partial<Record<Stage, { concept: string; example: string; task: s
   },
 };
 
-export function ContextGuide({ stage }: { stage: Stage }) {
+export function ContextGuide({ stage, expanded = false }: { stage: Stage; expanded?: boolean }) {
   const lesson = lessons[stage];
   if (!lesson) return null;
-  return <details className="panel">
+  return <details className="panel" open={expanded}>
     <summary>Learn and check this step</summary>
     <p><strong>Understand.</strong> {lesson.concept}</p>
     <p><strong>See.</strong> {lesson.example}</p>

@@ -2,11 +2,17 @@
 
 Vite serves a React and TypeScript application. `Atlas` owns browser navigation, selected project and queued autosave. Planning, evidence and execution components update the same project. Home offers three intent-based entry points; the short beginner journey leads into project creation. `ContextGuide` places Understand / See / Do / Review guidance beside all ten project stages. `workflow.ts` derives task statuses and downstream review flags. Statuses record activity; they do not certify research quality.
 
+`workspace-navigation.ts` maps legacy routes into six primary destinations and a common seven-tab project shell. Returning Home uses `ResearchDashboard`; contextual `NextAction` derives one action from current project state. Guided/Expert is a local preference controlling default guidance expansion. Project Overview contains the existing plan workbench.
+
 ## Local data and portable backups
 
 `model.ts` validates the additive project schema (version 1). `storage.ts` writes the complete workspace in an IndexedDB transaction, and `Atlas` queues writes and exposes save failures with recovery export. `backup.ts` separately defines the version 2 portable envelope, app version, source origin, counts and SHA-256 integrity checksum. Validation precedes preview; import adds new project copies. Legacy version 1 backups remain readable. A checksum detects changes, not authenticity. [Backup/migration design](docs/BACKUP-MIGRATION.md)
 
+The workspace envelope adds a revision checked within the replacement transaction. BroadcastChannel/storage notices pause stale clients; the transaction comparison remains authoritative. Local snapshots are bounded by count and size; corrupt projects are isolated without overwriting the original envelope. Restoring a snapshot temporarily blocks editing and must preserve the current workspace first. [Storage and recovery](docs/STORAGE-RECOVERY.md)
+
 Each project reference stores metadata, user-authored extraction, screening events, evidence claims and citation IDs. Discovery, screening, extraction and writing reuse that record. `duplicates.ts` and `DuplicateReview` provide conservative candidate review, bounded audit archives and undo. References are still project-scoped; there is no shared cross-project bibliographic entity or cloud synchronization.
+
+`atlas-library.ts` derives DOI/ID groups across these records. Atlas Library filters and organizes the grouped view and can explicitly copy bibliography into another project, resetting project judgments. Metadata conflicts are shown rather than silently reconciled. A canonical global reference schema/migration remains deferred. `research-trail.ts` records committed question versions and a bounded/coalesced project event stream through `updateProject`; saved question drafts remain distinct from committed wording. [Library](docs/ATLAS-LIBRARY.md) · [Trail](docs/RESEARCH-TRAIL.md)
 
 ## Discovery and evidence
 

@@ -2,6 +2,10 @@
 
 A browser-local research workspace for students and early-career researchers. A project roadmap connects research planning, literature, study records, writing, and publication checks. Short examples and guidance appear beside each activity.
 
+Version 0.7 uses six destinations: **Home, My Research, Discover, Library, Learn and Publish**. Returning Home shows your current question and pending work. Each project shares Overview, Question, Literature, Study, Evidence, Write and Publish tabs. Set Guided or Expert mode at the top of the workspace. Open **Overview → My plan** for deadlines, budget and submission materials.
+
+The [deep blueprint status](docs/DEEP-BLUEPRINT-STATUS.md) describes delivered scope and future releases. [Atlas Library](docs/ATLAS-LIBRARY.md) groups references across projects; [Project history](docs/RESEARCH-TRAIL.md) records committed question versions and research changes. The unified Library is currently a view over project records, with a canonical reference database still planned.
+
 ## Run
 
 Open [Research Atlas on GitHub Pages](https://rishadamin001.github.io/research-tracker-app/). To install it, open **Preferences → Install app** in a supported browser. On iPhone or iPad, use Safari’s **Share → Add to Home Screen**.
@@ -14,7 +18,7 @@ For local development, use Node.js 24. Run `npm ci` and `npm run dev`, then open
 - Search OpenAlex, save each source once, record screening reasons, and compare methods, findings, and limitations. Review possible duplicates side by side and explore bounded citation/reference suggestions beyond the saved-library citation view.
 - Plan methods and ethics, record data management and analysis, and draft a manuscript with citations from the saved library.
 - Shortlist journals, document checks and fees, and look up DOI metadata and open-access locations. Task status records progress through the workspace.
-- Download backups from My projects. Import restores copies, and new exports use backup v2 with source origin and integrity checksum. Previous version 1 backups receive defaults for new fields. Data is scoped to the browser origin, so export and import when moving from the local preview to Pages.
+- Download backups from My projects. Import restores copies, and new exports use backup v2 with source origin and integrity checksum. Previous version 1 backups receive defaults for new fields. Revision checks protect against stale-tab saves, and bounded recovery snapshots are available on the same device. Reload older tabs after updating. Data is scoped to the browser origin, so export and import when moving from the local preview to Pages.
 
 See [Workflow specification](WORKFLOW.md), [Architecture](ARCHITECTURE.md), and [Deployment](DEPLOYMENT.md). Scholarly search uses [OpenAlex](https://help.openalex.org/api/authentication/) and DOI metadata uses [Crossref](https://www.crossref.org/documentation/retrieve-metadata/rest-api/).
 
@@ -23,7 +27,7 @@ See the [PDF audit implementation status](docs/PDF-AUDIT-STATUS.md) and [earlier
 ## Research planner, conferences, and literature search
 
 - **Paper search** works before you create a project. Compare results by journal quartile, citations, publication date, reading price or estimated open-access publishing fee. Load additional pages manually up to 100 records; export query history or refresh a matching search to compare discovered IDs. Prices without a source stay unavailable. [Search limits and history](docs/SEARCH-CONTINUATION.md) · [How prices are sourced](docs/PUBLICATION-COSTS.md)
-- **Research planner** introduces the journey from idea through peer review, data and survey design, beginner-friendly tools, and publishing checks. Under **My plan**, set a deadline, work backward, record a budget and venue requirements, draft a submission pack, and export point-by-point reviewer replies. The original guide is under **Research basics**.
+- **Learn** introduces the journey from idea through peer review with short visual lessons and the Research Planner. Under project **Overview → My plan**, set a deadline, work backward, record a budget and venue requirements, draft a submission pack, and export point-by-point reviewer replies. **Publish** groups venue, conference and submission tools.
 - **Conference planner** separates events held in Bangladesh from events abroad. Browse organizer-checked listings, save or enter events, and choose an event date or deadline for Google Calendar or a standard `.ics` export. The upcoming view follows the device date. Organizer links and source check dates show when to recheck a listing. Exported calendar events are copies. Date changes at the source require updating the calendar entry.
 - **Explore disciplines** launches a literature search from a discipline or topic in one click.
 - **Literature results** default to journal quartile (Q1 to Q4, then unavailable) with OpenAlex citation count as the tie-breaker. Cards show the publication, publisher, and the subject and edition of each matched [POSI journal quartile](docs/JOURNAL-QUARTILES.md). Citation count and venue rank describe different things. You can also sort by field-adjusted citations, citation count, or publication date.

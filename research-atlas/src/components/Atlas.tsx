@@ -1,14 +1,14 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowDownToLine, ArrowRight, BookOpen, CalendarDays, Check, ChevronRight, ClipboardCheck, Compass, FolderOpen, LibraryBig, Map, Menu, Plus, Search, Settings, X } from 'lucide-react';
 import { createProject, matrixCsv, protocolMarkdown, type Project, type Stage } from '@/lib/model';
 import { createBackup, parseBackupFile, type BackupManifest } from '@/lib/backup';
-import { download, loadProjects, saveProjects } from '@/lib/storage';
+import { download, loadWorkspace, saveWorkspace, subscribeWorkspace, WorkspaceConflictError } from '@/lib/storage';
 import { disciplines } from '@/lib/content';
 import { nextTask, roadmap, taskStatus, updateProject, type TaskStatus } from '@/lib/workflow';
 import { readPreferences, writePreferences, type Preferences } from '@/lib/preferences';
 import { PlanningWorkspace } from './PlanningWorkspace';
-import { EvidenceWorkspace, PaperSearch } from './EvidenceWorkspace';
+import { EvidenceWorkspace, PaperSearch, SearchNotebook } from './EvidenceWorkspace';
 import { ExecutionWorkspace } from './ExecutionWorkspace';
 import { ResearchPlanner } from './ResearchPlanner';
 import { PlannerWorkbench } from './PlannerWorkbench';
@@ -21,36 +21,38 @@ import { InstallApp } from './InstallApp';
 import './discipline-explorer.css';
 import { DuplicateReview } from './DuplicateReview';
 import { PublicInformation } from './PublicInformation';
+import { MiniLessons, NextAction, ProjectShell, ResearchDashboard } from './CoherentWorkspace';
+import { primaryDestination } from '@/lib/workspace-navigation';
+import { AtlasLibrary } from './AtlasLibrary';
+import { ProjectHistory } from './ProjectHistory';
+import { StorageRecovery } from './StorageRecovery';
 
-type View = 'overview' | 'primer' | 'explore' | 'guide' | 'conferences' | 'paper-search' | 'roadmap' | 'projects' | 'preferences' | 'privacy' | 'terms' | 'support' | Stage;
+type View = 'overview' | 'primer' | 'explore' | 'guide' | 'conferences' | 'paper-search' | 'roadmap' | 'projects' | 'preferences' | 'privacy' | 'terms' | 'support' | 'library' | 'publish-hub' | 'history' | Stage;
 const mainNav = [
   { id: 'overview', title: 'Home', icon: Compass },
-  { id: 'paper-search', title: 'Paper search', icon: Search },
-  { id: 'guide', title: 'Research planner', icon: BookOpen },
-  { id: 'conferences', title: 'Conference planner', icon: CalendarDays },
-  { id: 'explore', title: 'Explore disciplines', icon: Compass },
-  { id: 'roadmap', title: 'Project roadmap', icon: Map },
-  { id: 'projects', title: 'My projects', icon: FolderOpen },
-  { id: 'preferences', title: 'Preferences', icon: Settings },
-  { id: 'privacy', title: 'Privacy & data', icon: ClipboardCheck },
+  { id: 'roadmap', title: 'My Research', icon: Map },
+  { id: 'paper-search', title: 'Discover', icon: Search },
+  { id: 'library', title: 'Library', icon: LibraryBig },
+  { id: 'guide', title: 'Learn', icon: BookOpen },
+  { id: 'publish-hub', title: 'Publish', icon: CalendarDays },
 ] as const;
 
 function currentView(): View {
   const page = window.location.hash.slice(1).split('?')[0];
-  if (roadmap.some(task => task.id === page) || mainNav.some(tab => tab.id === page) || ['primer', 'terms', 'support'].includes(page)) return page as View;
+  if (roadmap.some(task => task.id === page) || mainNav.some(tab => tab.id === page) || ['primer', 'terms', 'support', 'projects', 'preferences', 'privacy', 'explore', 'conferences', 'history'].includes(page)) return page as View;
   return 'overview';
 }
 
 function currentTopic() {
   const [view, parameters] = window.location.hash.slice(1).split('?');
-  if (view !== 'discover' || !parameters) return undefined;
+  if (!['discover', 'paper-search'].includes(view) || !parameters) return undefined;
   const topic = new URLSearchParams(parameters).get('topic');
-  if (topic && disciplines.some(item => item.name === topic || item.domains.includes(topic))) return topic;
+  if (topic && topic.trim().length >= 3 && topic.length <= 300) return topic;
   return undefined;
 }
 
 function Status({ status }: { status: TaskStatus }) {
-  return <span className={`task-status ${status.toLowerCase().replaceAll(' ', '-')}`}>{status}</span>;
+  return <span className={`task-status ${status.toLowerCase().replaceAll(' ', '-')}`}>{status === 'Complete' ? 'Ready for now' : status === 'In progress' ? 'Draft' : status}</span>;
 }
 
 export default function Atlas() {
@@ -61,8 +63,13 @@ export default function Atlas() {
   const [active, setActive] = useState('');
   const [ready, setReady] = useState(false);
   const [saveState, setSaveState] = useState('Opening local workspace…');
+  const [storageConflict, setStorageConflict] = useState(false);
+  const [storageOperation, setStorageOperation] = useState(false);
+  const [recoveryRaw, setRecoveryRaw] = useState('');
   const [backupDate, setBackupDate] = useState(lastBackupDate);
   const [notice, setNotice] = useState('');
+  const [publishSection, setPublishSection] = useState<'venues' | 'conferences' | 'submission'>('venues');
+  const [discoverySection, setDiscoverySection] = useState<'search' | 'notebook'>('search');
   const [mobile, setMobile] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newDiscipline, setNewDiscipline] = useState('');
@@ -81,21 +88,47 @@ export default function Atlas() {
   const loadFailed = useRef(false);
   const saveRevision = useRef(0);
   const importRevision = useRef(0);
+  const diskRevision = useRef(0);
+  const savedLocalRevision = useRef(0);
+  const writeBlocked = useRef(false);
+  const navigationState = useRef({ view, active, projects });
 
-  useEffect(() => {
-    const onHash = () => { setView(currentView()); setSearchTopic(currentTopic()); setMobile(false); window.scrollTo({ top: 0 }); main.current?.focus({ preventScroll: true }); };
-    window.addEventListener('hashchange', onHash);
-    return () => window.removeEventListener('hashchange', onHash);
+  useEffect(() => { navigationState.current = { view, active, projects }; }, [view, active, projects]);
+
+  const commitQuestionDraftAtNavigation = useCallback((projectId: string) => {
+    const snapshot = navigationState.current.projects.find(item => item.id === projectId);
+    if (snapshot?.questionDraft === undefined) return;
+    ++saveRevision.current;
+    setSaveState(writeBlocked.current ? 'Saving paused — keep a recovery backup' : loadFailed.current ? 'Local storage unavailable' : 'Saving…');
+    setProjects(items => items.map(item => {
+      // Continue may already have queued an explicit commit in this same click.
+      if (item.id !== projectId || item.questionDraft === undefined) return item;
+      return updateProject(item, { question: item.questionDraft, questionChangeReason: item.questionDraftReason ?? '', questionDraft: undefined, questionDraftReason: undefined });
+    }));
   }, []);
 
   useEffect(() => {
+    const onHash = () => {
+      const destination = currentView();
+      if (navigationState.current.view === 'question' && destination !== 'question') commitQuestionDraftAtNavigation(navigationState.current.active);
+      setView(destination); setSearchTopic(currentTopic()); setMobile(false); window.scrollTo({ top: 0 }); main.current?.focus({ preventScroll: true });
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, [commitQuestionDraftAtNavigation]);
+
+  useEffect(() => {
     let live = true;
-    loadProjects().then(records => {
+    loadWorkspace().then(workspace => {
       if (!live) return;
+      const records = workspace.projects;
+      diskRevision.current = workspace.revision;
+      if (workspace.recovery) { writeBlocked.current = true; setRecoveryRaw(workspace.recovery.rawJson); setNotice(workspace.recovery.message); }
       setProjects(records);
       let remembered: string | null = null;
       try { remembered = sessionStorage.getItem('atlas-active'); } catch { /* Session selection is optional. */ }
       setActive(records.find(record => record.id === remembered)?.id ?? records[0]?.id ?? '');
+      setSaveState(workspace.recovery ? 'Recovery mode — saving paused' : 'Saved on this device');
       setReady(true);
     }).catch(() => {
       if (!live) return;
@@ -108,14 +141,30 @@ export default function Atlas() {
   }, []);
 
   useEffect(() => {
-    if (!ready || loadFailed.current) return;
-    const revision = ++saveRevision.current;
-    saveQueue.current = saveQueue.current.catch(() => {}).then(() => saveProjects(projects)).then(() => {
+    if (!ready || loadFailed.current || writeBlocked.current || saveRevision.current === savedLocalRevision.current) return;
+    const revision = saveRevision.current;
+    saveQueue.current = saveQueue.current.catch(() => {}).then(async () => {
+      if (writeBlocked.current) return;
+      diskRevision.current = await saveWorkspace(projects, diskRevision.current);
+      savedLocalRevision.current = revision;
+    }).then(() => {
+      if (writeBlocked.current) return;
       if (revision === saveRevision.current) setSaveState('Saved on this device');
-    }).catch(() => {
+    }).catch(error => {
+      if (error instanceof WorkspaceConflictError) { writeBlocked.current = true; setStorageConflict(true); setSaveState('Another tab saved changes — saving paused'); return; }
       if (revision === saveRevision.current) setSaveState('Could not save. Download a backup.');
     });
   }, [projects, ready]);
+
+  useEffect(() => {
+    if (!ready) return;
+    return subscribeWorkspace(event => {
+    if (event.revision <= diskRevision.current || loadFailed.current) return;
+    writeBlocked.current = true;
+    setStorageConflict(true);
+    setSaveState('Another tab saved changes — saving paused');
+    });
+  }, [ready]);
 
   useEffect(() => {
     if (!ready || saveState === 'Saved on this device') return;
@@ -138,6 +187,7 @@ export default function Atlas() {
   }
 
   function go(destination: View, topic?: string) {
+    if (view === 'question' && destination !== 'question') commitQuestionDraftAtNavigation(active);
     const hash = topic ? `#${destination}?${new URLSearchParams({ topic })}` : `#${destination}`;
     if (view !== destination || searchTopic !== topic) window.history.pushState(null, '', hash);
     setView(destination);
@@ -148,13 +198,14 @@ export default function Atlas() {
   }
 
   function selectProject(id: string) {
+    if (view === 'question' && id !== active) commitQuestionDraftAtNavigation(active);
     setActive(id);
     try { sessionStorage.setItem('atlas-active', id); } catch { /* Session selection is optional. */ }
   }
 
   function markDirty() {
     ++saveRevision.current;
-    setSaveState(loadFailed.current ? 'Local storage unavailable' : 'Saving…');
+    setSaveState(writeBlocked.current ? 'Saving paused — keep a recovery backup' : loadFailed.current ? 'Local storage unavailable' : 'Saving…');
   }
 
   function update(patch: Partial<Project>) {
@@ -178,7 +229,7 @@ export default function Atlas() {
     item.discipline = newDiscipline;
     item.goal = newGoal;
     item.experience = newExperience;
-    if (view === 'primer') item.question = draftQuestion.trim();
+    if (view === 'primer' && draftQuestion.trim()) Object.assign(item, updateProject(item, { question: draftQuestion.trim() }));
     markDirty();
     setProjects(items => [item, ...items]);
     selectProject(item.id);
@@ -244,14 +295,15 @@ export default function Atlas() {
 
   return <div className="app-shell journey-shell" data-theme={preferences.theme} data-density={preferences.density} data-motion={preferences.motion}>
     <a className="skip" href="#main" onClick={event => { event.preventDefault(); main.current?.focus(); }}>Skip to workspace</a>
-    <aside className={`sidebar journey-sidebar ${mobile ? 'open' : ''}`}>
+    <aside inert={storageOperation} className={`sidebar journey-sidebar ${mobile ? 'open' : ''}`}>
       <a href="#overview" className="brand" onClick={event => { event.preventDefault(); go('overview'); }}>
         <span className="brand-mark"><LibraryBig size={22} /></span><span>Research Atlas<small>RESEARCH WORKSPACE</small></span>
       </a>
       <button type="button" className="mobile-close icon-button" onClick={() => setMobile(false)} aria-label="Close navigation"><X /></button>
       <nav aria-label="Main navigation">
-        {mainNav.map(item => <button type="button" key={item.id} className={`nav-item ${view === item.id ? 'active' : ''}`} aria-current={view === item.id ? 'page' : undefined} onClick={() => go(item.id)}><item.icon size={18} />{item.title}</button>)}
+        {mainNav.map(item => <button type="button" key={item.id} className={`nav-item ${primaryDestination(view) === item.id ? 'active' : ''}`} aria-current={primaryDestination(view) === item.id ? 'page' : undefined} onClick={() => go(item.id)}><item.icon size={18} />{item.title}</button>)}
       </nav>
+      <nav className="workspace-utility" aria-label="Workspace utilities"><button className="nav-item" onClick={() => go('projects')}><FolderOpen size={17} />My projects</button><button className="nav-item" onClick={() => go('preferences')}><Settings size={17} />Preferences</button><button className="nav-item" onClick={() => go('privacy')}><ClipboardCheck size={17} />Privacy & data</button></nav>
       {project && <div className="journey-active">
         <span className="eyebrow">ACTIVE PROJECT</span><strong>{project.title}</strong>
         {next && <button className="text-button" onClick={() => go(next.id)}>Continue project <ArrowRight size={15} /></button>}
@@ -260,18 +312,21 @@ export default function Atlas() {
       <p className="journey-sidebar-note">Project data is stored in this browser. Download a backup from My projects.</p>
     </aside>
     <div className="main-shell">
-      <header className="topbar journey-topbar">
+      <header inert={storageOperation} className="topbar journey-topbar">
         <button type="button" className="mobile-toggle icon-button" onClick={() => setMobile(true)} aria-label="Open navigation" aria-expanded={mobile}><Menu /></button>
         <div className="journey-breadcrumb">{current ? <><button className="text-button" onClick={() => go('roadmap')}>Project roadmap</button><ChevronRight size={15} /><span>{current.title}</span></> : <span>{mainNav.find(item => item.id === view)?.title ?? 'Get started'}</span>}</div>
         <span className="saved" role="status">{saveState}</span>
+        <label className="mode-select"><span>Mode</span><select aria-label="Guidance mode" value={preferences.interfaceMode ?? 'guided'} onChange={event => changePreferences({ interfaceMode: event.target.value as 'guided' | 'expert' })}><option value="guided">Guided</option><option value="expert">Expert</option></select></label>
         <button className="button small" onClick={openNewProject} disabled={!ready}><Plus size={16} />New project</button>
       </header>
-      <main id="main" ref={main} tabIndex={-1}>
+      <main id="main" ref={main} tabIndex={-1} aria-busy={storageOperation}>
+        {(storageConflict || recoveryRaw) && <section className="error" role="alert"><h2>{storageConflict ? 'Another tab saved changes' : 'Some stored records need recovery'}</h2><p>Saving is paused so this tab cannot overwrite stored work. Download the copy in this tab before loading the latest saved workspace.</p><div className="button-row"><button className="button secondary" onClick={backup}>Download this tab’s backup</button>{recoveryRaw && <button className="button secondary" onClick={() => download('research-atlas-recovery-raw.json', recoveryRaw, 'application/json')}>Download original stored data</button>}<button className="button secondary" disabled={storageOperation} onClick={() => window.location.reload()}>Reload latest saved workspace</button></div></section>}
         {ready && projects.length > 0 && (saveState === 'Local storage unavailable' || saveState.startsWith('Could not save')) && <section className="error" role="alert"><p>Changes are still available in this tab. Download a recovery copy before reloading.</p><button type="button" className="button secondary" onClick={backup}>Download recovery backup</button></section>}
         {notice && <div className="notice" role="status">{notice}<button className="icon-button" onClick={() => setNotice('')} aria-label="Dismiss notice"><X size={16} /></button></div>}
-        <div className="stage-frame" key={view}>
+        <div className="stage-frame" key={view} inert={storageOperation}>
 
-        {view === 'overview' && <>
+        {view === 'overview' && project && <ResearchDashboard project={project} onNavigate={go} backupDate={backupDate} saveState={saveState} />}
+        {view === 'overview' && !project && <>
           <section className="journey-hero">
             <span className="eyebrow">RESEARCH ATLAS</span>
             <h1>Turn curiosity into<br />a research project.</h1>
@@ -289,15 +344,18 @@ export default function Atlas() {
 
         {view === 'paper-search' && <>
           <div className="page-heading"><div><span className="eyebrow">LITERATURE</span><h1>Paper search</h1><p>Look up papers by topic or title. Start with journal quartile, or sort by date, citations or available prices.</p></div></div>
-          {ready ? <PaperSearch key={project?.id ?? 'standalone'} project={project} update={project ? update : undefined} notify={setNotice} openProjects={() => go('projects')} />
+          <nav className="discover-tools" aria-label="Discovery tools"><button className="button secondary" aria-pressed={discoverySection === 'search'} onClick={() => setDiscoverySection('search')}>Search</button><button className="button secondary" onClick={() => go('library')}>Explore connections</button><button className="button secondary" aria-pressed={discoverySection === 'notebook'} onClick={() => setDiscoverySection('notebook')}>Search history</button><button className="text-button" onClick={() => go('explore')}>Explore disciplines</button></nav>
+          {discoverySection === 'notebook' ? <SearchNotebook project={project} onReuse={query => { setDiscoverySection('search'); go('paper-search', query); }} /> : ready ? <PaperSearch key={`${project?.id ?? 'standalone'}-${searchTopic ?? ''}`} project={project} initialQuery={searchTopic} update={project ? update : undefined} notify={setNotice} openProjects={() => go('projects')} />
             : <p className="panel" role="status">Opening paper search…</p>}
         </>}
-        {view === 'guide' && <ResearchPlanner
+        {view === 'library' && <AtlasLibrary projects={projects} activeProjectId={active} onChangeProjects={items => { markDirty(); setProjects(current => items.map(item => { const previous = current.find(p => p.id === item.id); return previous && previous !== item ? updateProject(previous, item) : item; })); }} onOpenProject={id => { selectProject(id); go('screen'); }} notify={setNotice} />}
+        {view === 'guide' && <><MiniLessons onNavigate={go} /><ResearchPlanner
           onStart={() => go('primer')}
           onConferences={() => go('conferences')}
           openSection={target => go(target === 'analysis' ? 'data' : target === 'draft' ? 'writing' : target === 'publish' ? 'publication' : target)}
-          workbench={<PlannerWorkbench key={project?.id ?? 'no-project'} project={project} update={update} onStart={openNewProject} onProjects={() => go('projects')} ready={ready} />}
-        />}
+          workbench={<section className="panel"><h2>Plan beside your project</h2><p>Your timeline, budget, submission pack and reviewer replies live in your project Overview.</p><button className="button" onClick={project ? () => go('roadmap') : openNewProject}>{project ? 'Open project plan' : 'Start a project'}</button></section>}
+        /></>}
+        {view === 'publish-hub' && <><div className="page-heading"><div><span className="eyebrow">SHARE YOUR RESEARCH</span><h1>Publish your research</h1><p>Keep venue checks, conference dates, submission preparations, and reviewer replies together.</p></div></div><nav className="publish-tools" aria-label="Publishing tools">{([['venues', 'Venue finder'], ['conferences', 'Conference finder'], ['submission', 'Submission & reviewer replies']] as const).map(([id,title]) => <button className="button secondary" key={id} aria-pressed={publishSection === id} onClick={() => setPublishSection(id)}>{title}</button>)}</nav>{publishSection === 'conferences' ? <ConferencePlanner /> : project ? publishSection === 'venues' ? <ExecutionWorkspace project={project} mode="publication" update={update} /> : <PlannerWorkbench project={project} update={update} onStart={openNewProject} onProjects={() => go('projects')} ready={ready} /> : <section className="panel"><h2>Start with a project</h2><p>Venue checks and submission notes belong to a particular study. You can browse conferences without creating a project.</p><button className="button" onClick={openNewProject}>Start a project</button></section>}</>}
         {view === 'conferences' && <ConferencePlanner />}
         {view === 'preferences' && <><WorkspacePreferences value={preferences} onChange={changePreferences} /><InstallApp /></>}
         {view === 'privacy' && <PrivacyData backupDate={backupDate} onBackup={backup} />}
@@ -333,8 +391,12 @@ export default function Atlas() {
             : <button className="button" onClick={openNewProject} disabled={!ready}><Plus size={17} />Start a project</button>}
         </section>}
 
+        {(view === 'roadmap' || view === 'history' || current) && project && <ProjectShell project={project} view={view} onNavigate={go} />}
+        {view === 'history' && project && <><div className="page-heading"><div><span className="eyebrow">RESEARCH TRAIL</span><h1>Project history</h1><p>Inspect how questions, sources and decisions shaped this project.</p></div></div><ProjectHistory project={project} /></>}
         {view === 'roadmap' && project && <>
           <div className="page-heading"><div><span className="eyebrow">PROJECT ROADMAP</span><h1>{project.title}</h1><p>{project.discipline}{project.goal ? ` · ${project.goal}` : ''}</p></div><button className="button secondary" onClick={() => go('projects')}><ArrowDownToLine size={16} />Export project</button></div>
+          <div className="button-row"><button className="button secondary" onClick={() => go('history')}>Project history</button><button className="button secondary" onClick={() => go('projects')}>Switch or back up projects</button></div>
+          <details className="panel"><summary>My plan — timeline, budget & submission</summary><PlannerWorkbench project={project} update={update} onStart={openNewProject} onProjects={() => go('projects')} ready={ready} /></details>
           {next && <section className="next-task"><div><span className="eyebrow">YOUR NEXT USEFUL STEP</span><h2>{next.title}</h2><p>{next.detail}</p><small>Work at your own pace. Recorded progress is a planning aid, not a research-quality score.</small></div><button className="button" onClick={() => go(next.id)}>Open next task <ArrowRight size={17} /></button></section>}
           <div className="roadmap-toolbar"><h2>Project tasks</h2><label className="preference-check"><input type="checkbox" checked={preferences.openTasksOnly} onChange={event => changePreferences({ openTasksOnly: event.target.checked })} /> Show unfinished tasks only</label></div>
           {!visibleTasks.length && <p className="notice">All tasks have recorded progress. Turn off the filter to see them.</p>}
@@ -352,11 +414,12 @@ export default function Atlas() {
         {project && current && <>
           <div className="page-heading"><div><span className="eyebrow">{current.group.toUpperCase()} · {project.title}</span><h1>{current.title}</h1><p>{current.detail}</p></div>{status && <Status status={status} />}</div>
           {status === 'Needs review' && <div className="review-banner" role="status"><p>Your question changed. Check this work against the revised question before proceeding.</p><button className="button secondary" onClick={() => update({ needsReview: project.needsReview.filter(id => id !== current.id) })}><Check size={16} />Mark reviewed</button></div>}
-          <ContextGuide stage={current.id} />
+          {preferences.interfaceMode !== 'expert' && <ContextGuide stage={current.id} expanded />}
           {view === 'screen' && <DuplicateReview project={project} update={update} />}
           {view === 'profile' || view === 'topic' || view === 'question' || view === 'methods' ? <PlanningWorkspace key={`${project.id}-${view}`} project={project} mode={view} update={update} next={advance} /> : null}
           {view === 'discover' || view === 'screen' || view === 'extract' ? <EvidenceWorkspace key={`${project.id}-${view}-${searchTopic ?? ''}`} project={project} mode={view} update={update} notify={setNotice} initialQuery={view === 'discover' ? searchTopic : undefined} /> : null}
           {view === 'data' || view === 'writing' || view === 'publication' ? <ExecutionWorkspace key={`${project.id}-${view}`} project={project} mode={view} update={update} /> : null}
+          <NextAction project={project} onNavigate={go} />
           <div className="journey-actions"><button className="button secondary" onClick={() => go('roadmap')}>Back to roadmap</button>{view !== 'profile' && view !== 'topic' && view !== 'question' && view !== 'methods' && <button className="button" onClick={advance}>{view === 'publication' ? 'Return to roadmap' : 'Continue to next task'}<ArrowRight size={17} /></button>}</div>
         </>}
 
@@ -390,7 +453,8 @@ export default function Atlas() {
           </article>)}</div>
         </>}
         </div>
-        <footer className="public-footer" aria-label="Research Atlas information"><a href="#privacy" onClick={event => { event.preventDefault(); go('privacy'); }}>Privacy & data</a><a href="#terms" onClick={event => { event.preventDefault(); go('terms'); }}>Terms</a><a href="#support" onClick={event => { event.preventDefault(); go('support'); }}>Support</a><span className="muted">Research Atlas 0.6.0 · Free · Stored on your device</span></footer>
+        {view === 'projects' && <StorageRecovery revision={diskRevision.current} disabled={saveRevision.current !== savedLocalRevision.current || saveState === 'Saving…' || loadFailed.current || storageConflict} onBusyChange={setStorageOperation} onRestored={workspace => { diskRevision.current = workspace.revision; loadFailed.current = false; writeBlocked.current = false; setStorageConflict(false); setRecoveryRaw(''); savedLocalRevision.current = saveRevision.current; setProjects(workspace.projects); selectProject(workspace.projects[0]?.id ?? ''); setSaveState('Saved on this device'); requestAnimationFrame(() => main.current?.focus({ preventScroll: true })); }} notify={setNotice} />}
+        <footer inert={storageOperation} className="public-footer" aria-label="Research Atlas information"><a href="#privacy" onClick={event => { event.preventDefault(); go('privacy'); }}>Privacy & data</a><a href="#terms" onClick={event => { event.preventDefault(); go('terms'); }}>Terms</a><a href="#support" onClick={event => { event.preventDefault(); go('support'); }}>Support</a><span className="muted">Research Atlas 0.7.0 · Free · Stored on your device</span></footer>
       </main>
     </div>
     <dialog ref={dialog} className="journey-dialog" aria-labelledby="project-dialog-title" onKeyDown={event => {

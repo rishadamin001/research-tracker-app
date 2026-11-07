@@ -103,6 +103,7 @@ export function PaperImpact({ paper }: { paper: Paper }) {
       <span className="paper-citations"><strong>{paper.citedByCount == null ? '—' : metricNumber(paper.citedByCount)}</strong> citations{paper.citedByCount == null ? ' · count unavailable' : ''}</span>
     </div>
     <div className="chips">
+      <span className="tag">Citation metadata: {paper.source === 'OpenAlex' ? 'OpenAlex' : 'source not recorded'}{paper.metricsRetrievedAt ? ` · retrieved ${new Date(paper.metricsRetrievedAt).toLocaleDateString()}` : ' · retrieval date not recorded'}</span>
       <span className="tag">Field-adjusted citations {paper.fwci == null ? 'unavailable' : `${metricNumber(paper.fwci)}×`}</span>
       {paper.inDoaj && <span className="tag">DOAJ</span>}
       {paper.workType && <span className="tag">{paper.workType.replaceAll('-', ' ')}</span>}

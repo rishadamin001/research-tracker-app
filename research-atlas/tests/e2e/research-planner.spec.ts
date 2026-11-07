@@ -1,11 +1,12 @@
 import { expect, test } from '@playwright/test';
 
 test('project planner schedules, budgets and exports submission notes', async ({ page }) => {
-  await page.goto('/#guide');
-  await page.getByRole('button', { name: 'My plan', exact: true }).click();
-  await page.getByRole('button', { name: 'Create a project', exact: true }).click();
+  await page.goto('/');
+  await page.getByRole('button', { name: 'New project', exact: true }).click();
   await page.getByLabel('Working title').fill('Housing study plan');
   await page.getByRole('button', { name: 'Create project', exact: true }).click();
+  await page.getByRole('button', { name: 'Back to roadmap', exact: true }).click();
+  await page.getByText('My plan — timeline, budget & submission', { exact: true }).click();
 
   await page.getByLabel('Submission deadline').fill('2027-03-01');
   await page.getByLabel('Check submission files and leave a buffer days before deadline').fill('1');
@@ -37,7 +38,7 @@ test('project planner schedules, budgets and exports submission notes', async ({
   await expect(page.getByText('Saved on this device', { exact: true })).toBeAttached();
   await page.reload();
 
-  await page.getByRole('button', { name: 'My plan', exact: true }).click();
+  await page.getByText('My plan — timeline, budget & submission', { exact: true }).click();
   await expect(page.getByLabel('Submission deadline')).toHaveValue('2027-03-01');
   await expect(page.getByLabel('Check submission files and leave a buffer days before deadline')).toHaveValue('');
   await page.getByRole('button', { name: 'Budget', exact: true }).click();

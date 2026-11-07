@@ -13,6 +13,8 @@ const views = [
     ['privacy', 'Privacy & data'],
     ['terms', 'Terms & limitations'],
     ['support', 'Support & recovery'],
+    ['library', 'Atlas Library'],
+    ['publish-hub', 'Publish your research'],
 ];
 for (const [view, heading] of views) {
   test(`${view} passes accessibility scan`, async ({ page }) => {

@@ -1,6 +1,7 @@
 import type { Project, Stage } from './model';
 import { canSupportGap } from './evidence-ledger';
 import { dmpFields } from './study-planning';
+import { questionVersionLimit, recordProjectChanges, versionQuestion } from './research-trail';
 
 export const roadmap: { id: Stage; title: string; detail: string; group: string }[] = [
   { id: 'profile', title: 'Set your research direction', detail: 'Choose your field, experience, and goal.', group: 'Define' },
@@ -31,7 +32,7 @@ function stageProgress(project: Project, stage: Stage): { started: boolean; comp
     case 'discover': return { started: Boolean(project.searches.length || papers.length), complete: Boolean(papers.length) };
     case 'screen': return { started: papers.some(paper => paper.decision !== 'unreviewed' || paper.screeningEvents?.length), complete: papers.length > 0 && !needsReason && papers.every(paper => paper.decision === 'include' || paper.decision === 'exclude'), blocked: !papers.length };
     case 'extract': return { started: present(project.gap) || papers.some(paper => paper.evidenceClaims?.length || present(paper.researchProblem) || present(paper.dataset) || present(paper.finding) || present(paper.methods) || present(paper.limitations)), complete: included.length > 0 && included.every(paper => paper.evidenceClaims?.some(claim => claim.claimType === 'finding' && claim.reviewStatus === 'reviewed') || (present(paper.finding) && present(paper.locator))), blocked: !included.length };
-    case 'methods': return { started: present(project.design) || present(project.ethics) || present(project.analysis) || Boolean(project.methodContext && Object.values(project.methodContext).some(present)), complete: present(project.design) && present(project.ethics) && present(project.analysis) };
+    case 'methods': return { started: present(project.design) || present(project.ethics) || present(project.analysis) || present(project.sampling) || present(project.instruments) || present(project.ethicsStatus) || Boolean(project.methodContext && Object.values(project.methodContext).some(present)), complete: present(project.design) && present(project.ethics) && present(project.analysis) };
     case 'data': return { started: present(project.dataPlan) || present(project.analysisRecord) || Boolean(project.structuredDmp && dmpFields.some(([key]) => present(project.structuredDmp![key]))), complete: (hasDraftBody(project.dataPlan) || Boolean(project.structuredDmp && dmpFields.every(([key]) => present(project.structuredDmp![key])))) && hasDraftBody(project.analysisRecord) };
     case 'writing': return { started: present(project.manuscript), complete: hasDraftBody(project.manuscript) };
     case 'publication': return { started: Boolean(project.journalCandidates.length), complete: project.journalCandidates.some(venue => present(venue.verification) && venue.checks.length > 0) };
@@ -53,14 +54,24 @@ export function nextTask(project: Project) {
 
 export function updateProject(project: Project, patch: Partial<Project>, at = new Date().toISOString()): Project {
   const next = { ...project, ...patch, updatedAt: at };
+  const questionChanged = patch.question !== undefined && project.question.trim() !== patch.question.trim();
+  if (questionChanged && (project.questionVersions?.length ?? 0) >= questionVersionLimit) {
+    next.question = project.question;
+    next.questionVersions = project.questionVersions;
+    next.questionChangeReason = project.questionChangeReason;
+    next.questionDraft = patch.question;
+    next.questionDraftReason = patch.questionChangeReason ?? project.questionDraftReason;
+  }
+  const committedQuestionChange = next.question.trim() !== project.question.trim();
+  const affected = committedQuestionChange ? roadmap.slice(3).filter(task => stageProgress(project, task.id).started || stageProgress(project, task.id).complete) : [];
+  if (committedQuestionChange) next.questionVersions = versionQuestion(project, next, at, project.question.trim() ? affected.map(task => task.id) : [], patch.questionChangeReason);
   if ((next.gapStatus === 'evidence-supported candidate' || next.gapStatus === 'human-reviewed candidate') &&
       ((patch.gapStatus && !canSupportGap(next)) || (patch.gap != null && patch.gap.trim() !== project.gap.trim()) ||
         (patch.papers && canSupportGap(project) && !canSupportGap(next)))) next.gapStatus = 'needs-update';
-  if (patch.question === undefined || !project.question.trim() || project.question.trim() === patch.question.trim()) return next;
+  if (!committedQuestionChange || !project.question.trim()) return { ...next, projectEvents: recordProjectChanges(project, next, patch, at) };
 
   if (next.gapStatus === 'evidence-supported candidate' || next.gapStatus === 'human-reviewed candidate') next.gapStatus = 'needs-update';
 
-  const affected = roadmap.slice(3).filter(task => stageProgress(project, task.id).started || stageProgress(project, task.id).complete);
   const newlyFlagged = affected.map(task => task.id).filter(stage => !project.needsReview.includes(stage));
   if (project.papers.some(paper => paper.evidenceClaims?.some(claim => claim.reviewStatus === 'reviewed'))) {
     next.papers = next.papers.map(paper => paper.evidenceClaims?.some(claim => claim.reviewStatus === 'reviewed') ? {
@@ -68,12 +79,12 @@ export function updateProject(project: Project, patch: Partial<Project>, at = ne
       evidenceClaims: paper.evidenceClaims.map(claim => claim.reviewStatus === 'reviewed' ? { ...claim, reviewStatus: 'needs_review' } : claim),
     } : paper);
   }
-  if (!newlyFlagged.length) return next;
+  if (!newlyFlagged.length) return { ...next, projectEvents: recordProjectChanges(project, next, patch, at) };
 
   next.needsReview = [...new Set([...project.needsReview, ...newlyFlagged])];
   next.decisions = [...project.decisions.slice(-299), {
     at,
     note: `Question revised. Previous wording: ${project.question.slice(0, 18000)}. Review ${affected.map(task => task.title.toLowerCase()).join(', ')}.`,
   }];
-  return next;
+  return { ...next, projectEvents: recordProjectChanges(project, next, patch, at) };
 }

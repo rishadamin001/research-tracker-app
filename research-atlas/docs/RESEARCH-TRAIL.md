@@ -1,0 +1,15 @@
+# Question versions and project history
+
+Question editing has two states. `questionDraft` and `questionDraftReason` save locally as the user types. They do not change the committed question, create a revision per character, or invalidate evidence while the researcher is still editing. **Save question revision**, **Continue**, or navigating away from the question page commits the draft once. Moving focus among fields does not commit: this prevents changed status panels from moving a navigation button between pointer-down and click. A reason can be entered before committing; when absent, history explicitly records that no reason was supplied.
+
+Each committed wording records its ID, sequential version, capture time, reason, affected downstream stages, reviewed-claim count and affected source IDs. When an older project has a question but no recorded revisions, Atlas captures that wording as a labelled legacy baseline. Its timestamp is the capture time, not an invented original edit time. Earlier versions cannot be reconstructed from the old text field.
+
+The existing downstream review behavior remains: revising a nonempty committed question marks started evidence/method work for review and changes reviewed claims to Needs review. The prior sources and claims remain available. A scoped candidate-gap state can also need updating. These are prompts to reassess the work, not a determination that the new question invalidates every prior conclusion.
+
+Projects retain at most 200 question versions. At the limit, further committed changes are blocked; the draft is retained for backup/export, and the editor explains how to continue in a new project. It does not silently accept unversioned revisions.
+
+`projectEvents` records question, search, reference, duplicate-review, screening, evidence, methods, data, writing, venue/planning and decision changes. The latest 1,000 events are retained per project. Consecutive edits of the same draft field group within 30 seconds coalesce into one editing-session row with original and latest timestamps. Committed question revisions and individual decisions remain separate. Events link to saved record IDs where applicable, and history includes structured search runs and located source claims from earlier dated records.
+
+The history screen filters activity and exports CSV/JSON. Spreadsheet formula prefixes are neutralized in CSV through the shared exporter. History and question versions are included in portable backups through additive optional project fields; old version 1/2 envelopes remain importable through the existing migration path.
+
+This local history is not a tamper-proof audit log, a complete file-versioning system, or a guarantee of comprehensive research provenance. It does not preserve every intermediate keystroke, reconstruct missing historical timestamps, or track actions performed outside Atlas. Imported project data can contain edited history. The screen discloses its bounded window and grouped editing sessions.

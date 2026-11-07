@@ -67,8 +67,22 @@ try {
   report.backupRestore = true;
 
   await page.goto(new URL('#overview', url).href);
-  await page.getByRole('heading', { name: /Turn curiosity/ }).waitFor();
+  await page.getByRole('heading', { name: 'Your research today', exact: true }).waitFor();
+  report.returningDashboard = true;
   await page.screenshot({ path: `../atlas-${label}-home-desktop.png` });
+
+  await page.getByLabel('Guidance mode').selectOption('expert');
+  await page.reload();
+  assert.equal(await page.getByLabel('Guidance mode').inputValue(), 'expert');
+  await page.getByLabel('Guidance mode').selectOption('guided');
+  report.guidanceModePersists = true;
+  await page.goto(new URL('#library', url).href);
+  await page.getByRole('heading', { name: 'Atlas Library', exact: true }).waitFor();
+  report.libraryOpens = true;
+  await page.screenshot({ path: `../atlas-${label}-library.png` });
+  await page.goto(new URL('#history', url).href);
+  await page.getByRole('heading', { name: 'Project history', exact: true }).waitFor();
+  report.projectHistoryOpens = true;
 
   await page.goto(new URL('#guide', url).href);
   await page.getByRole('button', { name: 'Data, surveys & analysis', exact: true }).click();

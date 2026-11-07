@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, useRef, useState } from 'react';
 import { ArrowRight, Download } from 'lucide-react';
 import { disciplines } from '@/lib/content';
 import { sourceLinks } from '@/lib/links';
@@ -7,6 +7,7 @@ import { exampleTopics, methodsPrompts, studyPurposes } from '@/lib/planning-con
 import { download } from '@/lib/storage';
 import { External } from './External';
 import { MethodPlanner } from './StudyPlanning';
+import { questionVersionLimit } from '@/lib/research-trail';
 
 type PlanningMode = 'profile' | 'topic' | 'question' | 'methods';
 
@@ -156,6 +157,17 @@ function Topic({ project, update, next }: PlanningProps) {
 
 function Question({ project, update, next }: PlanningProps) {
   const discipline = disciplines.find(item => item.name === project.discipline);
+  const [draft, setDraft] = useState(project.questionDraft ?? project.question);
+  const [changeReason, setChangeReason] = useState(project.questionDraftReason ?? '');
+  const lastCommitted = useRef(project.question);
+  const questionId = useId();
+  const historyFull = (project.questionVersions?.length ?? 0) >= questionVersionLimit;
+  function commitQuestion() {
+    if (historyFull || draft.trim() === lastCommitted.current.trim()) return;
+    lastCommitted.current = draft;
+    update({ question: draft, questionChangeReason: changeReason.trim(), questionDraft: undefined, questionDraftReason: undefined });
+    setChangeReason('');
+  }
 
   return (
     <div className="content-grid">
@@ -166,8 +178,15 @@ function Question({ project, update, next }: PlanningProps) {
           hint="Explain what is happening and why it matters." multiline />
         <TextField label="Population, setting, or corpus" value={project.setting} onChange={setting => update({ setting })}
           hint="Specify the people, place, time period, texts, or data you will study." />
-        <TextField label="Your research question" value={project.question} onChange={question => update({ question })}
-          hint="Ask something you can answer with evidence within those boundaries." multiline />
+        <div className="question-version-editor">
+          <label className="field" htmlFor={questionId}><span>Your research question</span></label>
+          <small id={`${questionId}-hint`}>Ask something answerable with evidence within those boundaries. Your uncommitted draft is saved locally. Save, continue, or leave this question page to record one revision.</small>
+          <textarea id={questionId} aria-describedby={`${questionId}-hint`} value={draft} onChange={event => { setDraft(event.target.value); update({ questionDraft: event.target.value }); }} rows={4} maxLength={20000} disabled={historyFull} />
+          <label className="field"><span>Reason for this question revision (optional)</span><input value={changeReason} onChange={event => { setChangeReason(event.target.value); update({ questionDraftReason: event.target.value }); }} maxLength={2000} placeholder="For example, narrow to first-year commuters after reading new evidence" disabled={historyFull} /></label>
+          <div className="button-row"><button type="button" className="button secondary" disabled={historyFull || draft.trim() === lastCommitted.current.trim()} onClick={commitQuestion}>Save question revision</button></div>
+          <small style={{ display: 'block', minHeight: '1.6em' }}>{project.questionVersions?.length ? `Question v${project.questionVersions.at(-1)?.version}` : 'No committed version yet'}</small>
+          {historyFull && <p className="info-bar">This project has reached its {questionVersionLimit}-revision history limit. Export its backup before continuing in a new project.</p>}
+        </div>
         <TextField label="Research objectives" value={project.objectives} onChange={objectives => update({ objectives })}
           hint="List the steps needed to answer your question, such as describing a pattern or comparing two sources." multiline />
         <details>
@@ -176,7 +195,7 @@ function Question({ project, update, next }: PlanningProps) {
             hint="If your design tests a prediction, describe what outcome you expect and under what conditions." multiline />
         </details>
         <div className="button-row">
-          <Continue next={next}>Find supporting evidence</Continue>
+          <button type="button" className="button" data-question-continue onClick={() => { commitQuestion(); next(); }}>Find supporting evidence <ArrowRight size={16} aria-hidden="true" /></button>
         </div>
       </section>
       <aside className="panel warm">

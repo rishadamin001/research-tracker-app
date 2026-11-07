@@ -3,6 +3,7 @@ export type Preferences = {
   density: 'comfortable' | 'compact';
   motion: 'system' | 'off';
   openTasksOnly: boolean;
+  interfaceMode?: 'guided' | 'expert';
 };
 
 export const defaultPreferences: Preferences = {
@@ -10,6 +11,7 @@ export const defaultPreferences: Preferences = {
   density: 'comfortable',
   motion: 'system',
   openTasksOnly: false,
+  interfaceMode: 'guided',
 };
 
 const key = 'atlas-workspace-preferences';
@@ -22,6 +24,7 @@ export function readPreferences(): Preferences {
       density: saved.density === 'compact' ? 'compact' : 'comfortable',
       motion: saved.motion === 'off' ? 'off' : 'system',
       openTasksOnly: saved.openTasksOnly === true,
+      interfaceMode: saved.interfaceMode === 'expert' ? 'expert' : 'guided',
     };
   } catch {
     return defaultPreferences;

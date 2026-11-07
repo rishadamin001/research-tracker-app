@@ -1,0 +1,26 @@
+.project-shell { background:var(--surface); border:1px solid var(--line); border-radius:14px; margin-bottom:24px; padding:18px 20px; }
+.project-shell-heading { display:flex; justify-content:space-between; align-items:center; gap:14px; margin-bottom:16px; }
+.project-shell-heading strong { display:block; font-size:1rem; overflow-wrap:anywhere; }
+.project-tabs, .project-subnav { display:flex; flex-wrap:wrap; gap:6px; }
+.project-tabs button { border:1px solid transparent; border-radius:8px; background:transparent; color:var(--muted); padding:10px 14px; font-weight:650; }
+.project-tabs button[aria-current="page"] { color:var(--green); background:var(--accent-soft); border-color:var(--line); }
+.project-subnav { border-top:1px solid var(--line); padding-top:12px; margin-top:12px; gap:16px; }
+.project-subnav [aria-current="page"] { font-weight:750; text-decoration:underline; }
+.dashboard-header { margin:10px 0 24px; }
+.research-question h2 { max-width:850px; font-size:clamp(1.2rem,2.5vw,1.7rem); margin-bottom:12px; }
+.dashboard-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+.dashboard-metrics article { display:flex; flex-direction:column; gap:5px; }
+.dashboard-metrics strong { font-size:2rem; color:var(--green); }
+.dashboard-metrics span { color:var(--muted); }
+.dashboard-stages { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:8px; margin-top:16px; }
+.dashboard-stages button { display:flex; flex-direction:column; align-items:flex-start; gap:7px; border:1px solid var(--line); border-radius:9px; padding:12px; }
+.mini-lessons { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin-bottom:24px; }
+.mini-lessons h2 { font-size:1.1rem; margin-top:10px; }
+.lesson-flow { font-size:.85rem; padding:12px 0; color:var(--green); }
+.workspace-utility { border-top:1px solid var(--line); margin-top:18px; padding-top:10px; }
+.mode-select { display:flex; align-items:center; gap:8px; font-size:.8rem; }
+.mode-select select { max-width:130px; padding:7px; border:1px solid var(--line); border-radius:7px; }
+.publish-tools { display:flex; flex-wrap:wrap; gap:10px; margin:18px 0; }
+.discover-tools { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:20px; }
+.workspace-note { background:var(--surface-soft); border-left:3px solid var(--green); padding:14px 18px; margin:16px 0; }
+@media(max-width:800px) { .mini-lessons,.dashboard-metrics { grid-template-columns:1fr; } .project-tabs button { padding:9px 10px; } .project-shell-heading { align-items:flex-start; flex-direction:column; } .mode-select { order:3; } }

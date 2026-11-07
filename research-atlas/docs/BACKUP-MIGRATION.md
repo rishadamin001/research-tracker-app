@@ -1,6 +1,8 @@
 # Backup v2 and origin migration
 
-Release 0.6.0 exports `research-atlas-backup` format, `backupVersion: 2`, and project `schemaVersion: 1`. The envelope records application version, creation time, source origin, project count, projects, validated display preferences, and a SHA-256 checksum. The checksum covers canonical JSON with sorted object keys, excluding the checksum itself. It detects accidental changes; it is not a signature, authentication mechanism, or encryption.
+Releases 0.6 and 0.7 export `research-atlas-backup` format, `backupVersion: 2`, and project `schemaVersion: 1`. The envelope records application version, creation time, source origin, project count, projects, validated display preferences, and a SHA-256 checksum. The checksum covers canonical JSON with sorted object keys, excluding the checksum itself. It detects accidental changes; it is not a signature, authentication mechanism, or encryption.
+
+Version 0.7 adds optional question drafts/versions, project history and Library organization fields to the same validated project schema. They travel with project backups. The browser workspace revision and local recovery snapshots are storage metadata and are not included in portable exports. Downloading a backup captures the current tab’s in-memory records even if saving was paused by a conflict. [Local recovery behavior](STORAGE-RECOVERY.md)
 
 Exports use known validated fields, excluding added keys or provider credentials. Imports enforce a 10 MB limit, parse JSON, validate the envelope and project schema, verify the checksum and project count, reject duplicate project IDs, and present a preview. Version 1 backups remain supported, with absent origin/version/checksum described explicitly. Current preferences are not automatically overwritten. Projects are added with new IDs, preserving their reference, screening-event, evidence-claim, and decision records.
 

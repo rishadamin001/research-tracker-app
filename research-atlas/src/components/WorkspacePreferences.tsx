@@ -13,6 +13,7 @@ export function WorkspacePreferences({ value, onChange }: {
     <div className="settings-grid">
       <section className="panel">
         <h2>Appearance</h2>
+        <label className="field"><span>Workspace mode</span><select value={value.interfaceMode ?? 'guided'} onChange={event => onChange({ interfaceMode: event.target.value as Preferences['interfaceMode'] })}><option value="guided">Guided — show contextual help</option><option value="expert">Expert — focus on the work</option></select></label>
         <label className="field">
           <span>Color theme</span>
           <select value={value.theme} onChange={event => onChange({ theme: event.target.value as Preferences['theme'] })}>

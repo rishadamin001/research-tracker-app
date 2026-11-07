@@ -60,7 +60,7 @@ function SearchRunDetails({ run }: { run: SearchRun }) {
   </details>;
 }
 
-function SearchLog({ searches, reuseSearch }: { searches: Project['searches']; reuseSearch: (search: Project['searches'][number]) => void }) {
+function SearchLog({ searches, reuseSearch, termsOnly = false }: { searches: Project['searches']; reuseSearch: (search: Project['searches'][number]) => void; termsOnly?: boolean }) {
   return (
     <details className="panel">
       <summary>Search audit trail ({searches.length})</summary>
@@ -70,7 +70,7 @@ function SearchLog({ searches, reuseSearch }: { searches: Project['searches']; r
         <div className="audit" key={search.run?.id ?? `${search.date}-${index}`}>
           <p>{new Date(search.date).toLocaleString()} · {search.source} · “{search.query}” · {search.filters} · {search.run?.error ? 'Search failed' : `${search.count} results`}</p>
           {search.run && <SearchRunDetails run={search.run} />}
-          <button type="button" className="text-button" onClick={() => reuseSearch(search)}>{search.run ? 'Reuse search terms and filters' : 'Reuse search terms'}</button>
+          <button type="button" className="text-button" onClick={() => reuseSearch(search)}>{termsOnly ? 'Search these terms again' : search.run ? 'Reuse search terms and filters' : 'Reuse search terms'}</button>
         </div>
       ))}
       <p className="muted">This log records the searches run here. A systematic review may need additional databases and full search strategies.</p>
@@ -278,7 +278,7 @@ function Discover({ project, update, notify, initialQuery, openProjects }: Omit<
         const saved = isSaved(paper);
         const savedPaper = savedPapersById.get(paper.id);
         const canRefreshReferences = savedPaper && savedPaper.referenceIds === undefined && paper.referenceIds !== undefined;
-        const canRefreshMetrics = savedPaper && (savedPaper.fwci !== paper.fwci || savedPaper.citedByCount !== paper.citedByCount || savedPaper.isRetracted !== paper.isRetracted
+        const canRefreshMetrics = savedPaper && ((!savedPaper.metricsRetrievedAt && !!paper.metricsRetrievedAt) || savedPaper.fwci !== paper.fwci || savedPaper.citedByCount !== paper.citedByCount || savedPaper.isRetracted !== paper.isRetracted
           || (paper.journalQuartile && (savedPaper.journalQuartile?.year !== paper.journalQuartile.year || savedPaper.journalQuartile?.quartile !== paper.journalQuartile.quartile))
           || savedPaper.publisher !== paper.publisher || savedPaper.venueType !== paper.venueType || savedPaper.publicationDate !== paper.publicationDate || savedPaper.oa !== paper.oa
           || savedPaper.readingCost?.amount !== paper.readingCost?.amount || savedPaper.readingCost?.currency !== paper.readingCost?.currency
@@ -319,8 +319,8 @@ function Discover({ project, update, notify, initialQuery, openProjects }: Omit<
               )}
               {update && canRefreshMetrics && (
                 <button type="button" className="button secondary small" onClick={() => {
-                  const { fwci, citedByCount, isRetracted, workType, journal, journalQuartile, publisher, venueType, issns, inDoaj, publicationDate, oa, readingCost, journalFee } = paper;
-                  update({ papers: savedPapers.map(item => item.id === paper.id ? { ...item, fwci, citedByCount, isRetracted, workType, journal, journalQuartile: journalQuartile ?? item.journalQuartile, publisher, venueType, issns, inDoaj, publicationDate, oa, readingCost, journalFee } : item) });
+                  const { fwci, citedByCount, metricsRetrievedAt, isRetracted, workType, journal, journalQuartile, publisher, venueType, issns, inDoaj, publicationDate, oa, readingCost, journalFee } = paper;
+                  update({ papers: savedPapers.map(item => item.id === paper.id ? { ...item, fwci, citedByCount, metricsRetrievedAt, isRetracted, workType, journal, journalQuartile: journalQuartile ?? item.journalQuartile, publisher, venueType, issns, inDoaj, publicationDate, oa, readingCost, journalFee } : item) });
                   notify('Citation, publication, and price information refreshed.');
                 }}>Refresh paper metrics</button>
               )}
@@ -342,7 +342,7 @@ function Discover({ project, update, notify, initialQuery, openProjects }: Omit<
   );
 }
 
-function RelatedDiscovery({ paper, project, update, notify }: { paper: Paper; project?: Project; update?: EvidenceWorkspaceProps['update']; notify: EvidenceWorkspaceProps['notify'] }) {
+export function RelatedDiscovery({ paper, project, update, notify }: { paper: Paper; project?: Project; update?: EvidenceWorkspaceProps['update']; notify: EvidenceWorkspaceProps['notify'] }) {
   const [papers, setPapers] = useState<Paper[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -375,6 +375,19 @@ function RelatedDiscovery({ paper, project, update, notify }: { paper: Paper; pr
 
 export function PaperSearch(props: PaperSearchProps) {
   return <Discover {...props} />;
+}
+
+export function SearchNotebook({ project, onReuse }: { project?: Project; onReuse: (query: string) => void }) {
+  const [localSearches] = useState(readLocalSearches);
+  const searches = project?.searches ?? localSearches;
+  return <section><h2>Search notebook</h2><p>{project ? `Searches recorded for ${project.title}.` : 'The last 50 standalone searches recorded in this browser.'} Search records preserve the terms, filters, provider, pages and limitations. Reusing terms starts a new search; use the audit details to reproduce filters.</p>
+    {project && searches.length > 0 && <div className="panel"><h3>Sources found through your searches</h3>{searches.slice(-20).reverse().map((search, index) => {
+      const ids = search.run?.resultIds;
+      const saved = ids ? project.papers.filter(p => ids.includes(p.id)) : [];
+      return <p key={search.run?.id ?? index}>“{search.query}” · {search.count} retrieved · {ids ? `${saved.length} currently saved · ${saved.filter(p=>p.decision !== 'unreviewed').length} with screening decisions` : 'Saved-source attribution was not recorded in this older search.'}</p>;
+    })}<p className="muted">Counts describe current project records matched by returned IDs, not an immutable record of every save or removal.</p></div>}
+    <SearchLog termsOnly searches={searches} reuseSearch={search => onReuse(search.query)} />
+  </section>;
 }
 
 function PublicationTimeline({ papers }: { papers: Paper[] }) {

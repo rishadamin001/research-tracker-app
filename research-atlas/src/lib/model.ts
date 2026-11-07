@@ -3,6 +3,7 @@ import { researchPlanSchema } from './research-plan';
 import { evidenceClaimLimit, evidenceClaimSchema, findingSummary, screeningCriterionLimit, screeningCriterionSchema, screeningDecisionSchema, screeningDraftSchema, screeningEventLimit, screeningEventSchema } from './evidence-ledger';
 import { searchRunSchema } from './search-provenance';
 import { dmpMarkdown, methodContextSchema, structuredDmpSchema } from './study-planning';
+import { projectEventLimit, projectEventSchema, questionVersionLimit, questionVersionSchema } from './research-trail';
 const text = z.string().max(20000);
 const journalQuartile = z.object({
   quartile: z.enum(['Q1', 'Q2', 'Q3', 'Q4']),
@@ -24,6 +25,9 @@ export type JournalFee = z.infer<typeof journalFee>;
 export const paperSchema = z.object({
   id:z.string().max(500),title:text,authors:text,year:z.number().nullable(),doi:z.string().nullable(),journal:text,url:z.string(),oa:z.string().nullable(),source:z.string(),notes:text.default(''),finding:text.default(''),methods:text.default(''),limitations:text.default(''),locator:text.default(''),decision:screeningDecisionSchema.default('unreviewed'),reason:text.default(''),referenceIds:z.array(z.string().max(500)).max(500).optional(),
   referenceKey: z.string().max(500).optional(),
+  readingStatus: z.enum(['unread', 'reading', 'read']).optional(),
+  tags: z.array(z.string().trim().min(1).max(60)).max(20).optional(),
+  libraryLinkProvenance: z.object({ fromProjectId: z.string().max(500), fromProjectTitle: z.string().max(20000), linkedAt: z.iso.datetime() }).optional(),
   referenceAuthors: z.array(z.string().max(500)).max(500).optional(),
   isbn: z.string().max(40).optional(),
   screeningEvents: z.array(screeningEventSchema).max(screeningEventLimit).optional(),
@@ -33,6 +37,7 @@ export const paperSchema = z.object({
   dataset: text.default(''),
   fwci: z.number().nonnegative().optional(),
   citedByCount: z.number().int().nonnegative().optional(),
+  metricsRetrievedAt: z.iso.datetime().optional(),
   workType: z.string().max(100).optional(),
   isRetracted: z.boolean().optional(),
   publisher: z.string().max(500).optional(),
@@ -69,6 +74,11 @@ export const projectSchema=z.object({id:z.string(),title:text,discipline:text,do
   structuredDmp: structuredDmpSchema.optional(),
   screeningCriteria: z.array(screeningCriterionSchema).max(screeningCriterionLimit).optional(),
   duplicateReviews: z.array(duplicateReview).max(50).optional(),
+  questionVersions: z.array(questionVersionSchema).max(questionVersionLimit).optional(),
+  questionChangeReason: z.string().max(2000).optional(),
+  questionDraft: z.string().max(20000).optional(),
+  questionDraftReason: z.string().max(2000).optional(),
+  projectEvents: z.array(projectEventSchema).max(projectEventLimit).optional(),
   gapSearchLimits: text.default(''),
   needsReview:z.array(workflowStage).default([]),
   decisions:z.array(decisionRecord).max(300).default([]),

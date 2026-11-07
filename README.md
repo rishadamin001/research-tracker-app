@@ -4,7 +4,7 @@
 
 A free, browser-local academic research workspace for students and early-career researchers. Research Atlas connects paper discovery, literature screening, study planning, writing, and publication checks in one guided workflow.
 
-**[Open Research Atlas](https://rishadamin001.github.io/research-tracker-app/)** · [App guide](research-atlas/README.md) · [PDF audit status](research-atlas/docs/PDF-AUDIT-STATUS.md) · [Report an issue](https://github.com/rishadamin001/research-tracker-app/issues)
+**[Open Research Atlas](https://rishadamin001.github.io/research-tracker-app/)** · [App guide](research-atlas/README.md) · [Blueprint status](research-atlas/docs/DEEP-BLUEPRINT-STATUS.md) · [Report an issue](https://github.com/rishadamin001/research-tracker-app/issues)
 
 ## What you can do
 
@@ -14,16 +14,17 @@ A free, browser-local academic research workspace for students and early-career 
 | **Literature & evidence** | Save references, review duplicate candidates side by side with reversible choices, screen by title/abstract or full text, and connect located evidence claims to a scoped gap candidate. Exchange RIS/BibTeX references. |
 | **Research planner** | Start from three clear intentions; develop a question, review conditional study designs, build an exportable data management plan, and plan deadlines, budgets, submission materials and reviewer replies. |
 | **Conferences** | Browse Bangladesh and international conference sources, track dates, and export calendar entries. |
-| **Your workspace** | Customize theme, density and motion; inspect storage health; export versioned backups with origin, counts and integrity checks; restore older backups as copies. Install the PWA in a supported browser. |
+| **Atlas Library** | Browse references across projects with quartiles, tags and reading states; link bibliography to another project while keeping project judgments separate. |
+| **Your workspace** | Use Guided or Expert mode, a returning dashboard and project tabs. Follow question versions and project history; recover bounded local snapshots; protect against stale-tab saves; download versioned backups. |
 
 ## Start using the app
 
 1. [Open the live app](https://rishadamin001.github.io/research-tracker-app/).
-2. Use **Paper search** to explore literature, or create a project to follow the research roadmap.
-3. Visit **Research planner** for guidance and **Privacy & data** for storage and backup information.
+2. Use **Discover** to search papers, or **My Research** to create a project and follow its roadmap.
+3. Use **Library** for sources across projects, **Learn** for short lessons and the planner, and **Publish** for venues, conferences and submissions.
 4. Export project backups regularly. Browser data does not automatically sync between devices. Use the [migration guide](research-atlas/docs/BACKUP-MIGRATION.md) when changing browser or website address.
 
-The homepage offers a guided beginner path, a project path for an existing topic, and paper search without project setup. [Privacy & data](https://rishadamin001.github.io/research-tracker-app/#privacy), [Terms](https://rishadamin001.github.io/research-tracker-app/#terms) and [Support](https://rishadamin001.github.io/research-tracker-app/#support) are public.
+Navigation has six destinations: Home, My Research, Discover, Library, Learn and Publish. Returning Home shows the active question and actual pending work. Projects share Overview, Question, Literature, Study, Evidence, Write and Publish tabs. [Privacy & data](https://rishadamin001.github.io/research-tracker-app/#privacy), [Terms](https://rishadamin001.github.io/research-tracker-app/#terms) and [Support](https://rishadamin001.github.io/research-tracker-app/#support) are public.
 
 The published app requires no paid subscription, payment card, or personal API key. Search requests go to external scholarly providers and are subject to their availability and limits. Project records stay in your browser.
 
@@ -72,7 +73,10 @@ package.json         Earlier tracker's workspace commands
 | [Search continuation](research-atlas/docs/SEARCH-CONTINUATION.md) | Page limits, reproducibility, history, and related papers |
 | [Study planning](research-atlas/docs/STUDY-PLANNING.md) | Conditional methods, sourced guidance, and structured data plans |
 | [Backup & migration](research-atlas/docs/BACKUP-MIGRATION.md) | Backup versions, integrity, and moving between origins |
-| [PDF audit status](research-atlas/docs/PDF-AUDIT-STATUS.md) | Requirement-by-requirement scope, limits, and deferred work |
+| [Deep blueprint status](research-atlas/docs/DEEP-BLUEPRINT-STATUS.md) | Current release boundaries and planned later work |
+| [Atlas Library](research-atlas/docs/ATLAS-LIBRARY.md) | Cross-project grouping, linking and current storage limitations |
+| [Research trail](research-atlas/docs/RESEARCH-TRAIL.md) | Question versions, project event history and exports |
+| [PDF audit status](research-atlas/docs/PDF-AUDIT-STATUS.md) | Previous audit requirements and limitations |
 | [Testing](research-atlas/TESTING.md) | Verification coverage and results |
 | [Deployment](research-atlas/DEPLOYMENT.md) | GitHub Pages publishing |
 | [Contributing](research-atlas/CONTRIBUTING.md) | Development conventions |
@@ -83,7 +87,8 @@ package.json         Earlier tracker's workspace commands
 - **Citations:** counts come from the scholarly provider and may differ from other databases.
 - **Costs:** reading access and author publishing fees are separate. Missing prices remain unavailable rather than being treated as zero.
 - **Conference dates:** source links and check dates help you verify listings. Calendar exports are copies and do not automatically update.
-- **Storage:** browser storage can be cleared. Keep downloaded backups of important work. Backup format 2 preserves origin and counts; project schema remains version 1 with additive fields. Standalone search history is local and exported separately.
+- **Library:** the unified Library currently derives its view from project references. A migrated canonical reference database and PDF attachments remain later work.
+- **Storage:** browser storage can be cleared. Local snapshots and stale-tab protection add recovery within the same origin; reload older app tabs after updating. Keep downloaded backups of important work. Backup format 2 preserves origin and counts; project schema remains version 1 with additive fields. Standalone search history is local and exported separately.
 - **Coverage:** search is bounded to five basic pages and does not prove exhaustive coverage. Methods suggestions are conditional, and reporting checklists are separate from study-quality appraisal. The [PDF audit matrix](research-atlas/docs/PDF-AUDIT-STATUS.md) records the remaining domain, Android, device and content-review work.
 
 ## Development checks

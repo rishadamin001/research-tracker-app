@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.0 — 2026-11-08
+
+Reorganized navigation into Home, My Research, Discover, Library, Learn and Publish. Projects keep one seven-tab shell. Returning Home shows the current question, actual pending work and a next useful action; My plan now lives under project Overview. Guided/Expert mode persists with display preferences, and short visual lessons lead back to workspace actions.
+
+Added the cross-project Atlas Library view with DOI grouping, tags, reading states and explicit project linking that keeps screening and evidence judgments separate. Added committed question versions, reasons and affected-work snapshots, a bounded project event history with exports/source links, and a search notebook with query reuse. Provider citation metadata now includes its retrieval date.
+
+Added revision-checked workspace saves, stale-tab write protection, bounded rolling recovery snapshots and corrupted-record isolation with original-data export. Existing v1 projects and v1/v2 backups remain supported. Downloaded backups are still required for recovery outside this browser. Reload older tabs after upgrading.
+
+See the [deep blueprint status](docs/DEEP-BLUEPRINT-STATUS.md) for delivered boundaries and later releases. The Library is currently a derived view over project references, not a canonical global table. No paid runtime, AI provider or new hosted service is added.
+
 ## 0.6.0 — 2026-11-07
 
 Simplified Home to three intentions and reduced initial project setup to a working title, discipline, goal and experience. The beginner path shows a compact research journey, worked example and next useful action.

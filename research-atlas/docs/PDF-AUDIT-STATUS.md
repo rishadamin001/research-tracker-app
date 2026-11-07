@@ -1,5 +1,7 @@
 # PDF audit implementation status — 0.6.0
 
+This records the 0.6 audit release. The subsequent 0.7 navigation, unified Library view, question trail and recovery work is tracked in [Deep blueprint status](DEEP-BLUEPRINT-STATUS.md). A canonical shared reference database remains deferred even though the cross-project view is now available.
+
 This matrix maps the supplied **Research Atlas Competitive Audit and Prototype Improvement Blueprint** to the current source. It covers the PDF's feature comparison, first-five-minute design, data/security requirements, and Releases 1–5. The PDF is a product reference; external claims and suggested technical mechanisms are checked against the actual implementation and primary documentation.
 
 **Implemented** means the described source behavior exists; it does not by itself mean all release gates or live services passed. **Partial** records narrower behavior or outstanding acceptance criteria. **Not configured** identifies a deployment/account/domain prerequisite. **Untested** means no completed verification is claimed. See [Testing](../TESTING.md) for actual commands, browser coverage, results, and production verification. This document deliberately does not supply test counts or assert that a pending deployment succeeded.

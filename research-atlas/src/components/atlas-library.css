@@ -1,0 +1,14 @@
+.atlas-library .library-record-heading { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
+.atlas-library .library-record-heading > div { min-width: 0; }
+.atlas-library .library-record-heading h2 { overflow-wrap: anywhere; }
+.atlas-library .library-record-heading > .tag { flex-shrink: 0; }
+.library-project-links { display: flex; align-items: center; gap: 10px 18px; flex-wrap: wrap; margin: 18px 0; padding-top: 14px; border-top: 1px solid var(--line); }
+.library-record .publication-identity { margin-bottom: 16px; }
+.library-record details { margin-top: 18px; }
+.library-record details h3 { margin-top: 20px; }
+.library-record { overflow-wrap: anywhere; }
+.library-link-control { display: flex; gap: 12px; align-items: flex-end; }
+.library-link-control .field { flex: 1; margin: 0; }
+.library-connections { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 10px; }
+.atlas-library .field > span svg { vertical-align: middle; margin-right: 6px; }
+@media (max-width: 600px) { .library-link-control { align-items: stretch; flex-direction: column; } .atlas-library .library-record-heading { flex-direction: column; } }

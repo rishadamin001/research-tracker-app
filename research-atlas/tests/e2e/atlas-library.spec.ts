@@ -1,0 +1,30 @@
+import { expect, test } from '@playwright/test';
+import { createProject, paperSchema } from '../../src/lib/model';
+
+test('Library links a source across projects without copying project judgments and keeps organization after reload', async ({ page }) => {
+  const a = createProject('Housing thesis'), b = createProject('Course project');
+  a.papers = [paperSchema.parse({ id: 'https://openalex.org/W123', doi: '10.1234/housing', title: 'Urban housing evidence', authors: 'Test Author', year: 2024, journal: 'Fixture journal', publisher: 'Elsevier', venueType: 'journal', source: 'OpenAlex', url: 'https://example.org', oa: null, notes: 'Origin-only interpretation', decision: 'include', reason: 'Origin selection rule', journalQuartile: { quartile: 'Q1', source: 'POSI', year: 2026, category: 'Fixture category', url: 'https://example.org/rank' }, citedByCount: 17 })];
+  await page.goto('/#projects');
+  await page.getByLabel('Import backup', { exact: true }).setInputFiles({ name: 'library.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ schemaVersion: 1, exportedAt: new Date().toISOString(), projects: [a, b] })) });
+  await page.getByRole('button', { name: 'Import as new copies' }).click();
+  await page.getByText('Saved on this device', { exact: true }).waitFor({ state: 'attached' });
+  await page.goto('/#library');
+  await expect(page.getByRole('heading', { name: 'Atlas Library', exact: true })).toBeVisible();
+  const record = page.getByRole('article', { name: 'Library reference: Urban housing evidence' });
+  await expect(record.getByText('POSI Q1 · 2026', { exact: true })).toBeVisible();
+  await expect(record.getByText('17', { exact: true })).toBeVisible();
+  await record.getByText('Organize this reference', { exact: true }).click();
+  await record.getByLabel('Link reference to project').selectOption({ label: 'Course project (imported)' });
+  await record.getByRole('button', { name: 'Link reference', exact: true }).click();
+  await expect(record.getByText('2 projects', { exact: true })).toBeVisible();
+  await expect(record.getByText(/Course project \(imported\): unreviewed/)).toBeVisible();
+  await record.getByLabel('Reading status').selectOption('read');
+  await record.getByLabel('Tags, separated by commas').fill('housing, methods');
+  await record.getByRole('button', { name: 'Save tags' }).click();
+  await page.getByText('Saved on this device', { exact: true }).waitFor({ state: 'attached' });
+  await page.reload();
+  await page.getByLabel('Search your Library').fill('methods');
+  await page.getByLabel('Filter by reading status').selectOption('read');
+  await expect(page.getByRole('heading', { name: 'Urban housing evidence', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
