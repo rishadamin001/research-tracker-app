@@ -32,11 +32,13 @@ export function ScreeningCriteria({ criteria, onChange }: {
   </details>;
 }
 
-export function PaperScreening({ paper, criteria, onDraft, onRecord }: {
+export function PaperScreening({ paper, criteria, onDraft, onRecord, quickActions = false, compact = false }: {
   paper: Paper;
   criteria: ScreeningCriterion[];
   onDraft: (draft: ScreeningDraft) => void;
   onRecord: (event: ScreeningEvent) => void;
+  quickActions?: boolean;
+  compact?: boolean;
 }) {
   const history = paper.screeningEvents ?? [];
   const latest = history.at(-1);
@@ -67,7 +69,7 @@ export function PaperScreening({ paper, criteria, onDraft, onRecord }: {
   return <>
     <fieldset disabled={locked} className="evidence-ledger-fields">
       <legend>Record a screening decision</legend>
-      <p>Choose a stage and rule, then write why. Selecting a decision adds a dated entry. Use Maybe when you need more evidence.</p>
+      {!compact && <p>Choose a stage and rule, then write why. Selecting a decision adds a dated entry. Use Maybe when you need more evidence.</p>}
       <label className="field"><span>Screening stage</span><select value={stage} onChange={event => onDraft({ ...draft, stage: event.target.value === 'full_text' ? 'full_text' : 'title_abstract' })}>
         {Object.entries(screeningStages).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
       </select></label>
@@ -83,6 +85,7 @@ export function PaperScreening({ paper, criteria, onDraft, onRecord }: {
         <option value="exclude" disabled={!reason.trim() && paper.decision !== 'exclude'}>Exclude</option>
         <option value="maybe" disabled={!reason.trim() && paper.decision !== 'maybe'}>Maybe</option>
       </select></label>
+      {quickActions && <div className="button-row" role="group" aria-label="Quick screening decisions">{(['include', 'maybe', 'exclude'] as const).map(decision => <button key={decision} type="button" className="button secondary small" aria-pressed={paper.decision === decision} disabled={!reason.trim()} onClick={() => record(decision)}>{decision === 'include' ? 'Include' : decision === 'exclude' ? 'Exclude' : 'Maybe'}</button>)}</div>}
       {paper.decision !== 'unreviewed' && <button type="button" className="button secondary small" disabled={!reason.trim()} onClick={() => record(paper.decision)}>Record current decision again</button>}
     </fieldset>
     {locked && <p role="status">This paper has 60 recorded decisions. Export a backup to preserve the complete history.</p>}
@@ -136,9 +139,10 @@ function ClaimForm({ claim, paper, onSave, onCancel }: {
   </form>;
 }
 
-export function EvidenceClaims({ paper, onChange }: { paper: Paper; onChange: (claims: EvidenceClaim[]) => void }) {
+export function EvidenceClaims({ paper, onChange, onEditingChange }: { paper: Paper; onChange: (claims: EvidenceClaim[]) => void; onEditingChange?: (editing: boolean) => void }) {
   const claims = paper.evidenceClaims ?? [];
   const [editingId, setEditingId] = useState<string>();
+  function edit(id?: string) { setEditingId(id); onEditingChange?.(Boolean(id)); }
   const editing = claims.find(item => item.id === editingId);
   function editClaim(claim: EvidenceClaim) {
     onChange(claims.map(item => item.id === claim.id ? claim : item));
@@ -157,22 +161,22 @@ export function EvidenceClaims({ paper, onChange }: { paper: Paper; onChange: (c
         {Object.entries(gapRoles).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
       </select></label>
       <div className="button-row">
-        <button type="button" className="text-button" onClick={() => setEditingId(claim.id)}>Edit claim</button>
+        <button type="button" className="text-button" onClick={() => edit(claim.id)}>Edit claim</button>
         {claim.reviewStatus !== 'reviewed' && <button type="button" className="text-button" onClick={() => editClaim({ ...claim, reviewStatus: 'reviewed', reviewedAt: new Date().toISOString() })}>Mark claim reviewed</button>}
         <button type="button" className="text-button danger" onClick={() => {
           if (!window.confirm('Remove this evidence claim and its link to the candidate gap?')) return;
           onChange(claims.filter(item => item.id !== claim.id));
-          if (editingId === claim.id) setEditingId(undefined);
+          if (editingId === claim.id) edit();
         }}>Remove claim</button>
       </div>
     </li>)}</ul>}
-    {editingId && <ClaimForm key={editingId} claim={editing} paper={paper} onCancel={() => setEditingId(undefined)} onSave={claim => {
+    {editingId && <ClaimForm key={editingId} claim={editing} paper={paper} onCancel={() => edit()} onSave={claim => {
       if (editing) editClaim({ ...claim, gapRole: editing.gapRole, reviewedAt: editing.reviewedAt,
         reviewStatus: editing.reviewStatus === 'reviewed' ? 'needs_review' : editing.reviewStatus });
       else if (claims.length < evidenceClaimLimit) onChange([...claims, claim]);
-      setEditingId(undefined);
+      edit();
     }} />}
-    {!editingId && claims.length < evidenceClaimLimit && <button type="button" className="button secondary small" onClick={() => setEditingId('new')}>Add evidence claim</button>}
+    {!editingId && claims.length < evidenceClaimLimit && <button type="button" className="button secondary small" onClick={() => edit('new')}>Add evidence claim</button>}
     {claims.length >= evidenceClaimLimit && <p>This paper has 30 evidence claims. Export a project backup to keep a copy.</p>}
   </section>;
 }

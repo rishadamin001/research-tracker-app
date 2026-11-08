@@ -28,6 +28,17 @@ test('DOI normalization and invalid inputs',()=>{assert.equal(normalizeDoi('http
 test('untrusted links cannot execute script',()=>{assert.equal(safeUrl('javascript:alert(1)'),undefined);assert.equal(safeUrl('https://example.org'),'https://example.org/');});
 const fixture={results:[{id:'https://openalex.org/W1',display_name:'A paper',publication_year:2024,doi:'https://doi.org/10.1234/abc',authorships:[],primary_location:null,best_oa_location:null}]};
 test('provider handles absent source and OA without inventing values',()=>{const p=parseWorks(fixture)[0];assert.equal(p.oa,null);assert.equal(p.journal,'Source not supplied');assert.equal(p.doi,'10.1234/abc');assert.throws(()=>parseWorks({results:[{id:42}]}));});
+
+test('abstract metadata preserves source word positions and omits incomplete or malformed passages', () => {
+  const papers = parseWorks({ results: [
+    { ...fixture.results[0], abstract_inverted_index: { 'Students': [0], 'choose': [1], 'quiet': [2], 'spaces.': [3] } },
+    { ...fixture.results[0], abstract_inverted_index: { 'Missing': [0], 'words': [2] } },
+    { ...fixture.results[0], abstract_inverted_index: { 'Conflicting': [0], 'tokens': [0] } },
+  ] });
+  assert.equal(papers[0].abstract, 'Students choose quiet spaces.');
+  assert.equal(papers[1].abstract, undefined);
+  assert.equal(papers[2].abstract, undefined);
+});
 test('provider keeps a paper’s reading cost separate from a journal’s open-access publishing fee', () => {
   const openCopy = `https://example.org/open-copy?token=${'a'.repeat(1300)}`;
   const record = {

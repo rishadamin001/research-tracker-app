@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowDownToLine, ArrowRight, BookOpen, CalendarDays, Check, ChevronRight, ClipboardCheck, Compass, FolderOpen, LibraryBig, Map, Menu, Plus, Search, Settings, X } from 'lucide-react';
 import { createProject, matrixCsv, protocolMarkdown, type Project, type Stage } from '@/lib/model';
 import { createBackup, parseBackupFile, type BackupManifest } from '@/lib/backup';
@@ -26,6 +26,8 @@ import { primaryDestination } from '@/lib/workspace-navigation';
 import { AtlasLibrary } from './AtlasLibrary';
 import { ProjectHistory } from './ProjectHistory';
 import { StorageRecovery } from './StorageRecovery';
+import { EvidenceDesk } from './EvidenceDesk';
+import { ResearchReadiness } from './ResearchReadiness';
 
 type View = 'overview' | 'primer' | 'explore' | 'guide' | 'conferences' | 'paper-search' | 'roadmap' | 'projects' | 'preferences' | 'privacy' | 'terms' | 'support' | 'library' | 'publish-hub' | 'history' | Stage;
 const mainNav = [
@@ -51,6 +53,13 @@ function currentTopic() {
   return undefined;
 }
 
+function currentSourceSelection() {
+  const [view, parameters] = window.location.hash.slice(1).split('?');
+  if (!['writing', 'screen', 'extract'].includes(view) || !parameters) return undefined;
+  const params = new URLSearchParams(parameters), paperId = params.get('paper'), claimId = params.get('claim');
+  return paperId && paperId.length <= 500 ? { paperId, ...(claimId && claimId.length <= 500 ? { claimId } : {}) } : undefined;
+}
+
 function Status({ status }: { status: TaskStatus }) {
   return <span className={`task-status ${status.toLowerCase().replaceAll(' ', '-')}`}>{status === 'Complete' ? 'Ready for now' : status === 'In progress' ? 'Draft' : status}</span>;
 }
@@ -58,6 +67,12 @@ function Status({ status }: { status: TaskStatus }) {
 export default function Atlas() {
   const [view, setView] = useState<View>(currentView);
   const [searchTopic, setSearchTopic] = useState(currentTopic);
+  const [reusedSearch, setReusedSearch] = useState<Project['searches'][number]['run']>();
+  const [sourceSelection, setSourceSelection] = useState(currentSourceSelection);
+  const [literatureLayout, setLiteratureLayout] = useState<'desk' | 'cards'>('desk');
+  const [evidenceEditing, setEvidenceEditing] = useState(false);
+  const evidenceEditingRef = useRef(false);
+  const currentRoute = useRef(window.location.hash);
   const [preferences, setPreferences] = useState(readPreferences);
   const [projects, setProjects] = useState<Project[]>([]);
   const [active, setActive] = useState('');
@@ -91,31 +106,17 @@ export default function Atlas() {
   const diskRevision = useRef(0);
   const savedLocalRevision = useRef(0);
   const writeBlocked = useRef(false);
-  const navigationState = useRef({ view, active, projects });
-
-  useEffect(() => { navigationState.current = { view, active, projects }; }, [view, active, projects]);
-
-  const commitQuestionDraftAtNavigation = useCallback((projectId: string) => {
-    const snapshot = navigationState.current.projects.find(item => item.id === projectId);
-    if (snapshot?.questionDraft === undefined) return;
-    ++saveRevision.current;
-    setSaveState(writeBlocked.current ? 'Saving paused — keep a recovery backup' : loadFailed.current ? 'Local storage unavailable' : 'Saving…');
-    setProjects(items => items.map(item => {
-      // Continue may already have queued an explicit commit in this same click.
-      if (item.id !== projectId || item.questionDraft === undefined) return item;
-      return updateProject(item, { question: item.questionDraft, questionChangeReason: item.questionDraftReason ?? '', questionDraft: undefined, questionDraftReason: undefined });
-    }));
-  }, []);
 
   useEffect(() => {
     const onHash = () => {
+      if (evidenceEditingRef.current) { window.history.replaceState(null, '', currentRoute.current || '#overview'); setNotice('Save or cancel your evidence claim before leaving this source.'); return; }
       const destination = currentView();
-      if (navigationState.current.view === 'question' && destination !== 'question') commitQuestionDraftAtNavigation(navigationState.current.active);
-      setView(destination); setSearchTopic(currentTopic()); setMobile(false); window.scrollTo({ top: 0 }); main.current?.focus({ preventScroll: true });
+      currentRoute.current = window.location.hash;
+      setView(destination); setSearchTopic(currentTopic()); setReusedSearch(undefined); setSourceSelection(currentSourceSelection()); setMobile(false); window.scrollTo({ top: 0 }); main.current?.focus({ preventScroll: true });
     };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
-  }, [commitQuestionDraftAtNavigation]);
+  }, []);
 
   useEffect(() => {
     let live = true;
@@ -167,11 +168,11 @@ export default function Atlas() {
   }, [ready]);
 
   useEffect(() => {
-    if (!ready || saveState === 'Saved on this device') return;
+    if (!ready || saveState === 'Saved on this device' && !evidenceEditing) return;
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); };
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
-  }, [ready, saveState]);
+  }, [ready, saveState, evidenceEditing]);
 
   const project = projects.find(item => item.id === active);
   const current = roadmap.find(task => task.id === view);
@@ -186,19 +187,33 @@ export default function Atlas() {
     if (!writePreferences(updated)) setNotice('Your display changes apply until you close this page. Browser storage is unavailable.');
   }
 
-  function go(destination: View, topic?: string) {
-    if (view === 'question' && destination !== 'question') commitQuestionDraftAtNavigation(active);
-    const hash = topic ? `#${destination}?${new URLSearchParams({ topic })}` : `#${destination}`;
+  function go(destination: View, topic?: string, reuse?: Project['searches'][number]['run']) {
+    if (evidenceEditingRef.current) { setNotice('Save or cancel your evidence claim before leaving this source.'); return; }
+    const carriedSource = ['screen', 'extract'].includes(destination) && ['screen', 'extract'].includes(view) ? sourceSelection : undefined;
+    const hash = topic ? `#${destination}?${new URLSearchParams({ topic })}` : carriedSource ? `#${destination}?${new URLSearchParams({ paper: carriedSource.paperId })}` : `#${destination}`;
     if (view !== destination || searchTopic !== topic) window.history.pushState(null, '', hash);
     setView(destination);
     setSearchTopic(topic);
+    setReusedSearch(reuse);
+    setSourceSelection(carriedSource);
+    currentRoute.current = hash;
     setMobile(false);
     window.scrollTo({ top: 0 });
     main.current?.focus({ preventScroll: true });
   }
 
+  function openSource(destination: 'screen' | 'extract' | 'writing', paperId: string, claimId?: string) {
+    if (evidenceEditingRef.current) { setNotice('Save or cancel your evidence claim before leaving this source.'); return; }
+    go(destination);
+    const selection = { paperId, ...(claimId ? { claimId } : {}) };
+    window.history.replaceState(null, '', `#${destination}?${new URLSearchParams({ paper: paperId, ...(claimId ? { claim: claimId } : {}) })}`);
+    currentRoute.current = window.location.hash;
+    setSourceSelection(selection);
+    setLiteratureLayout('desk');
+  }
+
   function selectProject(id: string) {
-    if (view === 'question' && id !== active) commitQuestionDraftAtNavigation(active);
+    if (evidenceEditingRef.current) { setNotice('Save or cancel your evidence claim before switching projects.'); return; }
     setActive(id);
     try { sessionStorage.setItem('atlas-active', id); } catch { /* Session selection is optional. */ }
   }
@@ -214,6 +229,7 @@ export default function Atlas() {
   }
 
   function openNewProject() {
+    if (evidenceEditingRef.current) { setNotice('Save or cancel your evidence claim before starting another project.'); return; }
     if (!ready) return;
     if (projects.length >= 100) { setNotice('Back up and remove an old project before adding another.'); return; }
     setNewTitle('');
@@ -316,16 +332,16 @@ export default function Atlas() {
         <button type="button" className="mobile-toggle icon-button" onClick={() => setMobile(true)} aria-label="Open navigation" aria-expanded={mobile}><Menu /></button>
         <div className="journey-breadcrumb">{current ? <><button className="text-button" onClick={() => go('roadmap')}>Project roadmap</button><ChevronRight size={15} /><span>{current.title}</span></> : <span>{mainNav.find(item => item.id === view)?.title ?? 'Get started'}</span>}</div>
         <span className="saved" role="status">{saveState}</span>
-        <label className="mode-select"><span>Mode</span><select aria-label="Guidance mode" value={preferences.interfaceMode ?? 'guided'} onChange={event => changePreferences({ interfaceMode: event.target.value as 'guided' | 'expert' })}><option value="guided">Guided</option><option value="expert">Expert</option></select></label>
+        <label className="mode-select"><span>Workspace</span><select aria-label="Guidance mode" value={preferences.interfaceMode ?? 'guided'} onChange={event => changePreferences({ interfaceMode: event.target.value as 'guided' | 'expert' })}><option value="guided">Step-by-step guidance</option><option value="expert">Focus workspace</option></select></label>
         <button className="button small" onClick={openNewProject} disabled={!ready}><Plus size={16} />New project</button>
       </header>
-      <main id="main" ref={main} tabIndex={-1} aria-busy={storageOperation}>
+      <main id="main" ref={main} tabIndex={-1} aria-busy={storageOperation} data-layout={['guide', 'primer', 'terms', 'privacy', 'support'].includes(view) ? 'reading' : ['paper-search', 'library', 'screen', 'extract', 'writing', 'discover'].includes(view) ? 'research' : 'working'} data-interface={preferences.interfaceMode ?? 'guided'}>
         {(storageConflict || recoveryRaw) && <section className="error" role="alert"><h2>{storageConflict ? 'Another tab saved changes' : 'Some stored records need recovery'}</h2><p>Saving is paused so this tab cannot overwrite stored work. Download the copy in this tab before loading the latest saved workspace.</p><div className="button-row"><button className="button secondary" onClick={backup}>Download this tab’s backup</button>{recoveryRaw && <button className="button secondary" onClick={() => download('research-atlas-recovery-raw.json', recoveryRaw, 'application/json')}>Download original stored data</button>}<button className="button secondary" disabled={storageOperation} onClick={() => window.location.reload()}>Reload latest saved workspace</button></div></section>}
         {ready && projects.length > 0 && (saveState === 'Local storage unavailable' || saveState.startsWith('Could not save')) && <section className="error" role="alert"><p>Changes are still available in this tab. Download a recovery copy before reloading.</p><button type="button" className="button secondary" onClick={backup}>Download recovery backup</button></section>}
         {notice && <div className="notice" role="status">{notice}<button className="icon-button" onClick={() => setNotice('')} aria-label="Dismiss notice"><X size={16} /></button></div>}
         <div className="stage-frame" key={view} inert={storageOperation}>
 
-        {view === 'overview' && project && <ResearchDashboard project={project} onNavigate={go} backupDate={backupDate} saveState={saveState} />}
+        {view === 'overview' && project && <ResearchDashboard project={project} onNavigate={go} onOpenSource={id => openSource('screen', id)} backupDate={backupDate} saveState={saveState} />}
         {view === 'overview' && !project && <>
           <section className="journey-hero">
             <span className="eyebrow">RESEARCH ATLAS</span>
@@ -345,16 +361,17 @@ export default function Atlas() {
         {view === 'paper-search' && <>
           <div className="page-heading"><div><span className="eyebrow">LITERATURE</span><h1>Paper search</h1><p>Look up papers by topic or title. Start with journal quartile, or sort by date, citations or available prices.</p></div></div>
           <nav className="discover-tools" aria-label="Discovery tools"><button className="button secondary" aria-pressed={discoverySection === 'search'} onClick={() => setDiscoverySection('search')}>Search</button><button className="button secondary" onClick={() => go('library')}>Explore connections</button><button className="button secondary" aria-pressed={discoverySection === 'notebook'} onClick={() => setDiscoverySection('notebook')}>Search history</button><button className="text-button" onClick={() => go('explore')}>Explore disciplines</button></nav>
-          {discoverySection === 'notebook' ? <SearchNotebook project={project} onReuse={query => { setDiscoverySection('search'); go('paper-search', query); }} /> : ready ? <PaperSearch key={`${project?.id ?? 'standalone'}-${searchTopic ?? ''}`} project={project} initialQuery={searchTopic} update={project ? update : undefined} notify={setNotice} openProjects={() => go('projects')} />
+          {discoverySection === 'notebook' ? <SearchNotebook project={project} onReuse={search => { setDiscoverySection('search'); go('paper-search', search.run?.userQuery ?? search.query, search.run); }} /> : ready ? <PaperSearch key={`${project?.id ?? 'standalone'}-${searchTopic ?? ''}-${reusedSearch?.id ?? ''}`} project={project} initialQuery={searchTopic} initialRun={reusedSearch} update={project ? update : undefined} notify={setNotice} openProjects={() => go('projects')} />
             : <p className="panel" role="status">Opening paper search…</p>}
         </>}
         {view === 'library' && <AtlasLibrary projects={projects} activeProjectId={active} onChangeProjects={items => { markDirty(); setProjects(current => items.map(item => { const previous = current.find(p => p.id === item.id); return previous && previous !== item ? updateProject(previous, item) : item; })); }} onOpenProject={id => { selectProject(id); go('screen'); }} notify={setNotice} />}
-        {view === 'guide' && <><MiniLessons onNavigate={go} /><ResearchPlanner
+        {view === 'guide' && <ResearchPlanner
+          introduction={<MiniLessons onNavigate={go} />}
           onStart={() => go('primer')}
           onConferences={() => go('conferences')}
           openSection={target => go(target === 'analysis' ? 'data' : target === 'draft' ? 'writing' : target === 'publish' ? 'publication' : target)}
           workbench={<section className="panel"><h2>Plan beside your project</h2><p>Your timeline, budget, submission pack and reviewer replies live in your project Overview.</p><button className="button" onClick={project ? () => go('roadmap') : openNewProject}>{project ? 'Open project plan' : 'Start a project'}</button></section>}
-        /></>}
+        />}
         {view === 'publish-hub' && <><div className="page-heading"><div><span className="eyebrow">SHARE YOUR RESEARCH</span><h1>Publish your research</h1><p>Keep venue checks, conference dates, submission preparations, and reviewer replies together.</p></div></div><nav className="publish-tools" aria-label="Publishing tools">{([['venues', 'Venue finder'], ['conferences', 'Conference finder'], ['submission', 'Submission & reviewer replies']] as const).map(([id,title]) => <button className="button secondary" key={id} aria-pressed={publishSection === id} onClick={() => setPublishSection(id)}>{title}</button>)}</nav>{publishSection === 'conferences' ? <ConferencePlanner /> : project ? publishSection === 'venues' ? <ExecutionWorkspace project={project} mode="publication" update={update} /> : <PlannerWorkbench project={project} update={update} onStart={openNewProject} onProjects={() => go('projects')} ready={ready} /> : <section className="panel"><h2>Start with a project</h2><p>Venue checks and submission notes belong to a particular study. You can browse conferences without creating a project.</p><button className="button" onClick={openNewProject}>Start a project</button></section>}</>}
         {view === 'conferences' && <ConferencePlanner />}
         {view === 'preferences' && <><WorkspacePreferences value={preferences} onChange={changePreferences} /><InstallApp /></>}
@@ -397,6 +414,7 @@ export default function Atlas() {
           <div className="page-heading"><div><span className="eyebrow">PROJECT ROADMAP</span><h1>{project.title}</h1><p>{project.discipline}{project.goal ? ` · ${project.goal}` : ''}</p></div><button className="button secondary" onClick={() => go('projects')}><ArrowDownToLine size={16} />Export project</button></div>
           <div className="button-row"><button className="button secondary" onClick={() => go('history')}>Project history</button><button className="button secondary" onClick={() => go('projects')}>Switch or back up projects</button></div>
           <details className="panel"><summary>My plan — timeline, budget & submission</summary><PlannerWorkbench project={project} update={update} onStart={openNewProject} onProjects={() => go('projects')} ready={ready} /></details>
+          <ResearchReadiness project={project} onNavigate={go} />
           {next && <section className="next-task"><div><span className="eyebrow">YOUR NEXT USEFUL STEP</span><h2>{next.title}</h2><p>{next.detail}</p><small>Work at your own pace. Recorded progress is a planning aid, not a research-quality score.</small></div><button className="button" onClick={() => go(next.id)}>Open next task <ArrowRight size={17} /></button></section>}
           <div className="roadmap-toolbar"><h2>Project tasks</h2><label className="preference-check"><input type="checkbox" checked={preferences.openTasksOnly} onChange={event => changePreferences({ openTasksOnly: event.target.checked })} /> Show unfinished tasks only</label></div>
           {!visibleTasks.length && <p className="notice">All tasks have recorded progress. Turn off the filter to see them.</p>}
@@ -414,11 +432,13 @@ export default function Atlas() {
         {project && current && <>
           <div className="page-heading"><div><span className="eyebrow">{current.group.toUpperCase()} · {project.title}</span><h1>{current.title}</h1><p>{current.detail}</p></div>{status && <Status status={status} />}</div>
           {status === 'Needs review' && <div className="review-banner" role="status"><p>Your question changed. Check this work against the revised question before proceeding.</p><button className="button secondary" onClick={() => update({ needsReview: project.needsReview.filter(id => id !== current.id) })}><Check size={16} />Mark reviewed</button></div>}
-          {preferences.interfaceMode !== 'expert' && <ContextGuide stage={current.id} expanded />}
+          <ContextGuide stage={current.id} expanded={preferences.interfaceMode !== 'expert' && !['question', 'methods', 'data', 'screen', 'extract', 'writing'].includes(current.id)} />
           {view === 'screen' && <DuplicateReview project={project} update={update} />}
-          {view === 'profile' || view === 'topic' || view === 'question' || view === 'methods' ? <PlanningWorkspace key={`${project.id}-${view}`} project={project} mode={view} update={update} next={advance} /> : null}
-          {view === 'discover' || view === 'screen' || view === 'extract' ? <EvidenceWorkspace key={`${project.id}-${view}-${searchTopic ?? ''}`} project={project} mode={view} update={update} notify={setNotice} initialQuery={view === 'discover' ? searchTopic : undefined} /> : null}
-          {view === 'data' || view === 'writing' || view === 'publication' ? <ExecutionWorkspace key={`${project.id}-${view}`} project={project} mode={view} update={update} /> : null}
+          {view === 'profile' || view === 'topic' || view === 'question' || view === 'methods' ? <PlanningWorkspace key={`${project.id}-${view}`} project={project} mode={view} interfaceMode={preferences.interfaceMode} update={update} next={advance} /> : null}
+          {(view === 'screen' || view === 'extract') && <nav className="button-row" aria-label="Literature workspace layout"><button type="button" className="button secondary" aria-pressed={literatureLayout === 'desk'} onClick={() => setLiteratureLayout('desk')}>Evidence Desk</button><button type="button" className="button secondary" aria-pressed={literatureLayout === 'cards'} disabled={evidenceEditing} onClick={() => setLiteratureLayout('cards')}>Cards & matrix</button></nav>}
+          {(view === 'screen' || view === 'extract') && literatureLayout === 'desk' && <EvidenceDesk key={`${project.id}-${view}`} project={project} mode={view} interfaceMode={preferences.interfaceMode} initialPaperId={sourceSelection?.paperId} update={update} onWrite={(paperId, claimId) => openSource('writing', paperId, claimId)} onEditingChange={editing => { evidenceEditingRef.current = editing; setEvidenceEditing(editing); }} onSelectionChange={paperId => { if (!paperId || project.papers.filter(paper => paper.id === paperId).length !== 1) return; setSourceSelection({ paperId }); window.history.replaceState(null, '', `#${view}?${new URLSearchParams({ paper: paperId })}`); currentRoute.current = window.location.hash; }} />}
+          {view === 'discover' || (view === 'screen' || view === 'extract') && literatureLayout === 'cards' ? <EvidenceWorkspace key={`${project.id}-${view}-${searchTopic ?? ''}`} project={project} mode={view} update={update} notify={setNotice} initialQuery={view === 'discover' ? searchTopic : undefined} /> : null}
+          {view === 'data' || view === 'writing' || view === 'publication' ? <ExecutionWorkspace key={`${project.id}-${view}-${view === 'writing' ? `${sourceSelection?.paperId ?? ''}-${sourceSelection?.claimId ?? ''}` : ''}`} project={project} mode={view} interfaceMode={preferences.interfaceMode} initialSelection={view === 'writing' ? sourceSelection : undefined} update={update} /> : null}
           <NextAction project={project} onNavigate={go} />
           <div className="journey-actions"><button className="button secondary" onClick={() => go('roadmap')}>Back to roadmap</button>{view !== 'profile' && view !== 'topic' && view !== 'question' && view !== 'methods' && <button className="button" onClick={advance}>{view === 'publication' ? 'Return to roadmap' : 'Continue to next task'}<ArrowRight size={17} /></button>}</div>
         </>}
@@ -454,7 +474,7 @@ export default function Atlas() {
         </>}
         </div>
         {view === 'projects' && <StorageRecovery revision={diskRevision.current} disabled={saveRevision.current !== savedLocalRevision.current || saveState === 'Saving…' || loadFailed.current || storageConflict} onBusyChange={setStorageOperation} onRestored={workspace => { diskRevision.current = workspace.revision; loadFailed.current = false; writeBlocked.current = false; setStorageConflict(false); setRecoveryRaw(''); savedLocalRevision.current = saveRevision.current; setProjects(workspace.projects); selectProject(workspace.projects[0]?.id ?? ''); setSaveState('Saved on this device'); requestAnimationFrame(() => main.current?.focus({ preventScroll: true })); }} notify={setNotice} />}
-        <footer inert={storageOperation} className="public-footer" aria-label="Research Atlas information"><a href="#privacy" onClick={event => { event.preventDefault(); go('privacy'); }}>Privacy & data</a><a href="#terms" onClick={event => { event.preventDefault(); go('terms'); }}>Terms</a><a href="#support" onClick={event => { event.preventDefault(); go('support'); }}>Support</a><span className="muted">Research Atlas 0.7.0 · Free · Stored on your device</span></footer>
+        <footer inert={storageOperation} className="public-footer" aria-label="Research Atlas information"><a href="#privacy" onClick={event => { event.preventDefault(); go('privacy'); }}>Privacy & data</a><a href="#terms" onClick={event => { event.preventDefault(); go('terms'); }}>Terms</a><a href="#support" onClick={event => { event.preventDefault(); go('support'); }}>Support</a><span className="muted">Research Atlas 0.8.0 · Free · Stored on your device</span></footer>
       </main>
     </div>
     <dialog ref={dialog} className="journey-dialog" aria-labelledby="project-dialog-title" onKeyDown={event => {

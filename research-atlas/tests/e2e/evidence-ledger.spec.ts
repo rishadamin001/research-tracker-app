@@ -16,6 +16,7 @@ test('screening keeps dated reasons and linked evidence survives reload', async 
   await page.getByRole('button', { name: 'Save paper', exact: true }).click();
 
   await page.goto('/#screen');
+  await page.getByRole('button', { name: 'Cards & matrix', exact: true }).click();
   await page.getByText('Screening criteria (0)', { exact: true }).click();
   await page.getByLabel('Criterion rule').fill('Studies university commuters');
   await page.getByRole('button', { name: 'Add criterion' }).click();
@@ -56,6 +57,7 @@ test('screening keeps dated reasons and linked evidence survives reload', async 
   await expect(page.getByText('Housing interviews · Full text · Table 2, page 8', { exact: true })).toBeVisible();
 
   await page.goto('/#screen');
+  await page.getByRole('button', { name: 'Cards & matrix', exact: true }).click();
   await page.locator('summary').filter({ hasText: 'Housing interviews' }).click();
   await expect(page.getByLabel('Decision reason')).toHaveValue('Draft note for a later review.');
   await page.getByText('Decision history (2)', { exact: true }).click();

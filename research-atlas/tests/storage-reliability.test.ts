@@ -1,12 +1,23 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createProject } from '../src/lib/model';
-import { appendSnapshot, boundedSnapshots, decodeWorkspace, snapshotBudgetBytes, snapshotLimit, type WorkspaceSnapshot } from '../src/lib/storage';
+import { appendSnapshot, boundedSnapshots, decodeWorkspace, snapshotBudgetBytes, snapshotLimit, workspaceFormatVersion, type WorkspaceSnapshot } from '../src/lib/storage';
 
 test('legacy workspace loads at revision zero without losing valid project content', () => {
   const project = createProject('Existing research'); project.question = 'What changes?';
   const loaded = decodeWorkspace({ schemaVersion: 1, exportedAt: '2026-11-07', projects: [project] });
   assert.equal(loaded.revision, 0); assert.deepEqual(loaded.projects, [project]); assert.equal(loaded.recovery, undefined);
+});
+
+test('new workspace envelopes preserve structured writing and refuse unknown future formats', () => {
+  const project = createProject('Structured work');
+  project.manuscript = 'Original manuscript remains available.';
+  project.studyType = 'literature';
+  project.writingStudio = { sections: [{ id: 'introduction', body: 'A traceable structured draft.' }], citations: [], evidenceLinks: [] };
+  const loaded = decodeWorkspace({ schemaVersion: workspaceFormatVersion, revision: 4, projects: [project] });
+  assert.equal(workspaceFormatVersion, 2);
+  assert.deepEqual(loaded.projects, [project]);
+  assert.throws(() => decodeWorkspace({ schemaVersion: 99, revision: 4, projects: [project] }), /No stored records have been changed/);
 });
 test('one invalid project is isolated while original raw records remain recoverable', () => {
   const valid = createProject('Valid research'); const raw = { schemaVersion: 1, revision: 9, projects: [valid, { id: 'broken', title: 'Irreplaceable title', papers: 'bad' }] };

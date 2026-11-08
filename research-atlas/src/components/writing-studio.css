@@ -1,0 +1,26 @@
+.writing-studio { min-width:0; }
+.writing-overview { display:flex; flex-wrap:wrap; align-items:flex-start; gap:8px 24px; }
+.writing-overview > div { flex:1 1 350px; }
+.writing-overview .writing-counts { flex:0 1 330px; }
+.writing-question,.writing-section-nav,.writing-overview .info-bar { flex-basis:100%; }
+.writing-section-nav { display:flex; flex-wrap:wrap; gap:8px; }
+.writing-section-nav button { min-height:44px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink); font:inherit; text-align:left; }
+.writing-section-nav button[aria-pressed="true"] { color:var(--green); background:var(--accent-soft); border-color:var(--green); font-weight:700; }
+.writing-section-nav button span { font-size:.75rem; }
+.writing-workspace-grid { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(280px,1fr); gap:20px; align-items:start; }
+.writing-workspace-grid > * { min-width:0; }
+.writing-studio .panel h3 { display:flex; align-items:center; gap:8px; }
+.writing-editor textarea { width:100%; min-height:340px; }
+.writing-studio .button,.writing-studio .text-button { min-height:44px; white-space:normal; }
+.writing-source-note { border-left:3px solid var(--green); padding:4px 14px; margin:12px 0; background:var(--surface-soft); }
+.writing-source-note p,.writing-evidence p,.writing-bibliography p,.writing-review-list p { overflow-wrap:anywhere; white-space:pre-wrap; }
+.writing-evidence { border-top:1px solid var(--line); padding:18px 0; }
+.writing-evidence:first-of-type { margin-top:12px; }
+.writing-evidence h4 { overflow-wrap:anywhere; }
+.writing-review-list,.writing-warnings,.writing-bibliography { padding-left:20px; }
+.writing-review-list li,.writing-bibliography li { border-top:1px solid var(--line); padding:10px 0; }
+.writing-review-list .text-button { text-align:left; }
+.writing-preview { max-height:320px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; font:inherit; }
+.writing-export > .button-row { margin-top:16px; }
+@media(max-width:1050px) { .writing-workspace-grid { grid-template-columns:1fr; } .writing-editor textarea { min-height:280px; } }
+@media(max-width:600px) { .writing-section-nav { display:grid; grid-template-columns:1fr 1fr; } .writing-section-nav button { font-size:.8rem; } .writing-overview .writing-counts { flex-basis:100%; } }

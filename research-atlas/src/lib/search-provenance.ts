@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const openAlexSearch = {
-  docsDate: '2026-11-07',
+  docsDate: '2026-11-08',
   docsUrl: 'https://help.openalex.org/api/searching/',
   pageSize: 20,
   maxPages: 5,
@@ -21,10 +21,10 @@ const quotaSchema = z.object({
 
 export const searchRunSchema = z.object({
   id: z.string().uuid(),
-  provider: z.literal('OpenAlex'),
-  mode: z.enum(['anonymous-first-page', 'gateway-first-page']),
+  provider: z.enum(['OpenAlex', 'Europe PMC', 'Crossref']),
+  mode: z.enum(['anonymous-first-page', 'gateway-first-page', 'public-api']),
   userQuery: z.string().max(300),
-  executedQuery: z.string().min(3).max(300),
+  executedQuery: z.string().min(3).max(1000),
   filters: z.array(z.string().max(60)).max(2),
   supportedOperators: z.array(z.string().max(40)).max(8),
   unsupportedOperators: z.array(z.string().max(40)).max(8),
@@ -32,15 +32,17 @@ export const searchRunSchema = z.object({
   completedAt: timestamp,
   resultCountReported: count.optional(),
   pageSize: count.max(100),
-  cursorState: z.literal('not-requested'),
-  pagingMode: z.literal('basic').optional(),
+  cursorState: z.enum(['not-requested', 'used']),
+  pagingMode: z.enum(['basic', 'cursor']).optional(),
+  nextCursor: z.string().max(2048).optional(),
   nextPage: count.min(2).max(5).optional(),
   stopReason: z.enum(['provider-end', 'app-limit', 'user-stopped']).optional(),
   resultIds: z.array(z.string().max(500)).max(100).optional(),
-  parserVersion: z.literal('atlas-openalex-parser-1').optional(),
+  parserVersion: z.enum(['atlas-openalex-parser-1', 'atlas-europepmc-parser-1', 'atlas-crossref-parser-1']).optional(),
   providerSort: z.literal('provider-default-relevance').optional(),
   pages: z.array(z.object({
     page: count.min(1).max(5),
+    cursor: z.string().max(2048).optional(),
     requestedAt: timestamp,
     returnedCount: count.max(100).optional(),
     requestId: z.string().max(160).optional(),
@@ -58,6 +60,14 @@ export const searchRunSchema = z.object({
 
 export type SearchRun = z.infer<typeof searchRunSchema>;
 export type SearchQuota = z.infer<typeof quotaSchema>;
+export type SearchProvider = SearchRun['provider'];
+
+export class PaperSearchError extends Error {
+  constructor(message: string, readonly run?: SearchRun) {
+    super(message);
+    this.name = 'PaperSearchError';
+  }
+}
 
 function integerHeader(headers: Headers, name: string) {
   const value = headers.get(name);

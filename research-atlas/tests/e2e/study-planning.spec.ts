@@ -5,6 +5,7 @@ test('design routing can abstain, gives conditional drafts, and exports a persis
   await page.getByRole('button', { name: 'New project', exact: true }).click();
   await page.getByLabel('Working title').fill('Public records study');
   await page.getByRole('button', { name: 'Create project', exact: true }).click();
+  await page.getByLabel('Guidance mode', { exact: true }).selectOption('expert');
   await page.goto('/#methods');
   await expect(page.getByRole('heading', { name: 'More information is needed' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Use as a draft starting point' })).toHaveCount(0);

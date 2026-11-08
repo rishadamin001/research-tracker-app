@@ -44,12 +44,12 @@ export function PrivacyData({ backupDate, onBackup }: { backupDate: string; onBa
       <p>Question drafts, committed revisions, and bounded project history stay on this device. Atlas Library groups project references locally. Recovery snapshots retain up to eight earlier workspaces within a shared 10 MB limit; they can contain deleted projects and earlier private notes until rotated out or cleared. Review or clear snapshots under My projects. Clearing this site’s browser data also removes them. They are not off-device backups.</p>
       <h3>Sent when you use a lookup</h3>
       <ul>
-        <li>Literature keywords and filters, work identifiers, and journal ISSNs go to OpenAlex.</li>
-        <li>DOIs go to Crossref for bibliographic checks. The default public app uses OpenAlex for open-access lookups.</li>
-        <li>External links open the provider’s site. Calendar links send the event details you choose to add.</li>
+        <li>Literature keywords and supported filters go to the provider you select: OpenAlex, Europe PMC or Crossref. Results can include public abstract metadata saved with a reference.</li>
+        <li>Work identifiers and journal ISSNs go to OpenAlex for related-work, journal and open-access lookups. DOIs go to Crossref for bibliographic checks.</li>
+        <li>Google Scholar, PubMed, ResearchGate and Semantic Scholar search links send your query when you open their sites; they do not import results. Other external links open the provider’s site. Calendar links send the event details you choose to add.</li>
       </ul>
       <p>Keep private notes, participant identifiers, and manuscript text out of scholarly searches. Downloaded backups and exports can contain your private project notes.</p>
-      <p>Atlas does not use product analytics, advertising trackers, or marketing cookies in this release. External services receive ordinary connection information such as IP address and browser details. Their processing may take place outside your country.</p>
+      <p>Atlas does not use product analytics, advertising trackers, or marketing cookies in this release. External services, including Europe PMC, apply their own privacy and retention policies and receive ordinary connection information such as IP address and browser details. Their processing may take place outside your country. Private notes and section drafts are not sent to an AI or document-conversion service.</p>
       <h3>Third-party policies</h3><div className="button-row"><External href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub privacy</External><External href="https://openalex.org/OpenAlex_privacy_policy.pdf">OpenAlex privacy</External><External href="https://www.crossref.org/privacy/">Crossref privacy</External></div>
       <h3>Deletion and retention</h3><p>Use My projects to delete a project. Browser site-data controls remove this origin’s workspace and preferences; downloaded backups remain on your device until you delete them. Atlas has no central copy of your research to recover. This public deployment has no Atlas-operated logging server; hosting and lookup providers apply their own policies.</p>
     </section>

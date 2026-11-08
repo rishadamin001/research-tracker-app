@@ -19,8 +19,13 @@
 .lesson-flow { font-size:.85rem; padding:12px 0; color:var(--green); }
 .workspace-utility { border-top:1px solid var(--line); margin-top:18px; padding-top:10px; }
 .mode-select { display:flex; align-items:center; gap:8px; font-size:.8rem; }
-.mode-select select { max-width:130px; padding:7px; border:1px solid var(--line); border-radius:7px; }
+.mode-select select { max-width:210px; padding:7px; border:1px solid var(--line); border-radius:7px; }
 .publish-tools { display:flex; flex-wrap:wrap; gap:10px; margin:18px 0; }
 .discover-tools { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:20px; }
 .workspace-note { background:var(--surface-soft); border-left:3px solid var(--green); padding:14px 18px; margin:16px 0; }
 @media(max-width:800px) { .mini-lessons,.dashboard-metrics { grid-template-columns:1fr; } .project-tabs button { padding:9px 10px; } .project-shell-heading { align-items:flex-start; flex-direction:column; } .mode-select { order:3; } }
+.journey-shell main[data-layout="research"] { max-width:1600px; padding-inline:clamp(16px,3vw,42px); }
+.journey-shell main[data-layout="working"] { max-width:1300px; }
+.journey-shell main[data-layout="reading"] { max-width:1100px; }
+.journey-shell main[data-interface="expert"] .panel { padding:20px; }
+@media(max-width:800px) { .mode-select select { max-width:190px; } .journey-shell main[data-layout="research"] { padding-inline:16px; } }

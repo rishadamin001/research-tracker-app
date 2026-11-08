@@ -1,0 +1,98 @@
+import { expect, test, type Page } from '@playwright/test';
+
+async function createFixture(page: Page, title: string) {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'New project', exact: true }).click();
+  await page.getByLabel('Working title').fill(title);
+  await page.getByRole('button', { name: 'Create project', exact: true }).click();
+  await page.getByLabel('Research pathway', { exact: true }).selectOption('literature');
+}
+
+test('Question guidance and focus preserve answers and keep drafts separate from saved versions', async ({ page }, testInfo) => {
+  await createFixture(page, 'Question guidance fixture');
+  await page.goto('/#question');
+  const steps = page.getByRole('navigation', { name: 'Question planning steps', exact: true });
+  await expect(page.getByLabel('The problem you want to explore', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Population, setting, or corpus', { exact: true })).toBeHidden();
+  await page.getByLabel('The problem you want to explore', { exact: true }).fill('Access to campus study space.');
+  await steps.getByRole('button', { name: 'Scope and setting', exact: true }).click();
+  await page.getByLabel('Population, setting, or corpus', { exact: true }).fill('Published studies about commuter students.');
+  await steps.getByRole('button', { name: 'Question wording', exact: true }).click();
+  await page.getByLabel('Your research question', { exact: true }).fill('What barriers to study-space access are reported for commuter students?');
+  const mode = page.getByLabel('Guidance mode', { exact: true });
+  await mode.selectOption('expert');
+  await expect(steps).toHaveCount(0);
+  await expect(page.getByLabel('The problem you want to explore', { exact: true })).toHaveValue('Access to campus study space.');
+  await expect(page.getByLabel('Population, setting, or corpus', { exact: true })).toBeVisible();
+  await page.getByLabel('Research objectives', { exact: true }).fill('Compare reported access barriers and coverage limits.');
+  await mode.selectOption('guided');
+  await expect(steps).toBeVisible();
+  await expect(page.getByLabel('Your research question', { exact: true })).toHaveValue(/What barriers/);
+  await page.getByRole('button', { name: 'Save question revision', exact: true }).click();
+  await expect(page.getByText('Question v1', { exact: true })).toBeVisible();
+  await page.getByLabel('Your research question', { exact: true }).fill('Provisional alternative wording.');
+  await page.goto('/#history');
+  await expect(page.getByText('Question versions (1)', { exact: true })).toBeVisible();
+  await page.goto('/#question');
+  await expect(page.getByLabel('Your research question', { exact: true })).toHaveValue('Provisional alternative wording.');
+  await page.screenshot({ path: `../atlas-guidance-question-${testInfo.project.name}.png` });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test('Study guidance and focus preserve methods when a pathway changes', async ({ page }, testInfo) => {
+  await createFixture(page, 'Study guidance fixture');
+  await page.goto('/#methods');
+  const steps = page.getByRole('navigation', { name: 'Study planning steps', exact: true });
+  await expect(steps).toBeVisible();
+  await expect(page.getByLabel('Knowledge goal', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Evidence access', { exact: true })).toBeHidden();
+  await page.getByLabel('Knowledge goal', { exact: true }).selectOption('review');
+  await page.getByLabel('Unit of analysis', { exact: true }).fill('Eligible published studies');
+  const mode = page.getByLabel('Guidance mode', { exact: true });
+  await mode.selectOption('expert');
+  await page.getByText('Work through the design questions', { exact: true }).click();
+  await expect(page.getByLabel('Knowledge goal', { exact: true })).toHaveValue('review');
+  await expect(page.getByLabel('Unit of analysis', { exact: true })).toHaveValue('Eligible published studies');
+  await expect(page.getByLabel('Evidence access', { exact: true })).toBeVisible();
+  await page.getByLabel('Chosen design and justification', { exact: true }).fill('A justified review design, subject to protocol review.');
+  await page.getByLabel('Sampling and selection', { exact: true }).fill('Apply documented study eligibility criteria.');
+  await mode.selectOption('guided');
+  await steps.getByRole('button', { name: 'Design and procedures', exact: true }).click();
+  await expect(page.getByLabel('Chosen design and justification', { exact: true })).toHaveValue(/justified review design/);
+  await expect(page.getByLabel('Sampling and selection', { exact: true })).toHaveValue('Apply documented study eligibility criteria.');
+  await page.screenshot({ path: `../atlas-guidance-study-${testInfo.project.name}.png` });
+  await page.goto('/#profile');
+  await page.getByLabel('Research pathway', { exact: true }).selectOption('qualitative');
+  await page.goto('/#methods');
+  await mode.selectOption('expert');
+  await expect(page.getByLabel('Sampling and selection', { exact: true })).toHaveValue('Apply documented study eligibility criteria.');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test('DMP guidance groups prompts and focus preserves every entered value after reload', async ({ page }, testInfo) => {
+  await createFixture(page, 'DMP guidance fixture');
+  await page.goto('/#data');
+  const steps = page.getByRole('navigation', { name: 'Data management planning steps', exact: true });
+  await expect(page.getByLabel('Data or evidence types', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Backup and recovery', { exact: true })).toBeHidden();
+  await page.getByLabel('Data or evidence types', { exact: true }).fill('Search exports and source-linked extraction records.');
+  await steps.getByRole('button', { name: 'Protect and document', exact: true }).click();
+  await page.getByLabel('Backup and recovery', { exact: true }).fill('Weekly independent backup with a restoration check.');
+  await expect(page.getByRole('region', { name: 'Live data management plan preview', exact: true })).toContainText('Search exports and source-linked extraction records.');
+  const mode = page.getByLabel('Guidance mode', { exact: true });
+  await mode.selectOption('expert');
+  await expect(steps).toHaveCount(0);
+  await expect(page.getByLabel('Data or evidence types', { exact: true })).toHaveValue('Search exports and source-linked extraction records.');
+  await expect(page.getByLabel('Backup and recovery', { exact: true })).toHaveValue('Weekly independent backup with a restoration check.');
+  await page.getByLabel('Sharing and restrictions', { exact: true }).fill('Share permitted metadata; check full-text rights separately.');
+  await expect(page.getByText('Saved on this device', { exact: true })).toBeAttached();
+  await page.reload();
+  await expect(mode).toHaveValue('expert');
+  await expect(page.getByLabel('Backup and recovery', { exact: true })).toHaveValue(/restoration check/);
+  await expect(page.getByLabel('Sharing and restrictions', { exact: true })).toHaveValue(/Share permitted metadata/);
+  await mode.selectOption('guided');
+  await steps.getByRole('button', { name: 'Retain and share', exact: true }).click();
+  await expect(page.getByLabel('Sharing and restrictions', { exact: true })).toHaveValue(/Share permitted metadata/);
+  await page.screenshot({ path: `../atlas-guidance-data-${testInfo.project.name}.png` });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});

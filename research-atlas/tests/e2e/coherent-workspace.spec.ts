@@ -13,7 +13,9 @@ test('six destinations, project tabs, guided mode and returning home stay connec
   const projectNav = page.getByRole('navigation', { name: 'Project workspace', exact: true });
   await expect(projectNav.getByRole('button')).toHaveText(['Overview','Question','Literature','Study','Evidence','Write','Publish']);
   await projectNav.getByRole('button', { name: 'Question', exact: true }).click();
+  await page.getByRole('button', { name: 'Question wording', exact: true }).click();
   await page.getByLabel('Your research question').fill('How do commuter students choose study spaces?');
+  await page.getByRole('button', { name: 'Save question revision', exact: true }).click();
   await page.getByRole('button', { name: 'Back to roadmap', exact: true }).click();
   if (await openNavigation.isVisible()) await openNavigation.click();
   await navigation.getByRole('button', { name: 'Home', exact: true }).click();
@@ -25,7 +27,8 @@ test('six destinations, project tabs, guided mode and returning home stay connec
   await projectNav.getByRole('button', { name: 'Study', exact: true }).click();
   await expect(page.getByText('Learn and check this step', { exact: true })).toBeVisible();
   await page.getByRole('combobox', { name: 'Guidance mode', exact: true }).selectOption('expert');
-  await expect(page.getByText('Learn and check this step', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('navigation', { name: 'Study planning steps', exact: true })).toHaveCount(0);
+  await expect(page.getByLabel('Analysis and reproducibility')).toBeVisible();
   await page.reload();
   await expect(page.getByRole('combobox', { name: 'Guidance mode', exact: true })).toHaveValue('expert');
   await expect(projectNav.getByRole('button', { name: 'Study', exact: true })).toHaveAttribute('aria-current','page');

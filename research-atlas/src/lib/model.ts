@@ -4,6 +4,7 @@ import { evidenceClaimLimit, evidenceClaimSchema, findingSummary, screeningCrite
 import { searchRunSchema } from './search-provenance';
 import { dmpMarkdown, methodContextSchema, structuredDmpSchema } from './study-planning';
 import { projectEventLimit, projectEventSchema, questionVersionLimit, questionVersionSchema } from './research-trail';
+import { writingStudioSchema } from './writing-studio';
 const text = z.string().max(20000);
 const journalQuartile = z.object({
   quartile: z.enum(['Q1', 'Q2', 'Q3', 'Q4']),
@@ -25,6 +26,7 @@ export type JournalFee = z.infer<typeof journalFee>;
 export const paperSchema = z.object({
   id:z.string().max(500),title:text,authors:text,year:z.number().nullable(),doi:z.string().nullable(),journal:text,url:z.string(),oa:z.string().nullable(),source:z.string(),notes:text.default(''),finding:text.default(''),methods:text.default(''),limitations:text.default(''),locator:text.default(''),decision:screeningDecisionSchema.default('unreviewed'),reason:text.default(''),referenceIds:z.array(z.string().max(500)).max(500).optional(),
   referenceKey: z.string().max(500).optional(),
+  abstract: text.optional(),
   readingStatus: z.enum(['unread', 'reading', 'read']).optional(),
   tags: z.array(z.string().trim().min(1).max(60)).max(20).optional(),
   libraryLinkProvenance: z.object({ fromProjectId: z.string().max(500), fromProjectTitle: z.string().max(20000), linkedAt: z.iso.datetime() }).optional(),
@@ -70,6 +72,8 @@ export const projectSchema=z.object({id:z.string(),title:text,discipline:text,do
   experience:text.default(''),goal:text.default(''),institution:text.default(''),constraints:text.default(''),topic:text.default(''),topicIdeas:text.default(''),topicRationale:text.default(''),objectives:text.default(''),hypothesis:text.default(''),sampling:text.default(''),instruments:text.default(''),ethicsStatus:text.default(''),dataPlan:text.default(''),analysisRecord:text.default(''),manuscript:text.default(''),
   journalCandidates:z.array(journalCandidate).max(100).default([]),
   researchPlan: researchPlanSchema.prefault({}),
+  studyType: z.enum(['quantitative', 'qualitative', 'mixed', 'literature']).optional(),
+  writingStudio: writingStudioSchema.optional(),
   methodContext: methodContextSchema.optional(),
   structuredDmp: structuredDmpSchema.optional(),
   screeningCriteria: z.array(screeningCriterionSchema).max(screeningCriterionLimit).optional(),

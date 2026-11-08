@@ -37,6 +37,7 @@ test('saved OpenAlex references show directed connections after reload', async (
   await page.getByRole('button', { name: 'Continue to next task' }).click();
   await expect(page).toHaveURL(/#screen$/);
   await page.reload();
+  await page.getByRole('button', { name: 'Cards & matrix', exact: true }).click();
 
   await page.getByText('Citation connections', { exact: true }).click();
   const outgoing = page.getByRole('heading', { name: 'Saved papers cited by this source' }).locator('..');

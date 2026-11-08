@@ -26,6 +26,12 @@ test('load more, stop/resume, page errors, audit export and refresh preserve bou
   await page.getByRole('button', { name: 'Load next page', exact: true }).click();
   await expect(results).toContainText('40 of 40 results shown');
   await expect(results).toContainText('2 pages retrieved');
+  await expect(results).toContainText('20 new papers added');
+  await page.getByRole('button', { name: 'View 20 newly loaded papers', exact: true }).click();
+  await expect(page.locator('article.paper')).toHaveCount(20);
+  await expect(results).toContainText('20 of 40 results shown');
+  await page.getByRole('button', { name: 'Show all retrieved papers', exact: true }).click();
+  await expect(page.locator('article.paper')).toHaveCount(40);
   await page.getByText('Search audit trail (1)', { exact: true }).click();
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export search JSON', exact: true }).click();
@@ -37,6 +43,47 @@ test('load more, stop/resume, page errors, audit export and refresh preserve bou
   await page.reload();
   await expect(page.getByText('Search audit trail (2)', { exact: true })).toBeVisible();
 });
+
+test('continuation is usable after a previously exhausted allowance has reset', async ({ page }) => {
+  const requested: number[] = [];
+  await page.route('https://api.openalex.org/works?**', route => {
+    const number = Number(new URL(route.request().url()).searchParams.get('page') ?? 1);
+    requested.push(number);
+    return route.fulfill({ headers: { 'X-RateLimit-Remaining': number === 1 ? '0' : '50', 'X-RateLimit-Reset': '0' }, json: { meta: { count: 100 }, results: records((number - 1) * 20 + 1, 20) } });
+  });
+  await page.goto('/#paper-search');
+  await page.getByRole('textbox', { name: 'Search literature' }).fill('student housing');
+  await page.getByRole('button', { name: 'Search papers', exact: true }).click();
+  await expect(page.locator('article.paper')).toHaveCount(20);
+  await page.getByRole('button', { name: 'Load next page', exact: true }).click();
+  await expect(page.locator('article.paper')).toHaveCount(40);
+  expect(requested).toEqual([1, 2]);
+});
+
+for (const outcome of ['network', 'invalid', 'empty', 'overlap'] as const) {
+  test(`continuation explains ${outcome} responses and preserves earlier papers`, async ({ page }) => {
+    await page.route('https://api.openalex.org/works?**', route => {
+      const number = Number(new URL(route.request().url()).searchParams.get('page') ?? 1);
+      if (number === 1) return route.fulfill({ json: { meta: { count: 100 }, results: records(1, 20) } });
+      if (outcome === 'network') return route.abort('failed');
+      if (outcome === 'invalid') return route.fulfill({ json: { results: 'malformed' } });
+      return route.fulfill({ json: { meta: { count: 100 }, results: outcome === 'empty' ? [] : records(1, 20) } });
+    });
+    await page.goto('/#paper-search');
+    await page.getByRole('textbox', { name: 'Search literature' }).fill('student housing');
+    await page.getByRole('button', { name: 'Search papers', exact: true }).click();
+    await expect(page.locator('article.paper')).toHaveCount(20);
+    await page.getByRole('button', { name: 'Load next page', exact: true }).click();
+    if (outcome === 'network' || outcome === 'invalid') {
+      await expect(page.getByRole('alert')).toContainText(outcome === 'network' ? 'Could not reach OpenAlex' : 'records the app could not read');
+      await expect(page.getByRole('region', { name: 'Search result controls' })).toContainText('earlier papers are still available');
+    } else {
+      await expect(page.getByRole('region', { name: 'Search result controls' })).toContainText('no new unique papers');
+      if (outcome === 'empty') await expect(page.getByText(/End of the results returned by OpenAlex/)).toBeVisible();
+    }
+    await expect(page.locator('article.paper')).toHaveCount(20);
+  });
+}
 
 test('related discovery sends only citation IDs and identifies suggestions', async ({ page }) => {
   const filters: string[] = [];

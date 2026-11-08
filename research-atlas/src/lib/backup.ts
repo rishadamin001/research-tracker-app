@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { parseBackup, projectSchema, type Project } from './model';
 import type { Preferences } from './preferences';
 
-export const appVersion = '0.7.0';
+export const appVersion = '0.8.0';
 export const backupLimitBytes = 10_000_000;
 const preferencesSchema = z.object({
   theme: z.enum(['light', 'dark', 'system']), density: z.enum(['comfortable', 'compact']),
