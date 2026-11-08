@@ -46,7 +46,8 @@ test('data notes, source citations, and journal checks stay in the same project'
   await page.getByLabel('Reference from this project').selectOption({ label: 'Evidence in community libraries (2025)' });
   await page.getByRole('button', { name: 'Insert citation' }).click();
   await expect(page.getByLabel('Section draft', { exact: true })).toHaveValue(/\[1\]/);
-  await expect(page.getByText(/Ada Example \(2025\)/)).toBeVisible();
+  await expect(page.locator('.writing-bibliography')).toBeVisible();
+  await expect(page.locator('.writing-bibliography')).toContainText(/Ada Example \(2025\)/);
 
   await page.goto('/#publication');
   await page.getByLabel('New journal candidate').fill('Fixture Journal');

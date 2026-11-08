@@ -47,8 +47,9 @@ test('one source moves through screening and located evidence while workspace mo
   await page.getByRole('button', { name: /^Use finding: Travel time constrained access/ }).click();
   await expect(page).toHaveURL(/#writing\?paper=source-0&claim=/);
   await page.goto('/#extract?paper=source-0');
-  await expect(page.getByText('Travel time constrained access to study spaces.', { exact: true })).toBeVisible();
-  await expect(page.getByText('Full text · Results, Table 3, page 8 · Marked reviewed', { exact: false })).toBeVisible();
+  const extracted = page.getByRole('region', { name: 'Extract selected source', exact: true });
+  await expect(extracted.getByText('Travel time constrained access to study spaces.', { exact: true })).toBeVisible();
+  await expect(extracted.getByText('Full text · Results, Table 3, page 8 · Marked reviewed', { exact: false })).toBeVisible();
   await page.goto('/#roadmap');
   await page.getByText('Export Research Passport', { exact: true }).click();
   const downloading = page.waitForEvent('download');
