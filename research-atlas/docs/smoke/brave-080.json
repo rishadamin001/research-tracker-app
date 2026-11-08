@@ -1,0 +1,14 @@
+{
+  "observedAt": "2026-11-08T21:24:23Z",
+  "url": "https://rishadamin001.github.io/research-tracker-app/",
+  "appVersionObserved": "0.8.0",
+  "browser": "User Brave session",
+  "query": "Hypothyroidism",
+  "provider": "Europe PMC",
+  "firstPageRecords": 20,
+  "secondPageRecords": 40,
+  "pagesRetrieved": 2,
+  "defaultSortObserved": "POSI journal quartile · Q1 first",
+  "consoleErrorsObserved": [],
+  "method": "Observed UI and captured browser console; no raw API response archive claimed."
+}

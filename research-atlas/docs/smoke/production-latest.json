@@ -1,8 +1,8 @@
 {
-  "commitSha": "271e2182ca22f1fe58422cd06a3197c93893a59a",
-  "packageVersion": "0.7.0",
+  "commitSha": "ea43daadd019cd054fcd646dd64a859a9ee9e26a",
+  "packageVersion": "0.8.0",
   "deploymentUrl": "https://rishadamin001.github.io/research-tracker-app/",
-  "checkedAt": "2026-11-07T20:59:11.732Z",
+  "checkedAt": "2026-11-08T21:23:48.283Z",
   "appLoaded": true,
   "projectPersistence": true,
   "openAlexMode": "anonymous bounded basic pages",

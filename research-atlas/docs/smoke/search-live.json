@@ -1,0 +1,46 @@
+{
+  "commitSha": "ea43daadd019cd054fcd646dd64a859a9ee9e26a",
+  "url": "https://rishadamin001.github.io/research-tracker-app/",
+  "checkedAt": "2026-11-08T21:23:56.732Z",
+  "query": "Hypothyroidism",
+  "providers": [
+    {
+      "provider": "Europe PMC",
+      "firstPageCount": 20,
+      "twoPageCount": 40,
+      "titles": [
+        "Hypothyroidism and meniere's disease: Insight from mendelian randomization study in a European population.",
+        "Overt and subclinical hypothyroidism during pregnancy: effects on neonatal amino acids, acylcarnitines, and TSH levels",
+        "Indications for Dose Adjustment of Thyroid Hormones in Older Patients.",
+        "Pembrolizumab-associated primary hypothyroidism followed by central hypothyroidism: a case report.",
+        "Overt and subclinical hypothyroidism during pregnancy: effects on neonatal amino acids, acylcarnitines, and TSH levels."
+      ]
+    },
+    {
+      "provider": "Crossref",
+      "firstPageCount": 20,
+      "twoPageCount": 40,
+      "titles": [
+        "Update on dyslipidemia in hypothyroidism: the mechanism of dyslipidemia in hypothyroidism",
+        "Thyroid hormone therapy in congenital hypothyroidism and pediatric hypothyroidism",
+        "Factors associated with permanent hypothyroidism in infants with congenital hypothyroidism",
+        "The Italian National Register of infants with congenital hypothyroidism: twenty years of surveillance and study of congenital hypothyroidism",
+        "Effects of SARS-CoV-2 infection on hypothyroidism and subclinical hypothyroidism: a meta-analysis"
+      ]
+    },
+    {
+      "provider": "OpenAlex",
+      "firstPageCount": 20,
+      "twoPageCount": 40,
+      "titles": [
+        "Global epidemiology of hyperthyroidism and hypothyroidism",
+        "Hypothyroidism",
+        "Subclinical Hypothyroidism",
+        "Hypothyroidism and Atherosclerosis",
+        "Hypothyroidism"
+      ]
+    }
+  ],
+  "consoleErrors": [],
+  "mobileOverflow": false
+}
