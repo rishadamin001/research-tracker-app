@@ -43,6 +43,7 @@ test('data notes, source citations, and journal checks stay in the same project'
 
   await page.goto('/#writing');
   await page.getByLabel('Section draft', { exact: true }).fill('Readership varied by location. ');
+  await page.getByLabel('Section draft', { exact: true }).press('End');
   await page.getByLabel('Reference from this project').selectOption({ label: 'Evidence in community libraries (2025)' });
   await page.getByRole('button', { name: 'Insert citation' }).click();
   await expect(page.getByLabel('Section draft', { exact: true })).toHaveValue(/\[1\]/);
