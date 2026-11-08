@@ -1,5 +1,7 @@
 # PDF audit implementation status — 0.6.0
 
+Version 0.8 is tracked in [Professional standards audit status](PROFESSIONAL-AUDIT-STATUS.md); the local workspace envelope is now 2, independently of project schema 1, backup format 2 and IndexedDB version 1. This historical matrix retains the 0.6 release boundaries.
+
 This records the 0.6 audit release. The subsequent 0.7 navigation, unified Library view, question trail and recovery work is tracked in [Deep blueprint status](DEEP-BLUEPRINT-STATUS.md). A canonical shared reference database remains deferred even though the cross-project view is now available.
 
 This matrix maps the supplied **Research Atlas Competitive Audit and Prototype Improvement Blueprint** to the current source. It covers the PDF's feature comparison, first-five-minute design, data/security requirements, and Releases 1–5. The PDF is a product reference; external claims and suggested technical mechanisms are checked against the actual implementation and primary documentation.

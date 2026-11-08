@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { External } from './External';
-import { metricNumber, paperOrderLabels } from '@/lib/ranking';
+import { metricNumber, paperOrderLabels, type PaperOrder } from '@/lib/ranking';
 import type { Paper } from '@/lib/model';
 import './publication-badges.css';
 
@@ -38,7 +38,7 @@ export function OrderSelect<Order extends string>({ label, labels, order, onChan
 }
 
 export function usePaperOrder() {
-  return useStoredOrder('atlas-literature-sort-v2', paperOrderLabels, 'quartile');
+  return useStoredOrder<PaperOrder>('atlas-literature-sort-v2', paperOrderLabels, 'quartile');
 }
 
 const publisherMarks = [
