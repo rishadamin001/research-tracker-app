@@ -3,11 +3,11 @@ import AxeBuilder from '@axe-core/playwright';
 import { readFile } from 'node:fs/promises';
 import { createProject, paperSchema } from '../../src/lib/model';
 
-async function loadProject(page: Page, count = 2) {
+async function loadProject(page: Page, count = 2, withDuplicate = false) {
   const project = createProject('Traceable source journey');
   project.studyType = 'literature';
   project.question = 'How do commuter students describe access to study spaces?';
-  project.papers = Array.from({ length: count }, (_, index) => paperSchema.parse({ id: `source-${index}`, title: `Commuter evidence ${index + 1}`, authors: index ? '' : 'A. Scholar', year: 2025, journal: index ? '' : 'Fixture journal', publisher: index ? undefined : 'Elsevier', venueType: 'journal', doi: index ? null : '10.1234/commuter', url: index ? '' : 'https://example.org/source', oa: null, source: 'Imported fixture', abstract: index ? undefined : 'Interviews examined how travel time shaped access to study spaces.', journalQuartile: index ? undefined : { quartile: 'Q1', source: 'POSI', year: 2026, category: 'Fixture category', url: 'https://example.org/rank' }, citedByCount: index ? undefined : 17 }));
+  project.papers = Array.from({ length: count }, (_, index) => paperSchema.parse({ id: `source-${index}`, title: `Commuter evidence ${index + 1}`, authors: index ? '' : 'A. Scholar', year: 2025, journal: index ? '' : 'Fixture journal', publisher: index ? undefined : 'Elsevier', venueType: 'journal', doi: index && !withDuplicate ? null : '10.1234/commuter', url: index ? '' : 'https://example.org/source', oa: null, source: 'Imported fixture', abstract: index ? undefined : 'Interviews examined how travel time shaped access to study spaces.', journalQuartile: index ? undefined : { quartile: 'Q1', source: 'POSI', year: 2026, category: 'Fixture category', url: 'https://example.org/rank' }, citedByCount: index ? undefined : 17 }));
   await page.goto('/#projects');
   await page.getByLabel('Import backup', { exact: true }).setInputFiles({ name: 'desk-project.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ schemaVersion: 1, exportedAt: new Date().toISOString(), projects: [project] })) });
   await page.getByRole('button', { name: 'Import as new copies', exact: true }).click();
@@ -93,15 +93,21 @@ test('a native source link updates the selected detail without resetting source-
 });
 
 test('an unfinished evidence claim blocks navigation until it is saved or cancelled', async ({ page }) => {
-  await loadProject(page, 1);
+  await loadProject(page, 2, true);
+  const duplicates = page.getByRole('region', { name: 'Duplicate review', exact: true });
+  await duplicates.locator('summary').first().click();
+  const merge = duplicates.getByRole('button', { name: 'Merge into A', exact: true });
+  await expect(merge).toBeEnabled();
   await page.getByRole('navigation', { name: 'Evidence Desk tasks', exact: true }).getByRole('button', { name: /Record evidence/ }).click();
   await page.getByRole('button', { name: 'Add evidence claim', exact: true }).click();
   await page.getByLabel('Evidence claim', { exact: true }).fill('An unfinished interpretation that must remain available.');
+  await expect(merge).toBeDisabled();
   await page.goto('/#roadmap');
   await expect(page).toHaveURL(/#screen\?paper=source-0$/);
   await expect(page.getByText('Save or cancel your evidence claim before leaving this source.', { exact: true })).toBeVisible();
   await expect(page.getByLabel('Evidence claim', { exact: true })).toHaveValue('An unfinished interpretation that must remain available.');
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(merge).toBeEnabled();
   await page.goto('/#roadmap');
   await expect(page.getByRole('heading', { name: 'Traceable source journey (imported)', exact: true })).toBeVisible();
 });
