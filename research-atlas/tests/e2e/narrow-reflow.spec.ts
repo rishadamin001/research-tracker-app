@@ -25,11 +25,11 @@ test('dark beginner, trust, and study-planning views reflow at 320 CSS pixels', 
   await page.getByRole('button', { name: 'Import as new copies' }).click();
   await expect(page.getByText('Saved on this device', { exact: true })).toBeAttached();
   await page.goto('/#methods');
-  await page.getByText('Work through the design questions', { exact: true }).click();
   await expect(page.getByLabel('Knowledge goal')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), '#methods').toBe(true);
   await page.goto('/#data');
   await expect(page.getByRole('heading', { name: 'Build your data management plan', exact: true })).toBeVisible();
+  await page.getByRole('navigation', { name: 'Data management planning steps', exact: true }).getByRole('button', { name: 'Protect and document', exact: true }).click();
   await page.getByLabel('Backup and recovery').fill('Weekly backup with restoration checks.');
   await expect(page.getByLabel('Backup and recovery')).toHaveValue('Weekly backup with restoration checks.');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), '#data').toBe(true);

@@ -49,7 +49,7 @@ function NotesField({ label, value, onChange, placeholder, rows = 6 }: {
 }) {
   return <label className="field">
     <span>{label}</span>
-    <textarea rows={rows} maxLength={20000} value={value} onChange={event => onChange(event.target.value)} placeholder={placeholder} />
+    <textarea aria-label={label} rows={rows} maxLength={20000} value={value} onChange={event => onChange(event.target.value)} placeholder={placeholder} />
   </label>;
 }
 

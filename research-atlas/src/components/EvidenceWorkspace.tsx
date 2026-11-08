@@ -231,7 +231,7 @@ function Discover({ project, update, notify, initialQuery, initialRun, openProje
           <External href={openAlexSearch.docsUrl}>OpenAlex advanced search guidance</External>
         </details>
         <form role="search" aria-label="Search for research papers" onSubmit={event => { event.preventDefault(); void search(query); }}>
-          <label className="field"><span>Search source</span><select value={provider} disabled={busy} onChange={event => { const source = event.target.value as SearchProvider; setProvider(source); if (source === 'Crossref') setOpenAccess(false); setResults(null); setFailedRun(undefined); setError(''); setPageNotice(''); setLatestPageIds(new Set()); setLatestOnly(false); }}>{Object.entries(searchProviders).map(([source, value]) => <option key={source} value={source}>{value.label}</option>)}</select></label>
+          <label className="field"><span>Search source</span><select aria-label="Search source" value={provider} disabled={busy} onChange={event => { const source = event.target.value as SearchProvider; setProvider(source); if (source === 'Crossref') setOpenAccess(false); setResults(null); setFailedRun(undefined); setError(''); setPageNotice(''); setLatestPageIds(new Set()); setLatestOnly(false); }}>{Object.entries(searchProviders).map(([source, value]) => <option key={source} value={source}>{value.label}</option>)}</select></label>
           <p className="muted">{searchProviders[provider].description}</p>
           <div className="search-row">
             <Search size={21} aria-hidden="true" />
