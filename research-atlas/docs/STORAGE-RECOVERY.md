@@ -4,7 +4,9 @@ Research Atlas keeps project work in the current browser profile and website ori
 
 ## Revision protection
 
-The `research-atlas` IndexedDB database and its version 1 `workspace` store are retained for compatibility. Existing version 1 workspace envelopes load at revision zero. New writes add an integer `revision` alongside the existing `schemaVersion`, `exportedAt` and `projects` fields.
+The `research-atlas` IndexedDB database stays at database version 1, with the existing `workspace` object store. Version 0.8 accepts local workspace envelopes with `schemaVersion: 1` or `2`. An envelope without revision metadata loads at revision zero; an existing valid revision is preserved. A changed save or snapshot restore writes envelope `schemaVersion: 2` with `revision`, `exportedAt` and `projects`. Opening the app, an unchanged save, or capturing a snapshot does not itself migrate the envelope.
+
+These versions describe different layers: **local workspace envelope 2**, **portable backup format 2**, **project schema 1**, and **IndexedDB database version 1**. The project additions are optional fields validated by the current application; neither a new database nor a manual re-import is required.
 
 The active application uses `loadWorkspace()` and `saveWorkspace(projects, expectedRevision)`. Each write reads and compares the stored revision in the same IndexedDB read/write transaction as the replacement. A mismatched revision raises `WorkspaceConflictError` and aborts without changing the stored projects or snapshots. Writes within one tab are queued by Atlas. Merely opening a workspace does not create a write.
 
@@ -12,7 +14,7 @@ After a committed write, BroadcastChannel and a localStorage-event fallback anno
 
 When another tab saves a newer revision, the current tab pauses writes. It keeps its in-memory work available for a downloadable backup. Reloading loads the latest stored copy. There is no automatic merge of competing drafts.
 
-**Upgrade caveat:** reload older Research Atlas tabs after an update. A still-open 0.6 bundle uses its older write code and cannot honor the new revision guard. Protection applies to clients running the updated storage implementation; it cannot retrofit another already-loaded bundle.
+**Upgrade and downgrade caveat:** close or reload all older Research Atlas tabs after an update, and keep a downloaded backup. The version 2 local envelope makes version 0.7 readers refuse newer workspace records instead of opening and saving them through an older project parser. Still older, already-loaded bundles cannot be retrofitted with these checks and may use older write behavior. Do not import a version 0.8 backup into an older app: its older parser may omit fields such as structured writing and additional-provider search history. Use the current application for recovery and transfer.
 
 The legacy `loadProjects` / `saveProjects` exports remain for compatibility. New application flows must use the explicit revision API to protect the state they actually loaded.
 

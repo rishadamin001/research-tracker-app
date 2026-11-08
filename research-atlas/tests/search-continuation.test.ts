@@ -81,3 +81,23 @@ test('known exhausted allowance prevents new and related requests until the repo
   await runPaperSearch('another research topic', '', false);
   assert.equal(fetch.mock.callCount(), 2);
 });
+
+test('the same search can continue after its earlier zero allowance has reset', async t => {
+  let now = Date.parse('2026-11-08T10:00:00Z');
+  t.mock.method(Date, 'now', () => now);
+  let calls = 0;
+  t.mock.method(globalThis, 'fetch', async (input: string) => {
+    calls++;
+    const page = Number(new URL(input).searchParams.get('page') ?? 1);
+    return Response.json({ meta: { count: 200 }, results: records((page - 1) * 20 + 1) }, { headers: { 'X-RateLimit-Remaining': calls === 1 ? '0' : '50', 'X-RateLimit-Reset': '30' } });
+  });
+  const first = await runPaperSearch('student housing', '', false);
+  await assert.rejects(continuePaperSearch(first.run), /at its limit/);
+  assert.equal(calls, 1);
+  now += 30_001;
+  const second = await continuePaperSearch(first.run);
+  assert.equal(calls, 2);
+  assert.equal(second.run.id, first.run.id);
+  assert.equal(second.run.resultIds?.length, 40);
+  assert.equal(second.run.nextPage, 3);
+});

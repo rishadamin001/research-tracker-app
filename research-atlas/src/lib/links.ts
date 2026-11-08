@@ -12,6 +12,16 @@ export function searchWebsiteUrl(query: string) {
   return url.href;
 }
 
+export function scholarlySearchLinks(query: string) {
+  const terms = query.trim();
+  return [
+    { name: 'Google Scholar', base: 'https://scholar.google.com/scholar', key: 'q' },
+    { name: 'PubMed', base: 'https://pubmed.ncbi.nlm.nih.gov/', key: 'term' },
+    { name: 'ResearchGate', base: 'https://www.researchgate.net/search/publication', key: 'q' },
+    { name: 'Semantic Scholar', base: 'https://www.semanticscholar.org/search', key: 'q' },
+  ].map(({ name, base, key }) => { const url = new URL(base); if (terms) url.searchParams.set(key, terms); return { name, url: url.href }; });
+}
+
 export function doiWebsiteUrl(doi: string) {
   return `https://doi.org/${encodeURIComponent(normalizeDoi(doi))}`;
 }

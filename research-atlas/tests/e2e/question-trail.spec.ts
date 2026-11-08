@@ -6,6 +6,7 @@ test('question editing autosaves an uncommitted draft, records one revision and 
   await page.getByLabel('Working title').fill('Versioned question fixture');
   await page.getByRole('button', { name: 'Create project', exact: true }).click();
   await page.goto('/#question');
+  await page.getByRole('button', { name: 'Question wording', exact: true }).click();
   await page.getByLabel('Your research question', { exact: true }).fill('How do students choose study spaces?');
   await expect(page.getByText('Saved on this device', { exact: true })).toBeAttached();
   await page.reload();
@@ -25,21 +26,32 @@ test('question editing autosaves an uncommitted draft, records one revision and 
   expect((await download).suggestedFilename()).toBe('project-history.csv');
 });
 
-test('native hash navigation and browser back commit drafts without duplicate versions', async ({ page }) => {
+test('native hash navigation and browser back preserve drafts without committing versions', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'New project', exact: true }).click();
   await page.getByLabel('Working title').fill('Native navigation question fixture');
   await page.getByRole('button', { name: 'Create project', exact: true }).click();
   await page.goto('/#question');
+  await page.getByRole('button', { name: 'Question wording', exact: true }).click();
   await page.getByLabel('Your research question', { exact: true }).fill('What study spaces do students use?');
   await page.goto('/#history');
-  await expect(page.getByText('Question versions (1)', { exact: true })).toBeVisible();
+  await expect(page.getByText('Question versions (0)', { exact: true })).toBeVisible();
   await page.goBack();
   await expect(page.getByLabel('Your research question', { exact: true })).toHaveValue('What study spaces do students use?');
   await page.getByLabel('Your research question', { exact: true }).fill('What study spaces do commuter students use?');
   await page.goBack();
   await page.goto('/#history');
-  await page.getByText('Question versions (2)', { exact: true }).click();
-  await expect(page.getByText('What study spaces do commuter students use?', { exact: true })).toBeVisible();
-  await expect(page.getByText('Question v3', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Question versions (0)', { exact: true })).toBeVisible();
+  await page.goto('/#question');
+  await expect(page.getByLabel('Your research question', { exact: true })).toHaveValue('What study spaces do commuter students use?');
+  await page.getByRole('button', { name: 'Save question revision', exact: true }).click();
+  await expect(page.getByText('Question v1', { exact: true })).toBeVisible();
+  await page.getByLabel('Your research question', { exact: true }).fill('An unfinished replacement question');
+  await page.getByRole('button', { name: 'Find supporting evidence', exact: true }).click();
+  await page.goto('/#history');
+  await expect(page.getByText('Question versions (1)', { exact: true })).toBeVisible();
+  await page.goto('/#question');
+  await page.getByRole('button', { name: 'Discard uncommitted draft', exact: true }).click();
+  await expect(page.getByLabel('Your research question', { exact: true })).toHaveValue('What study spaces do commuter students use?');
+  await expect(page.getByRole('button', { name: 'Save question revision', exact: true })).toBeDisabled();
 });

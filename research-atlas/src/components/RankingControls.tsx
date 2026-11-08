@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { External } from './External';
-import { metricNumber, paperOrderLabels } from '@/lib/ranking';
+import { metricNumber, paperOrderLabels, type PaperOrder } from '@/lib/ranking';
 import type { Paper } from '@/lib/model';
 import './publication-badges.css';
 
@@ -38,7 +38,7 @@ export function OrderSelect<Order extends string>({ label, labels, order, onChan
 }
 
 export function usePaperOrder() {
-  return useStoredOrder('atlas-literature-sort-v2', paperOrderLabels, 'quartile');
+  return useStoredOrder<PaperOrder>('atlas-literature-sort-v2', paperOrderLabels, 'quartile');
 }
 
 const publisherMarks = [
@@ -103,20 +103,20 @@ export function PaperImpact({ paper }: { paper: Paper }) {
       <span className="paper-citations"><strong>{paper.citedByCount == null ? '—' : metricNumber(paper.citedByCount)}</strong> citations{paper.citedByCount == null ? ' · count unavailable' : ''}</span>
     </div>
     <div className="chips">
-      <span className="tag">Citation metadata: {paper.source === 'OpenAlex' ? 'OpenAlex' : 'source not recorded'}{paper.metricsRetrievedAt ? ` · retrieved ${new Date(paper.metricsRetrievedAt).toLocaleDateString()}` : ' · retrieval date not recorded'}</span>
+      <span className="tag">Citation metadata: {['OpenAlex', 'Europe PMC', 'Crossref'].includes(paper.source) ? paper.source : 'source not recorded'}{paper.metricsRetrievedAt ? ` · retrieved ${new Date(paper.metricsRetrievedAt).toLocaleDateString()}` : ' · retrieval date not recorded'}</span>
       <span className="tag">Field-adjusted citations {paper.fwci == null ? 'unavailable' : `${metricNumber(paper.fwci)}×`}</span>
       {paper.inDoaj && <span className="tag">DOAJ</span>}
       {paper.workType && <span className="tag">{paper.workType.replaceAll('-', ' ')}</span>}
     </div>
     <PaperCosts paper={paper} />
-    {paper.isRetracted && <p className="error">OpenAlex flags this work as retracted. Check the publisher’s notice.</p>}
+    {paper.isRetracted && <p className="error">The recorded source flags this work as retracted. Check the publisher’s notice.</p>}
   </div>;
 }
 
 export function PaperOrderHelp() {
   return <details>
     <summary>What does this order measure?</summary>
-    <p>Quartile order matches the journal’s ISSN to the POSI citation ranking. Q1 comes first, then Q2–Q4, then venues without a match. Ties use the paper’s OpenAlex citation count. Each badge gives the POSI subject and edition. SJR and JCR use separate ranking systems. Use venue rank alongside the paper’s relevance and methods.</p>
+    <p>Quartile order matches the journal’s ISSN to the POSI citation ranking. Q1 comes first, then Q2–Q4, then venues without a match. Ties use the recorded citation count. Counts from different providers cover different indexes. Each badge gives the POSI subject and edition. SJR and JCR use separate ranking systems. Use venue rank alongside the paper’s relevance and methods.</p>
     <p>Field-adjusted citations compare a work with similar OpenAlex records. A value of 1× means the expected citation count.</p>
     <p>Date sorting uses the recorded publication date when available, then the year. Price sorting puts unknown amounts last. Journal publishing fees are compared using available USD equivalents.</p>
     <External href="https://posi.panorama-sg.com/rankings/">POSI journal citation rankings</External>

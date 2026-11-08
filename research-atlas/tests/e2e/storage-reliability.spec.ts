@@ -1,5 +1,73 @@
 import { expect, test } from '@playwright/test';
 
+test('editing a version 1 workspace upgrades its envelope and preserves both manuscript formats after reload', async ({ page }) => {
+  const legacyManuscript = 'Original manuscript — keep this wording.\n\nMethods and notes from the earlier app.';
+  const structuredBody = 'A new structured introduction linked to the existing literature. ';
+  // Seed the earlier stored format directly, without current schema defaults or
+  // an import path that could hide a local-storage migration regression.
+  const legacyProject = {
+    id: 'legacy-workspace-project', title: 'Legacy manuscript migration', discipline: 'Health sciences', domain: '',
+    problem: '', question: 'How do people experience treatment?', setting: '', purpose: 'explore', data: 'existing',
+    design: '', ethics: '', analysis: '', gap: '', gapStatus: 'idea',
+    papers: [{ id: 'legacy-paper', title: 'Existing source from the earlier workspace', authors: 'Ada Example', year: 2024,
+      doi: '10.1234/legacy-source', journal: 'Example Research', url: 'https://example.org/legacy-source', oa: null,
+      source: 'Crossref', notes: '', finding: '', locator: '', decision: 'include', reason: 'Relevant to the question' }],
+    searches: [], lessons: [], manuscript: legacyManuscript,
+    createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+  };
+  await page.goto('/#projects');
+  await expect(page.getByRole('button', { name: 'New project', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'New project', exact: true })).toBeEnabled();
+  await page.evaluate(project => new Promise<void>((resolve, reject) => {
+    const open = indexedDB.open('research-atlas', 1);
+    open.onerror = () => reject(open.error);
+    open.onsuccess = () => {
+      const db = open.result, tx = db.transaction('workspace', 'readwrite');
+      tx.objectStore('workspace').put({ schemaVersion: 1, exportedAt: project.updatedAt, projects: [project] }, 'projects');
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onabort = () => { db.close(); reject(tx.error); };
+    };
+  }), legacyProject);
+  const readStored = () => page.evaluate(() => new Promise<{
+    schemaVersion: number; revision?: number; projects: { id: string; manuscript: string; writingStudio?: {
+      sections: { id: string; body: string }[]; citations: { number: number; paperId: string; sourceSnapshot: { title: string } }[];
+    } }[];
+  }>((resolve, reject) => {
+    const open = indexedDB.open('research-atlas', 1);
+    open.onerror = () => reject(open.error);
+    open.onsuccess = () => {
+      const db = open.result, tx = db.transaction('workspace', 'readonly'), request = tx.objectStore('workspace').get('projects');
+      tx.oncomplete = () => { const record = request.result; db.close(); resolve(record); };
+      tx.onabort = () => { db.close(); reject(tx.error); };
+    };
+  }));
+  expect((await readStored()).schemaVersion).toBe(1);
+  await page.goto('/#writing');
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Writing Studio', exact: true })).toBeVisible();
+  await expect(page.getByLabel('Manuscript draft', { exact: true })).toHaveValue(legacyManuscript);
+  await expect(page.getByLabel('Section draft', { exact: true })).toHaveValue('');
+  await page.getByLabel('Section draft', { exact: true }).fill(structuredBody);
+  await page.getByLabel('Section draft', { exact: true }).press('End');
+  await page.getByLabel('Reference from this project', { exact: true }).selectOption('legacy-paper');
+  await page.getByRole('button', { name: 'Insert citation', exact: true }).click();
+  await expect(page.getByLabel('Section draft', { exact: true })).toHaveValue(`${structuredBody}[1]`);
+  await expect(page.getByText('Saved on this device', { exact: true })).toBeAttached();
+  const saved = await readStored();
+  expect(saved.schemaVersion).toBe(2);
+  expect(saved.revision).toBeGreaterThan(0);
+  expect(saved.projects).toHaveLength(1);
+  expect(saved.projects[0].id).toBe(legacyProject.id);
+  expect(saved.projects[0].manuscript).toBe(legacyManuscript);
+  expect(saved.projects[0].writingStudio?.sections).toContainEqual({ id: 'introduction', body: `${structuredBody}[1]` });
+  expect(saved.projects[0].writingStudio?.citations).toEqual([expect.objectContaining({ number: 1, paperId: 'legacy-paper', sourceSnapshot: expect.objectContaining({ title: legacyProject.papers[0].title }) })]);
+  await page.reload();
+  await expect(page.getByLabel('Section draft', { exact: true })).toHaveValue(`${structuredBody}[1]`);
+  await expect(page.getByLabel('Manuscript draft', { exact: true })).toHaveValue(legacyManuscript);
+  await expect(page.locator('.writing-bibliography')).toContainText(legacyProject.papers[0].title);
+  expect(await readStored()).toEqual(saved);
+});
+
 test('a second tab cannot overwrite a newer saved project and can keep a recovery copy', async ({ page, context }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'New project', exact: true }).click();

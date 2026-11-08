@@ -4,18 +4,19 @@
 
 A free, browser-local academic research workspace for students and early-career researchers. Research Atlas connects paper discovery, literature screening, study planning, writing, and publication checks in one guided workflow.
 
-**[Open Research Atlas](https://rishadamin001.github.io/research-tracker-app/)** · [App guide](research-atlas/README.md) · [Blueprint status](research-atlas/docs/DEEP-BLUEPRINT-STATUS.md) · [Report an issue](https://github.com/rishadamin001/research-tracker-app/issues)
+**[Open Research Atlas](https://rishadamin001.github.io/research-tracker-app/)** · [App guide](research-atlas/README.md) · [0.8 audit status](research-atlas/docs/PROFESSIONAL-AUDIT-STATUS.md) · [Report an issue](https://github.com/rishadamin001/research-tracker-app/issues)
 
 ## What you can do
 
 | Workspace | What it helps you do |
 | --- | --- |
-| **Paper search** | Search without a project; manually retrieve up to 100 OpenAlex records, keep query/page history, export search logs, refresh snapshots, and explore related-paper lists. Sort by journal quartile, citations, date or available cost. |
-| **Literature & evidence** | Save references, review duplicate candidates side by side with reversible choices, screen by title/abstract or full text, and connect located evidence claims to a scoped gap candidate. Exchange RIS/BibTeX references. |
-| **Research planner** | Start from three clear intentions; develop a question, review conditional study designs, build an exportable data management plan, and plan deadlines, budgets, submission materials and reviewer replies. |
+| **Paper search** | Choose OpenAlex, Europe PMC or Crossref; manually retrieve up to 100 records per search, retain provider/filter/page history and export logs. Sort by quartile, provider relevance, citations, date or available cost. Open Scholar, PubMed, ResearchGate or Semantic Scholar query links externally. |
+| **Literature & evidence** | Inspect, screen and record located findings in Evidence Desk, compare sources, review duplicate candidates and connect claims to writing. Exchange RIS/BibTeX references. |
+| **Research planner** | Develop an autosaved question draft and explicitly save revisions; choose a reversible research pathway, review conditional designs, build a data management plan, and plan deadlines, budgets, submissions and reviewer replies. |
+| **Writing Studio** | Draft sections with deliberate numbered citations and located evidence links; export Markdown, minimal DOCX or cited references. Review recorded-completeness prompts and export a Research Passport. |
 | **Conferences** | Browse Bangladesh and international conference sources, track dates, and export calendar entries. |
 | **Atlas Library** | Browse references across projects with quartiles, tags and reading states; link bibliography to another project while keeping project judgments separate. |
-| **Your workspace** | Use Guided or Expert mode, a returning dashboard and project tabs. Follow question versions and project history; recover bounded local snapshots; protect against stale-tab saves; download versioned backups. |
+| **Your workspace** | Use Step-by-step guidance or Focus workspace with the same saved fields, a returning dashboard and project tabs. Follow explicit question versions and bounded history; recover local snapshots and download versioned backups. |
 
 ## Start using the app
 
@@ -66,6 +67,10 @@ package.json         Earlier tracker's workspace commands
 | Read this | For |
 | --- | --- |
 | [App overview](research-atlas/README.md) | Features, preferences, and everyday use |
+| [Professional audit status](research-atlas/docs/PROFESSIONAL-AUDIT-STATUS.md) | Version 0.8 behavior, remaining validation and free-operation boundaries |
+| [Guidance and pathways](research-atlas/docs/GUIDANCE-WORKSPACE.md) | Task groups, mode changes and explicit question commits |
+| [Evidence Desk](research-atlas/docs/EVIDENCE-DESK.md) | Source work, completeness review and Research Passport |
+| [Writing Studio](research-atlas/docs/WRITING-STUDIO.md) | Section drafts, evidence links and local exports |
 | [Research workflow](research-atlas/WORKFLOW.md) | How the guided research stages fit together |
 | [Architecture](research-atlas/ARCHITECTURE.md) | Application structure and data design |
 | [Journal quartiles](research-atlas/docs/JOURNAL-QUARTILES.md) | Ranking sources, matching, and limitations |
@@ -88,8 +93,8 @@ package.json         Earlier tracker's workspace commands
 - **Costs:** reading access and author publishing fees are separate. Missing prices remain unavailable rather than being treated as zero.
 - **Conference dates:** source links and check dates help you verify listings. Calendar exports are copies and do not automatically update.
 - **Library:** the unified Library currently derives its view from project references. A migrated canonical reference database and PDF attachments remain later work.
-- **Storage:** browser storage can be cleared. Local snapshots and stale-tab protection add recovery within the same origin; reload older app tabs after updating. Keep downloaded backups of important work. Backup format 2 preserves origin and counts; project schema remains version 1 with additive fields. Standalone search history is local and exported separately.
-- **Coverage:** search is bounded to five basic pages and does not prove exhaustive coverage. Methods suggestions are conditional, and reporting checklists are separate from study-quality appraisal. The [PDF audit matrix](research-atlas/docs/PDF-AUDIT-STATUS.md) records the remaining domain, Android, device and content-review work.
+- **Storage:** browser storage can be cleared. Version 0.8 writes local workspace envelope 2; backup format remains 2, project schema 1 and IndexedDB version 1. Reload all older tabs after updating and avoid importing newer backups into older app versions, whose parsers may omit new fields. Keep downloaded backups. Standalone search history is local and exported separately; Research Passport is not a restore backup.
+- **Coverage:** each provider is bounded to five manually requested pages and does not prove exhaustive coverage. Methods suggestions and completeness prompts do not certify scientific quality. The [0.8 audit status](research-atlas/docs/PROFESSIONAL-AUDIT-STATUS.md) records remaining human, device and content review. Completed release checks belong in [Testing](research-atlas/TESTING.md).
 
 ## Development checks
 

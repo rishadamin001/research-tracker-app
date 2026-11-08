@@ -23,9 +23,23 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
+      - name: Independently validate DOCX export
+        run: |
+          node --import tsx scripts/check-docx.ts
+          python3 scripts/check-docx.py
       - run: npm run build
       - run: npx playwright install --with-deps chromium firefox webkit
-      - run: npm run test:e2e
+      - name: Live public literature sources
+        run: node scripts/search-smoke.mjs http://127.0.0.1:4173/ --serve
+      - run: npm run test:e2e -- --max-failures=8 --reporter=line
         env:
           ATLAS_FIREFOX: '1'
           ATLAS_WEBKIT: '1'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atlas-verification
+          path: |
+            research-atlas/test-results/
+            research-atlas/docs/smoke/
+            research-atlas/docx-verification.docx

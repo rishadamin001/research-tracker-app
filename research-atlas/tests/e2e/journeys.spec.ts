@@ -5,6 +5,7 @@ async function start(page: Page, title = 'Dhaka digital inclusion') {
   await page.getByRole('button', { name: 'New project', exact: true }).click();
   await page.getByLabel('Working title').fill(title);
   await page.getByRole('button', { name: 'Create project', exact: true }).click();
+  await page.getByLabel('Guidance mode', { exact: true }).selectOption('expert');
 }
 
 async function openStage(page: Page, title: string) {
@@ -21,6 +22,7 @@ test('beginner onboarding, research plan, backup and restore', async ({ page }) 
   await page.getByRole('button', { name: 'Start a project with this question' }).click();
   await page.getByLabel('Working title').fill('Dhaka digital inclusion');
   await page.getByRole('button', { name: 'Create project', exact: true }).click();
+  await page.getByLabel('Guidance mode', { exact: true }).selectOption('expert');
   await page.getByLabel('Research experience').selectOption('Beginner');
   await page.getByLabel('Research goal').selectOption('Course project');
   await page.getByRole('button', { name: 'Explore topics', exact: true }).click();
@@ -66,11 +68,13 @@ test('saved evidence flows into screening and extraction and survives a revised 
   await start(page);
   await openStage(page, 'Frame your question');
   await page.getByLabel('Your research question').fill('How do small businesses use digital payments?');
+  await page.getByRole('button', { name: 'Save question revision', exact: true }).click();
   await page.getByRole('button', { name: 'Find supporting evidence' }).click();
   await page.getByRole('textbox', { name: 'Search literature' }).fill('digital inclusion Bangladesh');
   await page.getByRole('button', { name: 'Search papers' }).click();
   await page.getByRole('button', { name: 'Save paper', exact: true }).click();
   await page.getByRole('button', { name: 'Continue to next task' }).click();
+  await page.getByRole('button', { name: 'Cards & matrix', exact: true }).click();
   await page.locator('summary').filter({ hasText: 'Digital inclusion in Bangladesh' }).click();
   await page.getByLabel('Decision reason').fill('Studies the defined setting and population.');
   await page.getByLabel('Screening decision').selectOption('include');
@@ -80,6 +84,7 @@ test('saved evidence flows into screening and extraction and survives a revised 
   await page.getByLabel('Evidence level and page').fill('Full text, page 8.');
   await openStage(page, 'Frame your question');
   await page.getByLabel('Your research question').fill('How do retailers in Dhaka adopt digital payments?');
+  await page.getByRole('button', { name: 'Save question revision', exact: true }).click();
   await openStage(page, 'Synthesize evidence');
   await expect(page.getByText('Your question changed.', { exact: false })).toBeVisible();
   await expect(page.getByRole('cell', { name: 'The study reported different levels of adoption.' })).toBeVisible();

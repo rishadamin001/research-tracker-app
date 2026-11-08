@@ -1,5 +1,6 @@
 import type { Project, Stage } from './model';
 import { canSupportGap } from './evidence-ledger';
+import { hasStructuredDraft, writingSectionIds } from './writing-studio';
 import { dmpFields } from './study-planning';
 import { questionVersionLimit, recordProjectChanges, versionQuestion } from './research-trail';
 
@@ -28,13 +29,16 @@ function stageProgress(project: Project, stage: Stage): { started: boolean; comp
   switch (stage) {
     case 'profile': return { started: Boolean(project.experience || project.goal), complete: Boolean(project.discipline && project.experience && project.goal) };
     case 'topic': return { started: present(project.topic) || present(project.topicIdeas), complete: present(project.topic) && present(project.topicRationale) };
-    case 'question': return { started: present(project.question) || present(project.problem), complete: present(project.question) && present(project.objectives) };
+    case 'question': return { started: present(project.question) || present(project.problem) || Boolean(project.questionDraft?.trim()), complete: present(project.question) && present(project.objectives) && (project.questionDraft === undefined || project.questionDraft.trim() === project.question.trim()) };
     case 'discover': return { started: Boolean(project.searches.length || papers.length), complete: Boolean(papers.length) };
     case 'screen': return { started: papers.some(paper => paper.decision !== 'unreviewed' || paper.screeningEvents?.length), complete: papers.length > 0 && !needsReason && papers.every(paper => paper.decision === 'include' || paper.decision === 'exclude'), blocked: !papers.length };
     case 'extract': return { started: present(project.gap) || papers.some(paper => paper.evidenceClaims?.length || present(paper.researchProblem) || present(paper.dataset) || present(paper.finding) || present(paper.methods) || present(paper.limitations)), complete: included.length > 0 && included.every(paper => paper.evidenceClaims?.some(claim => claim.claimType === 'finding' && claim.reviewStatus === 'reviewed') || (present(paper.finding) && present(paper.locator))), blocked: !included.length };
     case 'methods': return { started: present(project.design) || present(project.ethics) || present(project.analysis) || present(project.sampling) || present(project.instruments) || present(project.ethicsStatus) || Boolean(project.methodContext && Object.values(project.methodContext).some(present)), complete: present(project.design) && present(project.ethics) && present(project.analysis) };
     case 'data': return { started: present(project.dataPlan) || present(project.analysisRecord) || Boolean(project.structuredDmp && dmpFields.some(([key]) => present(project.structuredDmp![key]))), complete: (hasDraftBody(project.dataPlan) || Boolean(project.structuredDmp && dmpFields.every(([key]) => present(project.structuredDmp![key])))) && hasDraftBody(project.analysisRecord) };
-    case 'writing': return { started: present(project.manuscript), complete: hasDraftBody(project.manuscript) };
+    case 'writing': {
+      const structured = hasStructuredDraft(project) || Boolean(project.writingStudio?.citations.length);
+      return { started: present(project.manuscript) || structured, complete: structured ? writingSectionIds.every(id => hasDraftBody(project.writingStudio?.sections.find(section => section.id === id)?.body ?? '')) : hasDraftBody(project.manuscript) };
+    }
     case 'publication': return { started: Boolean(project.journalCandidates.length), complete: project.journalCandidates.some(venue => present(venue.verification) && venue.checks.length > 0) };
   }
 }

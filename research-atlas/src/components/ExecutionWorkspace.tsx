@@ -1,21 +1,24 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Download, Plus, Search } from 'lucide-react';
 import { External } from './External';
-import { routeDesign } from '../lib/content';
 import { doiWebsiteUrl, sourceLinks } from '../lib/links';
-import { normalizeDoi, safeUrl, type Paper, type Project } from '../lib/model';
+import { normalizeDoi, safeUrl, type Project } from '../lib/model';
 import { checkDoi, resolveOa } from '../lib/providers';
 import { download } from '../lib/storage';
 import { journalOrderLabels, metricNumber, orderJournals } from '../lib/ranking';
 import { JournalMetrics } from './JournalMetrics';
 import { OrderSelect, useStoredOrder } from './RankingControls';
 import { StructuredDmp } from './StudyPlanning';
+import { WritingStudio } from './WritingStudio';
+import type { WritingSelection } from '../lib/writing-studio';
 import { dmpMarkdown, structuredDmpSchema } from '../lib/study-planning';
 
 type Props = {
   project: Project;
   update: (patch: Partial<Project>) => void;
   mode: 'data' | 'writing' | 'publication';
+  interfaceMode?: 'guided' | 'expert';
+  initialSelection?: WritingSelection;
 };
 
 type WorkspaceProps = Omit<Props, 'mode'>;
@@ -46,11 +49,11 @@ function NotesField({ label, value, onChange, placeholder, rows = 6 }: {
 }) {
   return <label className="field">
     <span>{label}</span>
-    <textarea rows={rows} maxLength={20000} value={value} onChange={event => onChange(event.target.value)} placeholder={placeholder} />
+    <textarea aria-label={label} rows={rows} maxLength={20000} value={value} onChange={event => onChange(event.target.value)} placeholder={placeholder} />
   </label>;
 }
 
-function DataWorkspace({ project, update }: WorkspaceProps) {
+function DataWorkspace({ project, update, interfaceMode }: WorkspaceProps) {
   function exportRecords() {
     download('data-and-analysis.md', [
       `# ${project.title}`,
@@ -64,7 +67,7 @@ function DataWorkspace({ project, update }: WorkspaceProps) {
 
   return <div className="content-grid">
     <div>
-      <StructuredDmp project={project} update={update} />
+      <StructuredDmp project={project} update={update} interfaceMode={interfaceMode} />
       <section className="panel">
         <h2>Plan how to manage your research materials</h2>
         <p>Record what you expect to collect or reuse, where it comes from, and how it can be kept and shared.</p>
@@ -98,97 +101,6 @@ function DataWorkspace({ project, update }: WorkspaceProps) {
           <summary>Read your ethics notes</summary>
           <p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{project.ethics}</p>
         </details>}
-      </section>
-    </aside>
-  </div>;
-}
-
-function manuscriptSections(project: Project) {
-  if (project.purpose === 'synthesize') {
-    return ['Review question and eligibility', 'Search and screening methods', 'Included evidence and appraisal', 'Synthesis and limitations', 'Implications'];
-  }
-  if (project.purpose === 'interpret' || project.discipline === 'Law & governance') {
-    return ['Problem and argument', 'Sources and selection criteria', 'Interpretive framework', 'Analysis and counterarguments', 'Conclusion'];
-  }
-  if (project.discipline === 'Computing & engineering' && ['predict', 'design'].includes(project.purpose)) {
-    return ['Problem and related work', 'System or model', 'Evaluation design and baselines', 'Results and limitations', 'Reproducibility and conclusion'];
-  }
-  return ['Introduction and research question', 'Methods and ethics', 'Results', 'Discussion and limitations', 'Conclusion'];
-}
-
-function citationText(paper: Paper) {
-  const firstAuthor = paper.authors.split(',')[0].trim();
-  const author = firstAuthor && paper.authors.includes(',') ? `${firstAuthor} et al.` : firstAuthor || paper.title;
-  return `(${author}, ${paper.year ?? 'n.d.'})`;
-}
-
-function WritingWorkspace({ project, update }: WorkspaceProps) {
-  const [paperId, setPaperId] = useState('');
-  const [notice, setNotice] = useState('');
-  const draft = useRef<HTMLTextAreaElement>(null);
-  const sections = manuscriptSections(project);
-  const design = routeDesign(project.purpose, project.discipline);
-  const selectedPaper = project.papers.find(paper => paper.id === paperId);
-
-  function insertCitation() {
-    if (!selectedPaper || !draft.current) return;
-    const { selectionStart, selectionEnd } = draft.current;
-    const citation = citationText(selectedPaper);
-    const manuscript = project.manuscript.slice(0, selectionStart) + citation + project.manuscript.slice(selectionEnd);
-    if (manuscript.length > 20000) {
-      setNotice('The draft has reached its length limit. Shorten it before inserting another citation.');
-      return;
-    }
-    update({ manuscript });
-    setNotice(`Citation inserted for ${selectedPaper.title}.`);
-    requestAnimationFrame(() => {
-      draft.current?.focus();
-      draft.current?.setSelectionRange(selectionStart + citation.length, selectionStart + citation.length);
-    });
-  }
-
-  return <div className="content-grid">
-    <section className="panel">
-      <h2>Draft your research report</h2>
-      <p>Build the argument around your question and verified notes. Adapt the outline to your assignment or journal.</p>
-      <button className="button secondary small" disabled={Boolean(project.manuscript.trim())} onClick={() => update({ manuscript: sections.map(section => `## ${section}`).join('\n\n') })}>
-        Start with the suggested outline
-      </button>
-      <label className="field">
-        <span>Manuscript draft</span>
-        <textarea ref={draft} value={project.manuscript} onChange={event => update({ manuscript: event.target.value })} maxLength={20000} rows={14} />
-      </label>
-      {project.papers.length > 0 ? <>
-        <label className="field">
-          <span>Reference from this project</span>
-          <select value={selectedPaper ? paperId : ''} onChange={event => setPaperId(event.target.value)}>
-            <option value="">Choose a saved source</option>
-            {project.papers.map(paper => <option key={paper.id} value={paper.id}>{paper.title} ({paper.year ?? 'date unknown'})</option>)}
-          </select>
-        </label>
-        <p className="muted">Citations use the saved author and year as a starting point. Confirm the metadata and your required citation style.</p>
-        {selectedPaper?.url && <External href={selectedPaper.url}>Open selected reference</External>}
-        {selectedPaper?.finding && <p style={{ overflowWrap: 'anywhere' }}>Your evidence note from this source: {selectedPaper.finding}</p>}
-        {selectedPaper?.locator && <p style={{ overflowWrap: 'anywhere' }}>Evidence locator: {selectedPaper.locator}</p>}
-      </> : <p>Save a source in Literature to make it available here for citation.</p>}
-      <div className="button-row">
-        {project.papers.length > 0 && <button className="button secondary" disabled={!selectedPaper} onClick={insertCitation}>Insert citation</button>}
-        <button className="button" disabled={!project.manuscript.trim()} onClick={() => download('manuscript-draft.md', `# ${project.title}\n\n${project.manuscript}\n`, 'text/markdown')}>
-          <Download size={16} /> Export manuscript draft
-        </button>
-      </div>
-      {notice && <p role="status">{notice}</p>}
-    </section>
-    <aside>
-      <section className="panel warm">
-        <h3>Suggested sections</h3>
-        <ol>{sections.map(section => <li key={section}>{section}</li>)}</ol>
-        {project.question.trim() && <p style={{ overflowWrap: 'anywhere' }}><strong>Current question:</strong> {project.question}</p>}
-        {design && <>
-          <h3>Reporting guidance</h3>
-          <p>{design.standard}</p>
-          <External href={design.url}>Check guidance and applicability</External>
-        </>}
       </section>
     </aside>
   </div>;
@@ -405,10 +317,10 @@ function PublicationWorkspace({ project, update }: WorkspaceProps) {
   </div>;
 }
 
-export function ExecutionWorkspace({ project, update, mode }: Props) {
+export function ExecutionWorkspace({ project, update, mode, interfaceMode, initialSelection }: Props) {
   switch (mode) {
-    case 'data': return <DataWorkspace project={project} update={update} />;
-    case 'writing': return <WritingWorkspace key={project.id} project={project} update={update} />;
+    case 'data': return <DataWorkspace project={project} update={update} interfaceMode={interfaceMode} />;
+    case 'writing': return <WritingStudio key={`${project.id}-${initialSelection?.paperId ?? ''}-${initialSelection?.claimId ?? ''}`} project={project} update={update} interfaceMode={interfaceMode} initialSelection={initialSelection} />;
     case 'publication': return <PublicationWorkspace key={project.id} project={project} update={update} />;
   }
 }

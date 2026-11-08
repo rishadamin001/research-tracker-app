@@ -1,5 +1,7 @@
 # Deep research blueprint — 0.7 scope
 
+This is the historical 0.7 scope. Version 0.8 task guidance, explicit question commits, Evidence Desk, structured writing and additional search providers are tracked in [Professional standards audit status](PROFESSIONAL-AUDIT-STATUS.md). Items below describe their status at 0.7, not the current release.
+
 The November 2026 deep research blueprint calls for an evolutionary sequence. Version 0.7 reorganizes the existing app and adds traceability and local recovery. It is not the completed 1.0 product or an independently validated research system.
 
 ## Available in 0.7

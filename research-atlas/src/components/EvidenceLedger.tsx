@@ -23,7 +23,7 @@ export function ScreeningCriteria({ criteria, onChange }: {
       onChange([...criteria, { id: crypto.randomUUID(), kind, rule: rule.trim() }]);
       setRule('');
     }}>
-      <label className="field"><span>Criterion type</span><select value={kind} onChange={event => setKind(event.target.value === 'exclude' ? 'exclude' : 'include')}>
+      <label className="field"><span>Criterion type</span><select aria-label="Criterion type" value={kind} onChange={event => setKind(event.target.value === 'exclude' ? 'exclude' : 'include')}>
         <option value="include">Inclusion rule</option><option value="exclude">Exclusion rule</option>
       </select></label>
       <label className="field"><span>Criterion rule</span><input value={rule} maxLength={300} onChange={event => setRule(event.target.value)} required /></label>
@@ -32,11 +32,13 @@ export function ScreeningCriteria({ criteria, onChange }: {
   </details>;
 }
 
-export function PaperScreening({ paper, criteria, onDraft, onRecord }: {
+export function PaperScreening({ paper, criteria, onDraft, onRecord, quickActions = false, compact = false }: {
   paper: Paper;
   criteria: ScreeningCriterion[];
   onDraft: (draft: ScreeningDraft) => void;
   onRecord: (event: ScreeningEvent) => void;
+  quickActions?: boolean;
+  compact?: boolean;
 }) {
   const history = paper.screeningEvents ?? [];
   const latest = history.at(-1);
@@ -67,22 +69,23 @@ export function PaperScreening({ paper, criteria, onDraft, onRecord }: {
   return <>
     <fieldset disabled={locked} className="evidence-ledger-fields">
       <legend>Record a screening decision</legend>
-      <p>Choose a stage and rule, then write why. Selecting a decision adds a dated entry. Use Maybe when you need more evidence.</p>
-      <label className="field"><span>Screening stage</span><select value={stage} onChange={event => onDraft({ ...draft, stage: event.target.value === 'full_text' ? 'full_text' : 'title_abstract' })}>
+      {!compact && <p>Choose a stage and rule, then write why. Selecting a decision adds a dated entry. Use Maybe when you need more evidence.</p>}
+      <label className="field"><span>Screening stage</span><select aria-label="Screening stage" value={stage} onChange={event => onDraft({ ...draft, stage: event.target.value === 'full_text' ? 'full_text' : 'title_abstract' })}>
         {Object.entries(screeningStages).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
       </select></label>
-      <label className="field"><span>Screening criterion</span><select value={criterion?.id ?? ''} onChange={event => onDraft({ ...draft, criterionId: event.target.value })}>
+      <label className="field"><span>Screening criterion</span><select aria-label="Screening criterion" value={criterion?.id ?? ''} onChange={event => onDraft({ ...draft, criterionId: event.target.value })}>
         <option value="">No saved criterion selected</option>
         {criteria.map(item => <option key={item.id} value={item.id}>{item.kind === 'include' ? 'Include' : 'Exclude'} · {item.rule}</option>)}
       </select></label>
       <label className="field"><span>Reviewer name or initials</span><input maxLength={120} value={reviewer} placeholder="Local reviewer" onChange={event => onDraft({ ...draft, reviewer: event.target.value })} /></label>
-      <label className="field"><span>Decision reason</span><textarea maxLength={20000} rows={2} placeholder="What did you find and how does it relate to your rules?" value={reason} onChange={event => onDraft({ ...draft, reason: event.target.value })} /></label>
-      <label className="field"><span>Screening decision</span><select value={paper.decision} onChange={event => record(event.target.value as ScreeningEvent['decision'])}>
+      <label className="field"><span>Decision reason</span><textarea aria-label="Decision reason" maxLength={20000} rows={2} placeholder="What did you find and how does it relate to your rules?" value={reason} onChange={event => onDraft({ ...draft, reason: event.target.value })} /></label>
+      <label className="field"><span>Screening decision</span><select aria-label="Screening decision" value={paper.decision} onChange={event => record(event.target.value as ScreeningEvent['decision'])}>
         <option value="unreviewed">Unreviewed</option>
         <option value="include" disabled={!reason.trim() && paper.decision !== 'include'}>Include</option>
         <option value="exclude" disabled={!reason.trim() && paper.decision !== 'exclude'}>Exclude</option>
         <option value="maybe" disabled={!reason.trim() && paper.decision !== 'maybe'}>Maybe</option>
       </select></label>
+      {quickActions && <div className="button-row" role="group" aria-label="Quick screening decisions">{(['include', 'maybe', 'exclude'] as const).map(decision => <button key={decision} type="button" className="button secondary small" aria-pressed={paper.decision === decision} disabled={!reason.trim()} onClick={() => record(decision)}>{decision === 'include' ? 'Include' : decision === 'exclude' ? 'Exclude' : 'Maybe'}</button>)}</div>}
       {paper.decision !== 'unreviewed' && <button type="button" className="button secondary small" disabled={!reason.trim()} onClick={() => record(paper.decision)}>Record current decision again</button>}
     </fieldset>
     {locked && <p role="status">This paper has 60 recorded decisions. Export a backup to preserve the complete history.</p>}
@@ -117,11 +120,11 @@ function ClaimForm({ claim, paper, onSave, onCancel }: {
     onSave({ ...draft, claimText: draft.claimText.trim(), locator: draft.locator.trim(),
       id: draft.id || crypto.randomUUID(), createdAt: draft.createdAt || new Date().toISOString() });
   }}>
-    <label className="field"><span>Claim type</span><select value={draft.claimType} onChange={event => edit({ claimType: event.target.value as EvidenceClaim['claimType'] })}>
+    <label className="field"><span>Claim type</span><select aria-label="Claim type" value={draft.claimType} onChange={event => edit({ claimType: event.target.value as EvidenceClaim['claimType'] })}>
       {Object.entries(claimTypeLabels).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
     </select></label>
-    <label className="field"><span>Evidence claim</span><textarea rows={3} maxLength={4000} value={draft.claimText} onChange={event => edit({ claimText: event.target.value })} required /></label>
-    <label className="field"><span>Evidence source level</span><select value={levelChosen ? draft.evidenceLevel : ''} onChange={event => {
+    <label className="field"><span>Evidence claim</span><textarea aria-label="Evidence claim" rows={3} maxLength={4000} value={draft.claimText} onChange={event => edit({ claimText: event.target.value })} required /></label>
+    <label className="field"><span>Evidence source level</span><select aria-label="Evidence source level" value={levelChosen ? draft.evidenceLevel : ''} onChange={event => {
       setLevelChosen(Boolean(event.target.value));
       if (event.target.value) edit({ evidenceLevel: event.target.value as EvidenceClaim['evidenceLevel'] });
     }} required>
@@ -130,15 +133,16 @@ function ClaimForm({ claim, paper, onSave, onCancel }: {
     </select></label>
     {levelChosen && draft.evidenceLevel === 'metadata' && <p className="muted">Metadata can establish details such as a title or publication date. Read the abstract or full text for claims about the study’s results.</p>}
     <label className="field"><span>Source locator</span><input maxLength={500} value={draft.locator} placeholder="Abstract, page 8, Table 2, or another exact location" onChange={event => edit({ locator: event.target.value })} required /></label>
-    <label className="field"><span>Your interpretation</span><textarea maxLength={3000} rows={2} value={draft.interpretation} onChange={event => edit({ interpretation: event.target.value })} /></label>
-    <label className="field"><span>Uncertainty or limitation</span><textarea maxLength={1500} rows={2} value={draft.uncertainty} onChange={event => edit({ uncertainty: event.target.value })} /></label>
+    <label className="field"><span>Your interpretation</span><textarea aria-label="Your interpretation" maxLength={3000} rows={2} value={draft.interpretation} onChange={event => edit({ interpretation: event.target.value })} /></label>
+    <label className="field"><span>Uncertainty or limitation</span><textarea aria-label="Uncertainty or limitation" maxLength={1500} rows={2} value={draft.uncertainty} onChange={event => edit({ uncertainty: event.target.value })} /></label>
     <div className="button-row"><button type="submit" className="button small" disabled={!draft.claimText.trim() || !draft.locator.trim() || !levelChosen}>Save evidence claim</button><button type="button" className="text-button" onClick={onCancel}>Cancel</button></div>
   </form>;
 }
 
-export function EvidenceClaims({ paper, onChange }: { paper: Paper; onChange: (claims: EvidenceClaim[]) => void }) {
+export function EvidenceClaims({ paper, onChange, onEditingChange }: { paper: Paper; onChange: (claims: EvidenceClaim[]) => void; onEditingChange?: (editing: boolean) => void }) {
   const claims = paper.evidenceClaims ?? [];
   const [editingId, setEditingId] = useState<string>();
+  function edit(id?: string) { setEditingId(id); onEditingChange?.(Boolean(id)); }
   const editing = claims.find(item => item.id === editingId);
   function editClaim(claim: EvidenceClaim) {
     onChange(claims.map(item => item.id === claim.id ? claim : item));
@@ -153,26 +157,26 @@ export function EvidenceClaims({ paper, onChange }: { paper: Paper; onChange: (c
       {claim.interpretation && <p><strong>Interpretation</strong> · {claim.interpretation}</p>}
       {claim.uncertainty && <p><strong>Uncertainty</strong> · {claim.uncertainty}</p>}
       {claim.reviewedAt && <small>Last reviewed <time dateTime={claim.reviewedAt}>{new Date(claim.reviewedAt).toLocaleDateString()}</time></small>}
-      <label className="field"><span>Role in the candidate gap</span><select value={claim.gapRole} onChange={event => editClaim({ ...claim, gapRole: event.target.value as EvidenceClaim['gapRole'] })}>
+      <label className="field"><span>Role in the candidate gap</span><select aria-label="Role in the candidate gap" value={claim.gapRole} onChange={event => editClaim({ ...claim, gapRole: event.target.value as EvidenceClaim['gapRole'] })}>
         {Object.entries(gapRoles).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
       </select></label>
       <div className="button-row">
-        <button type="button" className="text-button" onClick={() => setEditingId(claim.id)}>Edit claim</button>
+        <button type="button" className="text-button" onClick={() => edit(claim.id)}>Edit claim</button>
         {claim.reviewStatus !== 'reviewed' && <button type="button" className="text-button" onClick={() => editClaim({ ...claim, reviewStatus: 'reviewed', reviewedAt: new Date().toISOString() })}>Mark claim reviewed</button>}
         <button type="button" className="text-button danger" onClick={() => {
           if (!window.confirm('Remove this evidence claim and its link to the candidate gap?')) return;
           onChange(claims.filter(item => item.id !== claim.id));
-          if (editingId === claim.id) setEditingId(undefined);
+          if (editingId === claim.id) edit();
         }}>Remove claim</button>
       </div>
     </li>)}</ul>}
-    {editingId && <ClaimForm key={editingId} claim={editing} paper={paper} onCancel={() => setEditingId(undefined)} onSave={claim => {
+    {editingId && <ClaimForm key={editingId} claim={editing} paper={paper} onCancel={() => edit()} onSave={claim => {
       if (editing) editClaim({ ...claim, gapRole: editing.gapRole, reviewedAt: editing.reviewedAt,
         reviewStatus: editing.reviewStatus === 'reviewed' ? 'needs_review' : editing.reviewStatus });
       else if (claims.length < evidenceClaimLimit) onChange([...claims, claim]);
-      setEditingId(undefined);
+      edit();
     }} />}
-    {!editingId && claims.length < evidenceClaimLimit && <button type="button" className="button secondary small" onClick={() => setEditingId('new')}>Add evidence claim</button>}
+    {!editingId && claims.length < evidenceClaimLimit && <button type="button" className="button secondary small" onClick={() => edit('new')}>Add evidence claim</button>}
     {claims.length >= evidenceClaimLimit && <p>This paper has 30 evidence claims. Export a project backup to keep a copy.</p>}
   </section>;
 }

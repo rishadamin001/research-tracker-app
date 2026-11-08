@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.0 — 2026-11-08
+
+Added task-based **Step-by-step guidance** and **Focus workspace** using the same saved fields. Question drafts autosave separately; only **Save question revision** commits wording and flags downstream work. Optional quantitative, qualitative, mixed-methods and literature pathways adapt examples without deleting earlier answers.
+
+Added the connected Evidence Desk for inspecting, screening and recording located findings, a completeness review, and Markdown/JSON Research Passport exports. Writing Studio stores six section drafts, deliberate citation and located-evidence links, bibliography snapshots and review prompts. Markdown, minimal DOCX, cited RIS/BibTeX and evidence-link exports stay on the device; earlier freeform manuscripts remain available.
+
+Paper search adds free, keyless Europe PMC and Crossref choices alongside OpenAlex, plus official-site query links. Searches retain provider-specific filters and page history, with explicit loading, added-record, retry and end states. Each provider is bounded to 20 records per page and five manually requested pages. Quartile sorting, publisher marks, citation counts, date ordering and separate access/APC estimates remain; unavailable metadata stays unavailable.
+
+Changed the local workspace envelope to version 2 so version 0.7 clients refuse newer records instead of dropping added fields. Version 1 workspaces remain readable and upgrade on the next changed save. Portable backup format remains 2, project schema remains 1, and IndexedDB remains version 1. Reload all older tabs after updating, retain a downloaded backup, and do not use an older app to import a newer backup. [Migration details](docs/BACKUP-MIGRATION.md)
+
+The [professional standards audit status](docs/PROFESSIONAL-AUDIT-STATUS.md) separates delivered source behavior from remaining validation. Release checks and deployment verification are recorded in [Testing](TESTING.md); this entry does not claim a completed run. No paid runtime, API key, subscription, billing account or hosted database is added.
+
 ## 0.7.0 — 2026-11-08
 
 Reorganized navigation into Home, My Research, Discover, Library, Learn and Publish. Projects keep one seven-tab shell. Returning Home shows the current question, actual pending work and a next useful action; My plan now lives under project Overview. Guided/Expert mode persists with display preferences, and short visual lessons lead back to workspace actions.

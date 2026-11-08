@@ -2,7 +2,8 @@ import { z } from 'zod';
 import { normalizeDoi, safeUrl, type JournalFee, type JournalMetrics, type Paper } from './model';
 import { normalizeIssn } from './ranking';
 import { findJournalQuartile } from './quartiles';
-import { openAlexSearch, readSearchQuota, type SearchRun } from './search-provenance';
+import { openAlexSearch, readSearchQuota, PaperSearchError, type SearchRun } from './search-provenance';
+export { PaperSearchError } from './search-provenance';
 
 const venue = z.object({
   display_name: z.string(),
@@ -34,7 +35,26 @@ const work = z.object({
   cited_by_count: z.number().int().nonnegative().nullish().catch(null),
   type: z.string().max(100).nullish().catch(null),
   is_retracted: z.boolean().nullish().catch(null),
+  abstract_inverted_index: z.unknown().optional(),
 });
+
+function providerAbstract(raw: unknown): string | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const entries = Object.entries(raw);
+  if (entries.length > 4000) return undefined;
+  const words: string[] = [];
+  let count = 0;
+  for (const [word, positions] of entries) {
+    if (!word || word.length > 500 || !Array.isArray(positions) || positions.length > 4000) return undefined;
+    for (const position of positions) {
+      if (!Number.isInteger(position) || position < 0 || position >= 4000 || words[position] !== undefined || ++count > 4000) return undefined;
+      words[position] = word;
+    }
+  }
+  if (!count || count !== words.length) return undefined;
+  const text = words.join(' ');
+  return text.length <= 20000 ? text : undefined;
+}
 
 function openAlexRecord(id: string | null | undefined, entity: 'works' | 'sources') {
   const identifier = /^https:\/\/openalex\.org\/([WS]\d+)$/.exec(id ?? '')?.[1];
@@ -92,6 +112,7 @@ export function parseWorks(raw: unknown): Paper[] {
       fwci: item.fwci ?? undefined,
       citedByCount: item.cited_by_count ?? undefined,
       metricsRetrievedAt: new Date().toISOString(),
+      abstract: providerAbstract(item.abstract_inverted_index),
       workType: item.type ?? undefined,
       isRetracted: item.is_retracted ?? undefined,
       publisher: (source?.host_organization_name || source?.host_organization_lineage_names?.[0])?.slice(0, 500),
@@ -103,13 +124,6 @@ export function parseWorks(raw: unknown): Paper[] {
 }
 const API=import.meta.env?.VITE_API_URL?.replace(/\/$/,'')||'';
 async function request(url:string,signal?:AbortSignal){const res=await fetch(url,{signal:signal??AbortSignal.timeout(15000)});if(res.status===429)throw Error('The free research service is at its limit. Try later or use the official search link below. Your work is safe.');if(!res.ok)throw Error(`The research service is unavailable (${res.status}). Try the official source below.`);return res.json();}
-
-export class PaperSearchError extends Error {
-  constructor(message: string, readonly run?: SearchRun) {
-    super(message);
-    this.name = 'PaperSearchError';
-  }
-}
 
 const searchMeta = z.object({ meta: z.object({ count: z.number().int().nonnegative() }).optional().catch(undefined) });
 const quotaMessage = 'The free research service is at its limit.';
@@ -155,7 +169,7 @@ export async function runPaperSearch(query: string, year: string, oa: boolean, s
   const pageNumber = previous?.nextPage ?? 1;
   if (previous && previous.pages.length >= 25) throw new PaperSearchError('This run has reached its retry limit. Start a fresh search to continue.');
   if (previous && (!previous.nextPage || pageNumber > openAlexSearch.maxPages)) throw new PaperSearchError('This search has reached its page limit. Refine the terms or use the official provider website.');
-  if (previous?.quota?.remainingCredits === 0) throw new PaperSearchError(searchErrorMessage(previous.quota.resetsAt));
+  if (previous?.quota?.remainingCredits === 0 && previous.quota.resetsAt && Date.parse(previous.quota.resetsAt) > Date.now()) throw new PaperSearchError(searchErrorMessage(previous.quota.resetsAt));
   if (pageNumber > 1) params.set('page', String(pageNumber));
   const endpoint = API ? `${API}/openalex` : 'https://api.openalex.org/works';
   const startedAt = new Date(Date.now()).toISOString();

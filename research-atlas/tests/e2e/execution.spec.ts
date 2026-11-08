@@ -29,8 +29,8 @@ test('data notes, source citations, and journal checks stay in the same project'
 
   await page.goto('/#data');
   await page.getByRole('button', { name: 'Add planning prompts' }).click();
-  await expect(page.getByLabel('Data management plan')).toHaveValue(/Materials and provenance/);
-  await page.getByLabel('Data management plan').fill('Store the licensed corpus in an approved folder.');
+  await expect(page.getByLabel('Data management plan', { exact: true })).toHaveValue(/Materials and provenance/);
+  await page.getByLabel('Data management plan', { exact: true }).fill('Store the licensed corpus in an approved folder.');
   await page.getByLabel('Analysis record').fill('Coded five eligible public records.');
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export data and analysis notes' }).click();
@@ -42,12 +42,13 @@ test('data notes, source citations, and journal checks stay in the same project'
   await page.getByRole('button', { name: 'Save paper', exact: true }).click();
 
   await page.goto('/#writing');
-  await page.getByRole('button', { name: 'Start with the suggested outline' }).click();
-  await expect(page.getByLabel('Manuscript draft')).toHaveValue(/Introduction and research question/);
-  await page.getByLabel('Manuscript draft').fill('Readership varied by location. ');
+  await page.getByLabel('Section draft', { exact: true }).fill('Readership varied by location. ');
+  await page.getByLabel('Section draft', { exact: true }).press('End');
   await page.getByLabel('Reference from this project').selectOption({ label: 'Evidence in community libraries (2025)' });
   await page.getByRole('button', { name: 'Insert citation' }).click();
-  await expect(page.getByLabel('Manuscript draft')).toHaveValue(/Ada Example, 2025/);
+  await expect(page.getByLabel('Section draft', { exact: true })).toHaveValue(/\[1\]/);
+  await expect(page.locator('.writing-bibliography')).toBeVisible();
+  await expect(page.locator('.writing-bibliography')).toContainText(/Ada Example \(2025\)/);
 
   await page.goto('/#publication');
   await page.getByLabel('New journal candidate').fill('Fixture Journal');
@@ -68,7 +69,7 @@ test('data notes, source citations, and journal checks stay in the same project'
   await expect(page.getByLabel('Verification sources and notes')).toHaveValue('Publisher policy checked today.');
   await expect(feeCheck).toBeChecked();
   await page.goto('/#writing');
-  await expect(page.getByLabel('Manuscript draft')).toHaveValue(/Ada Example, 2025/);
+  await expect(page.getByLabel('Section draft', { exact: true })).toHaveValue(/Readership varied by location\. \[1\]/);
   await page.goto('/#data');
   await expect(page.getByLabel('Analysis record')).toHaveValue('Coded five eligible public records.');
 });
