@@ -32,8 +32,10 @@ export function journalSuggestions(papers: Paper[], run: SearchRun): JournalSugg
   const groups: JournalSuggestion[] = [], seen = new Set<string>();
   papers.slice(0, 100).forEach((paper, index) => {
     if (paper.venueType !== 'journal' || !paper.journal.trim() || paper.journal === 'Source not supplied') return;
-    const id = paperIdentity(paper); if (seen.has(id)) return; seen.add(id);
     const issns = checkedIssns(paper.issns);
+    // A title alone cannot distinguish similarly named or cloned journals.
+    if (!issns.length && !paper.publisher?.trim()) return;
+    const id = paperIdentity(paper); if (seen.has(id)) return; seen.add(id);
     const titleKey = `${normalized(paper.journal)}|${normalized(paper.publisher ?? '')}`;
     const matches = groups.filter(group => issns.length ? group.issns.some(issn => issns.includes(issn)) : !group.issns.length && group.key === titleKey);
     let group = matches[0];

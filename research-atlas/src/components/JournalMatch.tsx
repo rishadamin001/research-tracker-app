@@ -22,7 +22,7 @@ export function JournalMatch({ project, update, onProjects }: { project?: Projec
       const result = await runPublicationSearch('OpenAlex', draft.query.trim(), '', false, controller.signal, { sourceType: 'journal' });
       if (request.current !== controller) return;
       setSuggestions(journalSuggestions(result.papers, result.run)); setIdentities({});
-      setNotice(`${result.papers.length} article records examined. Suggestions reflect this limited search, not all journals.`);
+      setNotice(`${result.papers.length} article records examined. Suggestions require a supplied ISSN or journal title and publisher; incomplete identities are omitted. This limited search does not cover all journals.`);
     } catch (error) { if (!controller.signal.aborted) setNotice(error instanceof Error ? error.message : 'Search unavailable. Try again.'); }
     finally { if (request.current === controller) { request.current = null; setBusy(false); } }
   }

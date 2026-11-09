@@ -12,6 +12,7 @@ test('journal suggestions deduplicate DOI variants and group only overlapping su
   const result = journalSuggestions(papers, run);
   assert.equal(result.length, 2); assert.equal(result[0].papers.length, 3); assert.equal(result[1].papers.length, 1);
   assert.equal(result[0].papers.some(item => item.paper.id === '2'), false);
+  assert.equal(journalSuggestions([{ ...paper('unknown', []), publisher: undefined }], run).length, 0);
 });
 test('identity verification rejects mismatched ISSNs and never turns missing APC into zero', () => {
   const raw = { id: 'https://openalex.org/S1', display_name: 'Example journal', type: 'journal', issn: ['0028-0836'], homepage_url: 'javascript:alert(1)' };
