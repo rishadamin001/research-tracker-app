@@ -1,0 +1,33 @@
+{
+  "version": "0.9.0",
+  "deployment": "6f8a99ae34563e76b7d0191609b557ef3fc8c6fc",
+  "url": "https://rishadamin001.github.io/research-tracker-app/",
+  "checkedAt": "2026-11-09T19:00:00+06:00",
+  "browser": "Brave desktop",
+  "query": "Hypothyroidism",
+  "provider": "Europe PMC",
+  "firstPageCount": 20,
+  "twoPageCount": 40,
+  "quartileSortApplied": true,
+  "journalMatch": {
+    "query": "hypothyroidism treatment outcomes",
+    "examinedRecords": 20,
+    "visibleCandidates": 6,
+    "firstCandidate": "Thyroid",
+    "identityBasis": "ISSN",
+    "fee": "unknown"
+  },
+  "capturedErrorLogs": [],
+  "narrowLayout": {
+    "requestedWidth": 393,
+    "observedInnerWidth": 492,
+    "observedScrollWidth": 472,
+    "records": 20,
+    "physicalDevice": false,
+    "overrideReset": true
+  },
+  "limits": [
+    "Bounded UI observations, not permanent provider availability.",
+    "The CI mobile repeat timed out; this separate Brave observation does not mark that workflow successful."
+  ]
+}

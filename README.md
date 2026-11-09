@@ -4,7 +4,7 @@
 
 A free, browser-local academic research workspace for students and early-career researchers. Research Atlas connects paper discovery, literature screening, study planning, writing, and publication checks in one guided workflow.
 
-**[Open Research Atlas](https://rishadamin001.github.io/research-tracker-app/)** · [App guide](research-atlas/README.md) · [0.8 audit status](research-atlas/docs/PROFESSIONAL-AUDIT-STATUS.md) · [Report an issue](https://github.com/rishadamin001/research-tracker-app/issues)
+**[Open Research Atlas](https://rishadamin001.github.io/research-tracker-app/)** · [App guide](research-atlas/README.md) · [0.9 readiness update](research-atlas/docs/READINESS-090.md) · [Report an issue](https://github.com/rishadamin001/research-tracker-app/issues)
 
 ## What you can do
 
@@ -14,14 +14,15 @@ A free, browser-local academic research workspace for students and early-career 
 | **Literature & evidence** | Inspect, screen and record located findings in Evidence Desk, compare sources, review duplicate candidates and connect claims to writing. Exchange RIS/BibTeX references. |
 | **Research planner** | Develop an autosaved question draft and explicitly save revisions; choose a reversible research pathway, review conditional designs, build a data management plan, and plan deadlines, budgets, submissions and reviewer replies. |
 | **Writing Studio** | Draft sections with deliberate numbered citations and located evidence links; export Markdown, minimal DOCX or cited references. Review recorded-completeness prompts and export a Research Passport. |
-| **Conferences** | Browse Bangladesh and international conference sources, track dates, and export calendar entries. |
+| **Journal Match** | Find related publications, inspect supporting articles and ISSNs, and retain journal suggestions with query provenance. Unknown fees stay explicit. |
+| **Conferences** | Distinguish curated events from external directories, save unverified personal leads, track dates and export calendar entries. |
 | **Atlas Library** | Browse references across projects with quartiles, tags and reading states; link bibliography to another project while keeping project judgments separate. |
 | **Your workspace** | Use Step-by-step guidance or Focus workspace with the same saved fields, a returning dashboard and project tabs. Follow explicit question versions and bounded history; recover local snapshots and download versioned backups. |
 
 ## Start using the app
 
 1. [Open the live app](https://rishadamin001.github.io/research-tracker-app/).
-2. Use **Discover** to search papers, or **My Research** to create a project and follow its roadmap.
+2. Explore real paper examples from your interests, use **Discover** to search papers, or create a project in **My Research**.
 3. Use **Library** for sources across projects, **Learn** for short lessons and the planner, and **Publish** for venues, conferences and submissions.
 4. Export project backups regularly. Browser data does not automatically sync between devices. Use the [migration guide](research-atlas/docs/BACKUP-MIGRATION.md) when changing browser or website address.
 
@@ -67,7 +68,7 @@ package.json         Earlier tracker's workspace commands
 | Read this | For |
 | --- | --- |
 | [App overview](research-atlas/README.md) | Features, preferences, and everyday use |
-| [Professional audit status](research-atlas/docs/PROFESSIONAL-AUDIT-STATUS.md) | Version 0.8 behavior, remaining validation and free-operation boundaries |
+| [Readiness update](research-atlas/docs/READINESS-090.md) | Version 0.9 behavior, remaining validation and free-operation boundaries |
 | [Guidance and pathways](research-atlas/docs/GUIDANCE-WORKSPACE.md) | Task groups, mode changes and explicit question commits |
 | [Evidence Desk](research-atlas/docs/EVIDENCE-DESK.md) | Source work, completeness review and Research Passport |
 | [Writing Studio](research-atlas/docs/WRITING-STUDIO.md) | Section drafts, evidence links and local exports |
@@ -93,8 +94,8 @@ package.json         Earlier tracker's workspace commands
 - **Costs:** reading access and author publishing fees are separate. Missing prices remain unavailable rather than being treated as zero.
 - **Conference dates:** source links and check dates help you verify listings. Calendar exports are copies and do not automatically update.
 - **Library:** the unified Library currently derives its view from project references. A migrated canonical reference database and PDF attachments remain later work.
-- **Storage:** browser storage can be cleared. Version 0.8 writes local workspace envelope 2; backup format remains 2, project schema 1 and IndexedDB version 1. Reload all older tabs after updating and avoid importing newer backups into older app versions, whose parsers may omit new fields. Keep downloaded backups. Standalone search history is local and exported separately; Research Passport is not a restore backup.
-- **Coverage:** each provider is bounded to five manually requested pages and does not prove exhaustive coverage. Methods suggestions and completeness prompts do not certify scientific quality. The [0.8 audit status](research-atlas/docs/PROFESSIONAL-AUDIT-STATUS.md) records remaining human, device and content review. Completed release checks belong in [Testing](research-atlas/TESTING.md).
+- **Storage:** browser storage can be cleared. Version 0.9 reads envelopes 1, 2 and 3 and writes local workspace envelope 3; backup format remains 2, project schema 1 and IndexedDB version 1. Reload all older tabs after updating and avoid importing newer backups into older app versions, whose parsers may omit new fields. Keep downloaded backups. Standalone search history is local and exported separately; Research Passport is not a restore backup.
+- **Coverage:** each provider is bounded to five manually requested pages and does not prove exhaustive coverage. Methods suggestions and completeness prompts do not certify scientific quality. The [0.9 readiness update](research-atlas/docs/READINESS-090.md) records remaining human, device and content review. Completed release checks belong in [Testing](research-atlas/TESTING.md).
 
 ## Development checks
 

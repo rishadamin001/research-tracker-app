@@ -1,7 +1,7 @@
 {
-  "commitSha": "ea43daadd019cd054fcd646dd64a859a9ee9e26a",
+  "commitSha": "6f8a99ae34563e76b7d0191609b557ef3fc8c6fc",
   "url": "https://rishadamin001.github.io/research-tracker-app/",
-  "checkedAt": "2026-11-08T21:23:56.732Z",
+  "checkedAt": "2026-11-09T12:56:23.344Z",
   "query": "Hypothyroidism",
   "providers": [
     {
@@ -10,10 +10,10 @@
       "twoPageCount": 40,
       "titles": [
         "Hypothyroidism and meniere's disease: Insight from mendelian randomization study in a European population.",
+        "Association between hypothyroidism and carotid intima-media thickness.",
+        "Early thyroid-stimulating hormone dynamics as an independent predictor of immune-related hypothyroidism during nivolumab therapy.",
         "Overt and subclinical hypothyroidism during pregnancy: effects on neonatal amino acids, acylcarnitines, and TSH levels",
-        "Indications for Dose Adjustment of Thyroid Hormones in Older Patients.",
-        "Pembrolizumab-associated primary hypothyroidism followed by central hypothyroidism: a case report.",
-        "Overt and subclinical hypothyroidism during pregnancy: effects on neonatal amino acids, acylcarnitines, and TSH levels."
+        "Overt Versus Subclinical Hypothyroidism in Women with Abnormal Uterine Bleeding: A Prospective Observational Study."
       ]
     },
     {
@@ -21,11 +21,11 @@
       "firstPageCount": 20,
       "twoPageCount": 40,
       "titles": [
-        "Update on dyslipidemia in hypothyroidism: the mechanism of dyslipidemia in hypothyroidism",
-        "Thyroid hormone therapy in congenital hypothyroidism and pediatric hypothyroidism",
-        "Factors associated with permanent hypothyroidism in infants with congenital hypothyroidism",
-        "The Italian National Register of infants with congenital hypothyroidism: twenty years of surveillance and study of congenital hypothyroidism",
-        "Effects of SARS-CoV-2 infection on hypothyroidism and subclinical hypothyroidism: a meta-analysis"
+        "Hypothyroidism: A Rare Presentation of Central Hypothyroidism With Thyroxine Malabsorption",
+        "Primary Congenital Hypothyroidism: Pharmacokinetics of Levothyroxine for the Treatment of Hypothyroidism",
+        "An interesting case of hypothyroidism: hypothyroidism with bilateral foot drop",
+        "Hypothyroidism and Deafness/ Outcome of L-thyroxine Therapy on Hearing loss in Hypothyroidism Patients",
+        "Atezolizumab/nivolumab"
       ]
     },
     {
@@ -33,14 +33,14 @@
       "firstPageCount": 20,
       "twoPageCount": 40,
       "titles": [
-        "Global epidemiology of hyperthyroidism and hypothyroidism",
         "Hypothyroidism",
-        "Subclinical Hypothyroidism",
+        "Hypothyroidism",
+        "Hypothyroidism",
         "Hypothyroidism and Atherosclerosis",
-        "Hypothyroidism"
+        "Hypothyroidism and the Heart"
       ]
     }
   ],
   "consoleErrors": [],
-  "mobileOverflow": false
+  "failure": "locator.waitFor: Timeout 25000ms exceeded.\nCall log:\n  - waiting for getByRole('region', { name: 'Search result controls' }) to be visible\n"
 }
