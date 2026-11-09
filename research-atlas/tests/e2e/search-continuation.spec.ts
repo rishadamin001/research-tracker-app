@@ -26,7 +26,7 @@ test('load more, stop/resume, page errors, audit export and refresh preserve bou
   await page.getByRole('button', { name: 'Load next page', exact: true }).click();
   await expect(results).toContainText('40 of 40 results shown');
   await expect(results).toContainText('2 pages retrieved');
-  await expect(results).toContainText('20 new papers added');
+  await expect(results).toContainText('20 new records added');
   await page.getByRole('button', { name: 'View 20 newly loaded papers', exact: true }).click();
   await expect(page.locator('article.paper')).toHaveCount(20);
   await expect(results).toContainText('20 of 40 results shown');
@@ -78,7 +78,7 @@ for (const outcome of ['network', 'invalid', 'empty', 'overlap'] as const) {
       await expect(page.getByRole('alert')).toContainText(outcome === 'network' ? 'Could not reach OpenAlex' : 'records the app could not read');
       await expect(page.getByRole('region', { name: 'Search result controls' })).toContainText('earlier papers are still available');
     } else {
-      await expect(page.getByRole('region', { name: 'Search result controls' })).toContainText('no new unique papers');
+      await expect(page.getByRole('region', { name: 'Search result controls' })).toContainText('no new provider records');
       if (outcome === 'empty') await expect(page.getByText(/End of the results returned by OpenAlex/)).toBeVisible();
     }
     await expect(page.locator('article.paper')).toHaveCount(20);

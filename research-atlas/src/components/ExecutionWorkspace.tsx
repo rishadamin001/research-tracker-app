@@ -167,6 +167,7 @@ function JournalEditor({ journal, onChange, onRemove }: {
       {journal.url && !website && <p className="muted">Enter a complete website address beginning with https:// or http://.</p>}
       <JournalMetrics value={journal.metrics} onChange={metrics => onChange({ metrics })} />
       <VenueAssessment journal={journal} />
+      {journal.matchEvidence && <details><summary>Why this journal was suggested</summary><p>OpenAlex query: “{journal.matchEvidence.query}” · Retrieved {new Date(journal.matchEvidence.retrievedAt).toLocaleString()} · Identity grouping: {journal.matchEvidence.identityBasis}. This is a related-publication suggestion, not an independent quality or acceptance assessment.</p><ol>{journal.matchEvidence.articles.map(article => <li key={article.id}><External href={article.url}>{article.title}</External> · {article.year ?? 'Year unknown'} · Search position {article.position}</li>)}</ol></details>}
       <NotesField label="Scope and article fit" value={journal.scope} onChange={scope => onChange({ scope })} rows={3} />
       <NotesField label="Fees and waivers" value={journal.cost} onChange={cost => onChange({ cost })} placeholder="Record the official cost, currency, or whether the fees are still unknown." rows={3} />
       <fieldset>

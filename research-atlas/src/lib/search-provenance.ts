@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const openAlexSearch = {
-  docsDate: '2026-11-08',
+  docsDate: '2026-11-09',
   docsUrl: 'https://help.openalex.org/api/searching/',
   pageSize: 20,
   maxPages: 5,
@@ -25,7 +25,7 @@ export const searchRunSchema = z.object({
   mode: z.enum(['anonymous-first-page', 'gateway-first-page', 'public-api']),
   userQuery: z.string().max(300),
   executedQuery: z.string().min(3).max(1000),
-  filters: z.array(z.string().max(60)).max(2),
+  filters: z.array(z.string().max(60)).max(4),
   supportedOperators: z.array(z.string().max(40)).max(8),
   unsupportedOperators: z.array(z.string().max(40)).max(8),
   startedAt: timestamp,
@@ -46,6 +46,10 @@ export const searchRunSchema = z.object({
     requestedAt: timestamp,
     returnedCount: count.max(100).optional(),
     requestId: z.string().max(160).optional(),
+    requestUrl: z.url().max(4000).optional(),
+    requestOrigin: z.url().max(500).optional(),
+    responseStatus: z.number().int().min(200).max(599).optional(),
+    networkFailure: z.literal('network-or-cors').optional(),
     failure: z.string().max(500).optional(),
     status: z.number().int().min(400).max(599).optional(),
   })).min(1).max(25),

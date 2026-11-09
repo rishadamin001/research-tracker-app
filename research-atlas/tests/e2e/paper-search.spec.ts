@@ -22,7 +22,10 @@ test('standalone paper search distinguishes price types and sorts by full date',
   const recent = page.locator('article.paper').filter({ has: page.getByRole('heading', { name: 'Recent closed paper' }) });
   const titles = page.locator('article.paper h3');
   const sort = page.getByLabel('Sort papers');
-  await expect(sort).toHaveValue('quartile');
+  await expect(sort).toHaveValue('original');
+  await expect(titles).toHaveText(['Recent closed paper', 'Older open paper', 'Undated paper']);
+  await sort.selectOption('quartile');
+  await expect(titles.first()).toHaveText('Older open paper');
   await expect(older.getByText('POSI Q1 · 2026', { exact: true })).toBeVisible();
   await expect(older.locator('.publication-mark img')).toHaveAttribute('src', /elsevier\.svg$/);
   await expect(older.getByText('Free open copy', { exact: true })).toBeVisible();

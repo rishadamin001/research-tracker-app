@@ -1,3 +1,11 @@
+# Version 0.9 migration
+
+Version 0.9 writes local workspace envelope 3 and reads envelopes 1, 2 and 3. This protects new Journal Match provenance and expanded provider filters from being silently removed by a version 0.8 tab. Reload older tabs before continuing; keep a downloaded backup. Portable backup version remains 2, project schema remains 1, and IndexedDB remains version 1. The export app version is 0.9.0. Import newer backups only into the current app.
+
+Journal Match drafts and supporting-article provenance are optional project fields. Existing manual shortlists, evidence, question versions and manuscript drafts are preserved. Starter exploration choices use separate tab-local session storage and are not a project until explicitly created.
+
+## Earlier release details
+
 # Backup v2 and origin migration
 
 Releases 0.6 through 0.8 export `research-atlas-backup` format, `backupVersion: 2`, and project `schemaVersion: 1`. Version 0.8 exports identify `appVersion: 0.8.0`. The envelope records application version, creation time, source origin, project count, projects, validated display preferences, and a SHA-256 checksum. The checksum covers canonical JSON with sorted object keys, excluding the checksum itself. It detects accidental changes; it is not a signature, authentication mechanism, or encryption.

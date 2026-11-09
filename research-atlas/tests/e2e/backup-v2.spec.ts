@@ -28,7 +28,7 @@ test('portable backup from a different origin imports as copies and corrupt back
   expect(downloaded.projects).toHaveLength(1);
   expect(downloaded.projects[0].question).toBe(project.question);
   expect(downloaded.projects[0].id).not.toBe(project.id);
-  expect(downloaded.sourceOrigin).toBe('http://127.0.0.1:5174');
+  expect(downloaded.sourceOrigin).toBe(new URL(page.url()).origin);
 });
 
 test('privacy, support and terms are public without a project', async ({ page }) => {

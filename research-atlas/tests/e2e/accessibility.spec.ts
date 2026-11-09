@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 
 const views = [
     ['overview', 'Turn curiosity'],
-    ['primer', 'From a topic to a question'],
+    ['primer', 'Find your first research direction'],
     ['explore', 'Explore disciplines'],
     ['projects', 'My projects'],
     ['conferences', 'Conference planner'],

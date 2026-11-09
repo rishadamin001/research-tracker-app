@@ -2,11 +2,12 @@ import { z } from 'zod';
 import { normalizeDoi, safeUrl, type Paper } from './model';
 import { findJournalQuartile } from './quartiles';
 import { PaperSearchError, readSearchQuota, type SearchRun } from './search-provenance';
+import { providerSearchFilterTokens, type SearchOptions } from './search-options';
 
 export type AdditionalSearchProvider = 'Europe PMC' | 'Crossref';
 const pageSize = 20;
 const maxPages = 5;
-const docsDate = '2026-11-08';
+const docsDate = '2026-11-09';
 const backoff = new Map<AdditionalSearchProvider, string>();
 const optionalText = z.string().max(20000).nullish().catch(undefined);
 const optionalNumber = z.number().int().nonnegative().nullish().catch(undefined);
@@ -114,7 +115,7 @@ export async function parseCrossrefResults(raw: unknown): Promise<{ papers: Pape
   return { papers, count: response['total-results'] };
 }
 
-export async function runAdditionalSearch(provider: AdditionalSearchProvider, query: string, year: string, oa: boolean, signal?: AbortSignal, previous?: SearchRun): Promise<{ papers: Paper[]; run: SearchRun }> {
+export async function runAdditionalSearch(provider: AdditionalSearchProvider, query: string, year: string, oa: boolean, signal?: AbortSignal, previous?: SearchRun, options: SearchOptions = {}): Promise<{ papers: Paper[]; run: SearchRun }> {
   const terms = query.trim();
   if (terms.length < 3 || query.length > 300) throw new PaperSearchError('Use a search between 3 and 300 characters.');
   if (/\b(AND|OR|NOT)\b|[()*]/.test(query)) throw new PaperSearchError('Atlas searches keyword phrases here. Use the provider website for advanced search syntax.');
@@ -130,6 +131,7 @@ export async function runAdditionalSearch(provider: AdditionalSearchProvider, qu
   const filters = provider === 'Europe PMC'
     ? [...(year ? [`FIRST_PDATE:[${year}-01-01 TO 3000-12-31]`] : []), ...(oa ? ['OPEN_ACCESS:Y'] : [])]
     : ['type:journal-article', ...(year ? [`from-pub-date:${year}-01-01`] : [])];
+  filters.push(...providerSearchFilterTokens(provider, options));
   const executedQuery = provider === 'Europe PMC' && filters.length ? `(${terms}) AND ${filters.join(' AND ')}` : terms;
   if (previous && (previous.provider !== provider || previous.userQuery.trim() !== terms || previous.executedQuery !== executedQuery || previous.filters.join(',') !== filters.join(','))) throw new PaperSearchError('The query or provider changed. Start a new search before loading more.');
   const number = previous?.nextPage ?? 1;
@@ -138,10 +140,11 @@ export async function runAdditionalSearch(provider: AdditionalSearchProvider, qu
   if (provider === 'Europe PMC' && previous && !previous.nextCursor) throw new PaperSearchError('The provider did not return a continuation cursor. Start a fresh search.');
   const params = provider === 'Europe PMC'
     ? new URLSearchParams({ query: executedQuery, format: 'json', resultType: 'core', pageSize: String(pageSize), cursorMark: previous?.nextCursor ?? '*', synonym: 'false' })
-    : new URLSearchParams({ 'query.bibliographic': executedQuery, filter: filters.join(','), rows: String(pageSize), offset: String((number - 1) * pageSize) });
+    : new URLSearchParams({ 'query.bibliographic': executedQuery, filter: filters.join(','), rows: String(pageSize), offset: String((number - 1) * pageSize), sort: 'score', order: 'desc' });
   const endpoint = provider === 'Europe PMC' ? 'https://www.ebi.ac.uk/europepmc/webservices/rest/search' : 'https://api.crossref.org/works';
   const now = new Date(Date.now()).toISOString();
-  const page: SearchRun['pages'][number] = { page: number, requestedAt: now, ...(provider === 'Europe PMC' ? { cursor: previous?.nextCursor ?? '*' } : {}) };
+  const requestUrl = `${endpoint}?${params}`;
+  const page: SearchRun['pages'][number] = { page: number, requestedAt: now, requestUrl, ...(typeof window !== 'undefined' && { requestOrigin: window.location.origin }), ...(provider === 'Europe PMC' ? { cursor: previous?.nextCursor ?? '*' } : {}) };
   const run: SearchRun = { id: previous?.id ?? crypto.randomUUID(), provider, mode: 'public-api', userQuery: query, executedQuery, filters,
     supportedOperators: [], unsupportedOperators: ['AND', 'OR', 'NOT', 'parentheses', 'wildcards'],
     startedAt: previous?.startedAt ?? now, completedAt: now, pageSize, cursorState: provider === 'Europe PMC' ? 'used' : 'not-requested',
@@ -156,7 +159,8 @@ export async function runAdditionalSearch(provider: AdditionalSearchProvider, qu
   const timeout = AbortSignal.timeout(15000);
   const requestSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
   try {
-    const response = await fetch(`${endpoint}?${params}`, { signal: requestSignal, credentials: 'omit' });
+    const response = await fetch(requestUrl, { signal: requestSignal, credentials: 'omit' });
+    page.responseStatus = response.status;
     // These providers do not document OpenAlex-style daily credit headers.
     // Crossref advertises a request-window limit; retain only its explicit retry time.
     const retryHeaders = new Headers();
@@ -188,7 +192,7 @@ export async function runAdditionalSearch(provider: AdditionalSearchProvider, qu
     if (timeout.aborted) return fail('timeout', `${provider} search timed out. Earlier papers are preserved; retry when ready.`);
     if (signal?.aborted) return fail('cancelled', 'Search cancelled. Earlier papers are preserved.');
     if (typeof navigator !== 'undefined' && navigator.onLine === false) return fail('offline', 'Your project is available offline. Reconnect to continue this literature search.');
-    if (failure instanceof TypeError) return fail('network', `Could not reach ${provider}. Check your connection or use its official website. Earlier papers are preserved.`);
+    if (failure instanceof TypeError) { page.networkFailure = 'network-or-cors'; return fail('network', `Could not reach ${provider} or read its response. A network interruption or browser cross-origin restriction (CORS) may be responsible; the HTTP status is not exposed to Atlas. Retry or open the official source. Earlier papers are preserved.`); }
     return fail('invalid-response', `${provider} returned records the app could not read. Earlier papers are preserved. Try again or use its official website.`);
   }
 }

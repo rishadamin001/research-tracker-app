@@ -65,12 +65,18 @@ const journalMetrics = z.object({
   journalFee: journalFee.optional(),
 });
 export type JournalMetrics = z.infer<typeof journalMetrics>;
-const journalCandidate = z.object({id:z.string(),title:text,url:text,scope:text,cost:text,checks:z.array(z.string()).max(30),verification:text,metrics:journalMetrics.optional()});
+const journalMatchEvidence = z.object({
+  provider: z.literal('OpenAlex'), query: z.string().min(3).max(300), retrievedAt: z.iso.datetime(),
+  retrievedRecords: z.number().int().min(0).max(100), identityBasis: z.enum(['ISSN', 'title and publisher']),
+  articles: z.array(z.object({ id: z.string().max(500), title: text, doi: z.string().nullable(), url: z.string(), year: z.number().nullable(), position: z.number().int().min(1).max(100) })).min(1).max(20),
+});
+const journalCandidate = z.object({id:z.string(),title:text,url:text,scope:text,cost:text,checks:z.array(z.string()).max(30),verification:text,metrics:journalMetrics.optional(),matchEvidence:journalMatchEvidence.optional()});
 const decisionRecord = z.object({at:z.string(),note:text});
 const duplicateReview = z.object({ id: z.uuid(), at: z.iso.datetime(), action: z.enum(['a', 'b', 'both', 'merge']), keptId: z.string().max(500), otherId: z.string().max(500), sourceA: text, sourceB: text, archived: paperSchema.optional(), before: paperSchema.optional(), after: paperSchema.optional(), undoneAt: z.iso.datetime().optional() });
 export const projectSchema=z.object({id:z.string(),title:text,discipline:text,domain:text,problem:text,question:text,setting:text,purpose:z.enum(['explore','describe','causal','predict','interpret','synthesize','design']),data:z.enum(['existing','new']),design:text,ethics:text,analysis:text,gap:text,gapStatus:z.enum(['idea','search underway','evidence-supported candidate','human-reviewed candidate','contradicted','needs-update']),papers:z.array(paperSchema).max(2000),searches:z.array(z.object({query:text,source:text,date:text,count:z.number(),filters:text,run:searchRunSchema.optional()})).max(1000),lessons:z.array(z.string()).default([]),
   experience:text.default(''),goal:text.default(''),institution:text.default(''),constraints:text.default(''),topic:text.default(''),topicIdeas:text.default(''),topicRationale:text.default(''),objectives:text.default(''),hypothesis:text.default(''),sampling:text.default(''),instruments:text.default(''),ethicsStatus:text.default(''),dataPlan:text.default(''),analysisRecord:text.default(''),manuscript:text.default(''),
   journalCandidates:z.array(journalCandidate).max(100).default([]),
+  journalMatchDraft: z.object({ title: z.string().max(300), abstract: z.string().max(5000), keywords: z.string().max(500), query: z.string().max(300) }).optional(),
   researchPlan: researchPlanSchema.prefault({}),
   studyType: z.enum(['quantitative', 'qualitative', 'mixed', 'literature']).optional(),
   writingStudio: writingStudioSchema.optional(),

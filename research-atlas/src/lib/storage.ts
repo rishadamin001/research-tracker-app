@@ -3,7 +3,7 @@ export const snapshotLimit = 8;
 export const snapshotBudgetBytes = 10_000_000;
 // Older clients must refuse the newer envelope rather than strip new project
 // fields (structured writing and additional-provider search histories) on save.
-export const workspaceFormatVersion = 2;
+export const workspaceFormatVersion = 3;
 const snapshotInterval = 60_000;
 const noticeKey = 'atlas-workspace-revision';
 const channelName = 'atlas-workspace-changes';
@@ -21,7 +21,7 @@ export class WorkspaceRecoveryRequiredError extends Error {
 }
 export function decodeWorkspace(raw: unknown): WorkspaceState {
   if (raw === undefined) return { projects: [], revision: 0 };
-  if (!raw || typeof raw !== 'object' || !('schemaVersion' in raw) || ![1, workspaceFormatVersion].includes(Number(raw.schemaVersion)) || typeof raw.schemaVersion !== 'number' || !('projects' in raw) || !Array.isArray(raw.projects) || raw.projects.length > 100) throw Error('Saved workspace format could not be read. No stored records have been changed.');
+  if (!raw || typeof raw !== 'object' || !('schemaVersion' in raw) || ![1, 2, workspaceFormatVersion].includes(Number(raw.schemaVersion)) || typeof raw.schemaVersion !== 'number' || !('projects' in raw) || !Array.isArray(raw.projects) || raw.projects.length > 100) throw Error('Saved workspace format could not be read. No stored records have been changed.');
   const revision = 'revision' in raw ? raw.revision : 0;
   if (!Number.isSafeInteger(revision) || Number(revision) < 0) throw Error('Saved workspace revision is invalid. No stored records have been changed.');
   const projects: Project[] = [], ids = new Set<string>();

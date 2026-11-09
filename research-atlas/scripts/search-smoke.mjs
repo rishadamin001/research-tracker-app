@@ -31,7 +31,7 @@ try {
     await page.getByRole('region', { name: 'Search result controls' }).waitFor({ timeout: 25000 });
     const before = await page.locator('article.paper').count();
     assert.ok(before > 0, `${provider}: first page has records`);
-    assert.equal(await page.getByLabel('Sort papers').inputValue(), 'quartile');
+    assert.equal(await page.getByLabel('Sort papers').inputValue(), 'original');
     await page.getByRole('button', { name: 'Load next page', exact: true }).click();
     await page.getByText(/2 pages retrieved/).waitFor({ timeout: 25000 });
     const after = await page.locator('article.paper').count();

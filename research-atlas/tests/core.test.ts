@@ -116,7 +116,7 @@ test('search provenance records only the actual anonymous page and preserves the
   assert.equal(run.mode, 'anonymous-first-page');
   assert.equal(run.resultCountReported, 114);
   assert.equal(run.cursorState, 'not-requested');
-  assert.deepEqual(run.pages, [{ page: 1, requestedAt: run.startedAt, returnedCount: 1, requestId: 'test-id' }]);
+  assert.deepEqual(run.pages, [{ page: 1, requestedAt: run.startedAt, returnedCount: 1, requestId: 'test-id', responseStatus: 200, requestUrl: 'https://api.openalex.org/works?search=urban+housing&per_page=20&filter=from_publication_date%3A2024-01-01%2Cis_oa%3Atrue' }]);
   assert.equal(run.quota?.remainingCredits, 960);
   assert.equal(run.quota?.requestCredits, 10);
   assert.ok(searchRunSchema.safeParse(run).success);

@@ -8,7 +8,7 @@ test('dark beginner, trust, and study-planning views reflow at 320 CSS pixels', 
     theme: 'dark', density: 'comfortable', motion: 'off', openTasksOnly: false,
   })));
   const publicViews = [
-    ['overview', 'Turn curiosity'], ['primer', 'From a topic to a question'],
+    ['overview', 'Turn curiosity'], ['primer', 'Find your first research direction'],
     ['paper-search', 'Paper search'], ['privacy', 'Privacy & data'],
     ['terms', 'Terms & limitations'], ['support', 'Support & recovery'],
   ];

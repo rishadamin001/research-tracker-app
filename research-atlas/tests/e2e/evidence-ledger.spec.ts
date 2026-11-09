@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 
-test('screening keeps dated reasons and linked evidence survives reload', async ({ page }) => {
+test('screening keeps dated reasons and linked evidence survives reload', async ({ page }, testInfo) => {
+  test.setTimeout(90000);
   await page.route('https://api.openalex.org/works?**', route => route.fulfill({ json: { results: [{
     id: 'https://openalex.org/W987', display_name: 'Housing interviews', publication_year: 2025,
     doi: 'https://doi.org/10.1234/housing', authorships: [], primary_location: null, best_oa_location: null,
@@ -10,6 +11,10 @@ test('screening keeps dated reasons and linked evidence survives reload', async 
   await page.getByRole('button', { name: 'New project', exact: true }).click();
   await page.getByLabel('Working title').fill('Commuter housing study');
   await page.getByRole('button', { name: 'Create project', exact: true }).click();
+  await page.goto('/#question');
+  await page.getByRole('button', { name: 'Question wording', exact: true }).click();
+  await page.getByLabel('Your research question', { exact: true }).fill('How do commuters experience housing?');
+  await page.getByRole('button', { name: 'Save question revision', exact: true }).click();
   await page.goto('/#discover');
   await page.getByRole('textbox', { name: 'Search literature' }).fill('student housing');
   await page.getByRole('button', { name: 'Search papers' }).click();
@@ -62,4 +67,32 @@ test('screening keeps dated reasons and linked evidence survives reload', async 
   await expect(page.getByLabel('Decision reason')).toHaveValue('Draft note for a later review.');
   await page.getByText('Decision history (2)', { exact: true }).click();
   await expect(page.getByText('Table 2 identifies university commuters.', { exact: true })).toBeVisible();
+  await page.goto('/#writing');
+  await page.getByLabel('Reference from this project').selectOption('https://openalex.org/W987');
+  const claims = page.getByLabel('Evidence from this source');
+  const claimValue = await claims.locator('option').last().getAttribute('value');
+  await claims.selectOption(claimValue!);
+  await page.getByRole('button', { name: 'Insert located evidence', exact: true }).click();
+  await expect(page.getByLabel('Section draft', { exact: true })).toHaveValue(/university commuters.*\[1\].*Table 2, page 8/);
+  const docxPending = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export DOCX draft', exact: true }).click();
+  await (await docxPending).saveAs(testInfo.outputPath('full-journey-manuscript.docx'));
+  await page.goto('/#projects');
+  const backupPending = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download backup', exact: true }).click();
+  const backup = await backupPending;
+  const raw = await readFile((await backup.path())!);
+  const saved = JSON.parse(raw.toString()).projects[0];
+  expect(saved.question).toBe('How do commuters experience housing?');
+  expect(saved.papers[0].screeningEvents).toHaveLength(2);
+  expect(saved.papers[0].evidenceClaims[0].locator).toBe('Table 2, page 8');
+  expect(saved.searches[0].run.provider).toBe('OpenAlex');
+  await page.getByLabel('Import backup', { exact: true }).setInputFiles({ name: 'roundtrip.json', mimeType: 'application/json', buffer: raw });
+  await page.getByRole('button', { name: 'Import as new copies', exact: true }).click();
+  const imported = page.locator('article').filter({ has: page.getByRole('heading', { name: 'Commuter housing study (imported)', exact: true }) });
+  await imported.getByRole('button', { name: 'Open roadmap', exact: true }).click();
+  await page.goto('/#writing');
+  await page.reload();
+  await expect(page.getByLabel('Section draft', { exact: true })).toHaveValue(/university commuters.*\[1\].*Table 2, page 8/);
+
 });
