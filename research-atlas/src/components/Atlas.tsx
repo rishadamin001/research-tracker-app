@@ -284,6 +284,7 @@ export default function Atlas() {
   }
 
   async function backup() {
+    if (!ready) return;
     try {
       const data = await createBackup(projects, { sourceOrigin: window.location.origin, preferences });
       download('research-atlas-backup.json', JSON.stringify(data, null, 2), 'application/json');
@@ -293,7 +294,7 @@ export default function Atlas() {
   }
 
   function importBackup() {
-    if (!imported) return;
+    if (!ready || !imported) return;
     if (imported.length + projects.length > 100) { setNotice('This import would exceed the 100-project limit.'); return; }
     const copies = imported.map(item => ({ ...item, id: crypto.randomUUID(), title: `${item.title.slice(0, 19989)} (imported)` }));
     markDirty();
@@ -444,7 +445,7 @@ export default function Atlas() {
         {view === 'projects' && <>
           <div className="page-heading"><div><span className="eyebrow">TRACK YOUR WORK</span><h1>My projects</h1><p>Open a project, review progress, and download a backup.</p></div></div>
           <section className="panel"><h2>Back up and restore</h2><p>Projects are saved in this browser. A backup can restore them on another device.</p><BackupStatus date={backupDate} />
-            <div className="button-row"><button className="button" onClick={backup}><ArrowDownToLine size={17} />Download backup</button><label className="button secondary upload">Import backup<input type="file" accept=".json,application/json" onChange={async event => {
+            <div className="button-row"><button className="button" onClick={backup} disabled={!ready}><ArrowDownToLine size={17} />Download backup</button><label className="button secondary upload">Import backup<input type="file" disabled={!ready} accept=".json,application/json" onChange={async event => {
               const input = event.currentTarget;
               const file = input.files?.[0];
               const revision = ++importRevision.current;
@@ -463,7 +464,7 @@ export default function Atlas() {
               {importManifest && <><p>Backup v{importManifest.backupVersion} · app {importManifest.appVersion} · created {new Date(importManifest.createdAt).toLocaleString()} · source: {importManifest.sourceOrigin}</p>
                 <p>{importManifest.paperCount} references · {importManifest.screeningEventCount} screening events · {importManifest.evidenceClaimCount} evidence claims. {importManifest.integrity === 'verified' ? 'Integrity checksum verified.' : 'Older backup: no checksum was recorded.'}</p>
                 <p>Your existing projects and display preferences stay in place. {importManifest.preferencesIncluded && 'Display preferences are present in the backup for reference.'} New project copies receive new identifiers.</p></>}
-              <div className="button-row"><button className="button" onClick={importBackup} disabled={!imported.length}>Import as new copies</button><button className="button secondary" onClick={() => { ++importRevision.current; setImported(null); setImportManifest(null); }}>Cancel</button></div></div>}
+              <div className="button-row"><button className="button" onClick={importBackup} disabled={!ready || !imported.length}>Import as new copies</button><button className="button secondary" onClick={() => { ++importRevision.current; setImported(null); setImportManifest(null); }}>Cancel</button></div></div>}
           </section>
           {project && <ReferenceExchange key={project.id} project={project} onImport={papers => update({ papers })} />}
           <div className="project-grid">{projects.map(item => <article key={item.id} className="panel journey-project"><h2>{item.title}</h2><p>{item.discipline} · {item.papers.length} saved references</p>
