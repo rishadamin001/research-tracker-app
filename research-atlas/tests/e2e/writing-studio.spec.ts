@@ -3,7 +3,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import { createProject, paperSchema } from '../../src/lib/model';
 
-test('a saved located claim becomes a cited section with portable references and preserved earlier draft', async ({ page }) => {
+test('a saved located claim becomes a cited section with portable references and preserved earlier draft', async ({ page }, testInfo) => {
   const project = createProject('Located evidence writing fixture');
   const claimId = crypto.randomUUID();
   project.question = 'How do commuters experience access to study spaces?';
@@ -35,6 +35,7 @@ test('a saved located claim becomes a cited section with portable references and
   await page.getByRole('button', { name: 'Export DOCX draft', exact: true }).click();
   const docx = await docxDownload;
   expect(docx.suggestedFilename()).toBe('manuscript-draft.docx');
+  await docx.saveAs(testInfo.outputPath('connected-manuscript.docx'));
   const docxBytes = await readFile((await docx.path())!);
   expect(docxBytes.readUInt32LE(0)).toBe(0x04034b50);
   expect(docxBytes.includes(Buffer.from('word/document.xml'))).toBe(true);

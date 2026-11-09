@@ -31,9 +31,13 @@ test('Question guidance and focus preserve answers and keep drafts separate from
   await page.getByRole('button', { name: 'Save question revision', exact: true }).click();
   await expect(page.getByText('Question v1', { exact: true })).toBeVisible();
   await page.getByLabel('Your research question', { exact: true }).fill('Provisional alternative wording.');
+  await mode.selectOption('expert');
+  await mode.selectOption('guided');
   await page.goto('/#history');
   await expect(page.getByText('Question versions (1)', { exact: true })).toBeVisible();
   await page.goto('/#question');
+  await expect(page.getByLabel('Your research question', { exact: true })).toHaveValue('Provisional alternative wording.');
+  await page.reload();
   await expect(page.getByLabel('Your research question', { exact: true })).toHaveValue('Provisional alternative wording.');
   await page.screenshot({ path: `../atlas-guidance-question-${testInfo.project.name}.png` });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

@@ -2,6 +2,16 @@
 
 ## Release checks
 
+## Version 0.9.0 — 9 November 2026 (Asia/Dhaka)
+
+The [complete release CI run](https://github.com/rishadamin001/research-tracker-app/actions/runs/42582944516) passed typecheck, lint, all **92 unit tests**, build, independent DOCX structure validation, live public-provider searches and **284/284 browser cases** across desktop Chromium, Pixel 7 emulation, Firefox and WebKit. Checked application revision: `4efb0ce256752a2d8d577af8ea4c0424c96962db`.
+
+New coverage includes beginner exploration, conservative journal identities and retained matching provenance, source-specific filters, failed Crossref page recovery, conference-directory boundaries and delayed initial storage loading before backup import/export. A connected synthetic journey creates a question, finds and screens a paper, records a located claim, inserts its citation, exports DOCX and restores a backup. Its exported document was also opened in installed Microsoft Word Protected View; the title, citation, bibliography and source-location appendix rendered.
+
+Earlier runs reproduced intermittent Crossref browser/CORS and HTTP 429 failures. Those failures were not hidden: earlier records remain visible and explicit retry and official-source links are available. Passing one live run does not establish permanent provider availability. No independent academic, novice usability, physical Android, manual screen-reader or security review is claimed. No paid service or billing setup was added.
+
+Published-site verification is recorded separately after deployment. The published smoke script explicitly verifies relevance as the default and then switches to quartile ordering.
+
 ## Version 0.8.0 — 9 November 2026 (Asia/Dhaka)
 
 The [complete CI run](https://github.com/rishadamin001/research-tracker-app/actions/runs/42523930026) passed typecheck, lint, all **83 unit tests**, the production build, independent DOCX ZIP/XML/relationship validation, and **264/264 browser cases** across desktop Chromium, Pixel 7 emulation, Firefox and WebKit. Checked head: `7c64b90e12d8e7fe6070906cec6cfeb7cb3c0915`. The merge `ea43daadd019cd054fcd646dd64a859a9ee9e26a` has the identical Git tree. CI uses two isolated browser workers; local runs retain one worker.

@@ -3,6 +3,7 @@ import { normalizeDoi, safeUrl, type JournalFee, type JournalMetrics, type Paper
 import { normalizeIssn } from './ranking';
 import { findJournalQuartile } from './quartiles';
 import { openAlexSearch, readSearchQuota, PaperSearchError, type SearchRun } from './search-provenance';
+import { providerSearchFilterTokens, searchOptionsFromRun, type SearchOptions } from './search-options';
 export { PaperSearchError } from './search-provenance';
 
 const venue = z.object({
@@ -145,7 +146,7 @@ function searchErrorMessage(retryAt?: string) {
     : `${quotaMessage} Try later or use the Crossref link below. Your work is safe.`;
 }
 
-export async function runPaperSearch(query: string, year: string, oa: boolean, signal?: AbortSignal, previous?: SearchRun): Promise<{ papers: Paper[]; run: SearchRun }> {
+export async function runPaperSearch(query: string, year: string, oa: boolean, signal?: AbortSignal, previous?: SearchRun, options: SearchOptions = {}): Promise<{ papers: Paper[]; run: SearchRun }> {
   const executedQuery = query.trim();
   if (executedQuery.length < 3 || query.length > 300) throw new PaperSearchError('Use a search between 3 and 300 characters.');
   if (/\b(AND|OR|NOT)\b|[()*]/.test(query)) throw new PaperSearchError('Atlas searches keyword phrases. OpenAlex’s website supports advanced Boolean syntax.');
@@ -164,6 +165,7 @@ export async function runPaperSearch(query: string, year: string, oa: boolean, s
     filters.push(`from_publication_date:${year}-01-01`);
   }
   if (oa) filters.push('is_oa:true');
+  filters.push(...providerSearchFilterTokens('OpenAlex', options));
   if (filters.length) params.set('filter', filters.join(','));
   if (previous && (previous.executedQuery !== executedQuery || previous.filters.join(',') !== filters.join(','))) throw new PaperSearchError('The query changed. Start a new search before loading more.');
   const pageNumber = previous?.nextPage ?? 1;
@@ -173,7 +175,8 @@ export async function runPaperSearch(query: string, year: string, oa: boolean, s
   if (pageNumber > 1) params.set('page', String(pageNumber));
   const endpoint = API ? `${API}/openalex` : 'https://api.openalex.org/works';
   const startedAt = new Date(Date.now()).toISOString();
-  const page: SearchRun['pages'][number] = { page: pageNumber, requestedAt: startedAt };
+  const requestUrl = `${endpoint}?${params}`;
+  const page: SearchRun['pages'][number] = { page: pageNumber, requestedAt: startedAt, requestUrl, ...(typeof window !== 'undefined' && { requestOrigin: window.location.origin }) };
   const run: SearchRun = {
     id: crypto.randomUUID(), provider: 'OpenAlex', mode: API ? 'gateway-first-page' : 'anonymous-first-page',
     userQuery: query, executedQuery, filters, supportedOperators: [], unsupportedOperators: openAlexSearch.unsupportedOperators,
@@ -191,7 +194,8 @@ export async function runPaperSearch(query: string, year: string, oa: boolean, s
   const requestSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
 
   try {
-    const response = await fetch(`${endpoint}?${params}`, { signal: requestSignal, credentials: 'omit' });
+    const response = await fetch(requestUrl, { signal: requestSignal, credentials: 'omit' });
+    page.responseStatus = response.status;
     const requestId = response.headers.get('X-Request-ID');
     if (requestId && /^[\w:-]{1,160}$/.test(requestId)) page.requestId = requestId;
     run.quota = readSearchQuota(response.headers, Date.now(), response.status === 429);
@@ -222,14 +226,14 @@ export async function runPaperSearch(query: string, year: string, oa: boolean, s
     if (timeout.aborted) return fail('timeout', 'Search timed out. Try again or use the Crossref link below.');
     if (signal?.aborted) return fail('cancelled', 'Search cancelled.');
     if (typeof navigator !== 'undefined' && navigator.onLine === false) return fail('offline', offlineMessage);
-    if (failure instanceof TypeError) return fail('network', 'Could not reach OpenAlex. Check your connection or use the Crossref link below.');
+    if (failure instanceof TypeError) { page.networkFailure = 'network-or-cors'; return fail('network', 'Could not reach OpenAlex or read its response. A network interruption or browser cross-origin restriction (CORS) may be responsible; the HTTP status is not exposed to Atlas. Retry or open the official source. Earlier papers are preserved.'); }
     return fail('invalid-response', 'OpenAlex returned records the app could not read. Try another search or use the Crossref link below.');
   }
 }
 
 export async function continuePaperSearch(run: SearchRun, signal?: AbortSignal) {
   const year = run.filters.find(filter => filter.startsWith('from_publication_date:'))?.split(':')[1]?.slice(0, 4) ?? '';
-  return runPaperSearch(run.userQuery, year, run.filters.includes('is_oa:true'), signal, run);
+  return runPaperSearch(run.userQuery, year, run.filters.includes('is_oa:true'), signal, run, searchOptionsFromRun(run));
 }
 
 export async function relatedPapers(paper: Paper, relation: 'references' | 'citations', signal?: AbortSignal): Promise<Paper[]> {

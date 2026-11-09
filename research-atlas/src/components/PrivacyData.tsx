@@ -41,6 +41,7 @@ export function PrivacyData({ backupDate, onBackup }: { backupDate: string; onBa
     <section className="panel"><h2><LockKeyhole size={18} aria-hidden="true" /> Stored on this device</h2>
       <p>Projects, screening decisions, evidence notes, drafts, budgets, and preferences are stored in this browser. Atlas has no required sign-in or app analytics. Opening the published site contacts its host, GitHub Pages.</p>
       <p>Paper search without a project keeps the last 50 search records in this browser, including entered terms, filters, and provider response details. Use Clear search history in Paper search to remove them. Project search logs stay with the project and its backup.</p>
+      <p>Beginner starter choices are saved for this browser tab, without fetched paper records. Use Clear starter choices to reset them. Journal Match drafts stay in the selected project; only your explicitly submitted query and requested ISSN lookups go to OpenAlex.</p>
       <p>Question drafts, committed revisions, and bounded project history stay on this device. Atlas Library groups project references locally. Recovery snapshots retain up to eight earlier workspaces within a shared 10 MB limit; they can contain deleted projects and earlier private notes until rotated out or cleared. Review or clear snapshots under My projects. Clearing this site’s browser data also removes them. They are not off-device backups.</p>
       <h3>Sent when you use a lookup</h3>
       <ul>

@@ -1,4 +1,43 @@
 import { expect, test } from '@playwright/test';
+import { createProject } from '../../src/lib/model';
+
+test('backup actions wait for initial storage loading and an imported project survives reload', async ({ page }) => {
+  await page.addInitScript(() => {
+    const open = IDBFactory.prototype.open;
+    let held = false;
+    IDBFactory.prototype.open = function (...args: Parameters<typeof open>) {
+      const request = open.apply(this, args);
+      if (!held) {
+        held = true;
+        request.addEventListener('success', event => {
+          event.stopImmediatePropagation();
+          Object.assign(window, { releaseAtlasStorage: () => request.dispatchEvent(new Event('success')) });
+        }, { once: true });
+      }
+      return request;
+    };
+  });
+  await page.goto('/#projects');
+  const download = page.getByRole('button', { name: 'Download backup', exact: true });
+  const upload = page.getByLabel('Import backup', { exact: true });
+  await expect(download).toBeDisabled();
+  await expect(upload).toBeDisabled();
+  await page.waitForFunction(() => 'releaseAtlasStorage' in window);
+  await page.evaluate(() => (window as unknown as { releaseAtlasStorage: () => void }).releaseAtlasStorage());
+  await expect(download).toBeEnabled();
+  await expect(upload).toBeEnabled();
+  const project = createProject('Import after slow startup');
+  await upload.setInputFiles({ name: 'startup.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ schemaVersion: 1, exportedAt: new Date().toISOString(), projects: [project] })) });
+  await page.getByRole('button', { name: 'Import as new copies', exact: true }).click();
+  await expect(page.getByRole('heading', { name: project.title + ' (imported)', exact: true })).toBeVisible();
+  await expect(page.getByText('Saved on this device', { exact: true })).toBeAttached();
+  await page.reload();
+  await page.waitForFunction(() => 'releaseAtlasStorage' in window);
+  await page.evaluate(() => (window as unknown as { releaseAtlasStorage: () => void }).releaseAtlasStorage());
+  await expect(page.getByRole('heading', { name: project.title + ' (imported)', exact: true })).toBeVisible();
+  await page.goto('/#profile');
+  await expect(page.getByLabel('Project title', { exact: true })).toHaveValue(project.title + ' (imported)');
+});
 
 test('editing a version 1 workspace upgrades its envelope and preserves both manuscript formats after reload', async ({ page }) => {
   const legacyManuscript = 'Original manuscript — keep this wording.\n\nMethods and notes from the earlier app.';
@@ -54,7 +93,7 @@ test('editing a version 1 workspace upgrades its envelope and preserves both man
   await expect(page.getByLabel('Section draft', { exact: true })).toHaveValue(`${structuredBody}[1]`);
   await expect(page.getByText('Saved on this device', { exact: true })).toBeAttached();
   const saved = await readStored();
-  expect(saved.schemaVersion).toBe(2);
+  expect(saved.schemaVersion).toBe(3);
   expect(saved.revision).toBeGreaterThan(0);
   expect(saved.projects).toHaveLength(1);
   expect(saved.projects[0].id).toBe(legacyProject.id);

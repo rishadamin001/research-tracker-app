@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 
 test('conference planner exports the selected deadline and keeps edited events', async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-11-06T12:00:00Z'));
@@ -28,4 +29,59 @@ test('conference planner exports the selected deadline and keeps edited events',
   await page.getByLabel('Show past events').check();
   await expect(listing).toBeVisible();
   await expect(listing.getByText('Ended', { exact: true })).toBeVisible();
+});
+
+test('an empty curated search clearly leads to official directory discovery without inventing conference matches', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-11-09T06:00:00Z'));
+  await page.goto('/#conferences');
+  await page.getByRole('button', { name: 'International', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: '5 curated international events in this release' })).toBeVisible();
+  await page.getByLabel('Search curated conferences', { exact: true }).fill('public health');
+  await expect(page.getByText(/No matches in our curated list with these filters/)).toBeVisible();
+  await expect(page.getByText(/This does not mean no conferences exist/)).toBeVisible();
+  await page.getByRole('button', { name: 'Discover beyond this list', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Discover directories', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByLabel('Where will the event be held?', { exact: true })).toHaveValue('international');
+  await expect(page.getByText(/does not retrieve live event records/)).toBeVisible();
+  await page.getByLabel('Topic or keywords', { exact: true }).fill('public health & climate');
+  await page.getByText('Optional dates, place and organizer', { exact: true }).click();
+  await page.getByLabel('Country, city or online format', { exact: true }).fill('Online');
+  await page.getByLabel('Organizer or society', { exact: true }).fill('WHO');
+  await page.getByLabel('Earliest conference date', { exact: true }).fill('2027-01-01');
+  await page.getByLabel('Latest conference date', { exact: true }).fill('2026-12-31');
+  await expect(page.getByRole('alert')).toContainText('on or after');
+  await expect(page.getByRole('button', { name: 'Copy search brief', exact: true })).toBeDisabled();
+  await page.getByLabel('Latest conference date', { exact: true }).fill('2027-12-31');
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  const brief = page.getByLabel('Conference directory search brief', { exact: true });
+  await expect(brief).toHaveValue(/public health & climate[\s\S]*Online[\s\S]*WHO[\s\S]*2027-01-01[\s\S]*2027-12-31/);
+  await page.getByLabel('Show directory organization', { exact: true }).selectOption('who');
+  const directories = page.getByRole('region', { name: 'Discover conference directories', exact: true });
+  await expect(directories.locator('.conference-directory-card')).toHaveCount(1);
+  await expect(page.getByRole('link', { name: 'Open WHO Events', exact: true })).toHaveAttribute('href', 'https://www.who.int/news-room/events');
+  await expect(page.getByText(/source catalog, not a count of conferences or matches/)).toBeVisible();
+  await page.getByText('Broader alert sites · unverified leads', { exact: true }).click();
+  await expect(page.getByText(/not organizer-verified Atlas records/)).toBeVisible();
+  const { violations } = await new AxeBuilder({ page }).include('.conference-discovery').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
+  expect(violations.map(item => ({ id: item.id, targets: item.nodes.map(node => node.target) }))).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('a directory lead is explicitly personal and remains editable after reload', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-11-09T06:00:00Z'));
+  await page.goto('/#conferences');
+  await page.getByRole('button', { name: 'Discover directories', exact: true }).click();
+  await page.getByRole('button', { name: 'Add a lead to My tracker', exact: true }).click();
+  await expect(page.getByText(/will not be marked as verified by Atlas/)).toBeVisible();
+  await page.getByLabel('Conference name', { exact: true }).fill('Public health lead — synthetic fixture');
+  await page.getByLabel('Event website', { exact: true }).fill('https://example.org/conference-fixture');
+  await page.getByLabel('Private tracker notes', { exact: true }).fill('Verify the organizer before using this lead.');
+  await page.getByRole('button', { name: 'Save event', exact: true }).click();
+  await expect(page.getByText('Personal tracker entry · details not checked by Atlas', { exact: true })).toBeVisible();
+  await page.reload();
+  await page.getByRole('button', { name: 'My tracker (1)', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Public health lead — synthetic fixture', exact: true })).toBeVisible();
+  await expect(page.getByText('Personal tracker entry · details not checked by Atlas', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Edit tracker entry', exact: true }).click();
+  await expect(page.getByLabel('Private tracker notes', { exact: true })).toHaveValue('Verify the organizer before using this lead.');
 });

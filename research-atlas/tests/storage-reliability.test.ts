@@ -15,7 +15,7 @@ test('new workspace envelopes preserve structured writing and refuse unknown fut
   project.studyType = 'literature';
   project.writingStudio = { sections: [{ id: 'introduction', body: 'A traceable structured draft.' }], citations: [], evidenceLinks: [] };
   const loaded = decodeWorkspace({ schemaVersion: workspaceFormatVersion, revision: 4, projects: [project] });
-  assert.equal(workspaceFormatVersion, 2);
+  assert.equal(workspaceFormatVersion, 3);
   assert.deepEqual(loaded.projects, [project]);
   assert.throws(() => decodeWorkspace({ schemaVersion: 99, revision: 4, projects: [project] }), /No stored records have been changed/);
 });

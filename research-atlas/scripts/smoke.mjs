@@ -35,7 +35,8 @@ try {
   report.openAlexSearchResultCount = await page.locator('article.paper').count();
   report.openAlexSecondPage = report.openAlexSearchResultCount > firstPageCount;
   assert.ok(report.openAlexSecondPage);
-  assert.equal(await page.getByLabel('Sort papers').inputValue(), 'quartile');
+  assert.equal(await page.getByLabel('Sort papers').inputValue(), 'original');
+  await page.getByLabel('Sort papers').selectOption('quartile');
   await page.getByText('POSI Q1 · 2026', { exact: true }).first().waitFor();
   await page.getByRole('region', { name: 'Search result controls' }).evaluate(element => {
     window.scrollTo(0, element.getBoundingClientRect().top + window.scrollY - 95);

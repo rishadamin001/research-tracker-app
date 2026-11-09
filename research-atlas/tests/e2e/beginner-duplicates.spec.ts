@@ -1,21 +1,28 @@
 import { expect, test } from '@playwright/test';
 import { createProject, paperSchema } from '../../src/lib/model';
 
-test('three starting intentions lead to a personalized saved beginner project', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.getByRole('region', { name: 'Choose a starting point' }).getByRole('button')).toHaveCount(3);
-  await page.getByRole('button', { name: /I’m new to research/ }).click();
-  await expect(page.getByRole('list', { name: 'The research journey' })).toBeVisible();
-  await page.getByLabel('Try your own research question').fill('How do commuter students choose study spaces?');
-  await page.getByRole('button', { name: 'Start a project with this question' }).click();
-  await page.getByLabel('Working title').fill('Commuter study spaces');
-  await page.getByLabel('Broad discipline').selectOption('Social sciences & humanities');
-  await page.getByLabel('What are you trying to understand?').fill('Understand student experiences');
-  await page.getByRole('button', { name: 'Create project', exact: true }).click();
-  await expect(page.getByLabel('Research experience')).toHaveValue('Beginner');
-  await expect(page.getByLabel('Research goal')).toHaveValue('Understand student experiences');
-  await page.getByRole('button', { name: 'Back to roadmap' }).click();
-  await expect(page.getByText('YOUR NEXT USEFUL STEP')).toBeVisible();
+test('beginner explores actual records before explicitly creating an uncommitted project', async ({ page }) => {
+  let queries = 0;
+  await page.route('https://api.openalex.org/works?**', async route => {
+    queries++;
+    await route.fulfill({ json: { meta: { count: 1 }, results: [{ id: 'https://openalex.org/W123', display_name: 'Commuter study spaces', publication_year: 2024, doi: null, authorships: [], primary_location: null }] } });
+  });
+  await page.goto('/#primer');
+  await page.getByLabel('Your interest', { exact: true }).fill('student housing');
+  expect(queries).toBe(0);
+  await page.getByRole('button', { name: 'Choose how to explore' }).click();
+  await page.getByRole('button', { name: 'Show real papers' }).click();
+  await expect(page.getByRole('heading', { name: 'Commuter study spaces' })).toBeVisible();
+  await page.getByLabel('Keep for my project').check();
+  await page.getByLabel('Working project title (optional)', { exact: true }).fill('Commuter project');
+  await page.getByLabel('A question to explore (optional draft)', { exact: true }).fill('How do commuters choose spaces?');
+  await page.getByRole('button', { name: 'Create project from this exploration' }).click();
+  await expect(page.getByText('Saved on this device', { exact: true })).toBeVisible();
+  await page.reload();
+  await page.getByRole('button', { name: /^Frame your question/ }).click();
+  await page.getByRole('button', { name: 'Question wording', exact: true }).click();
+  await expect(page.getByLabel('Your research question')).toHaveValue('How do commuters choose spaces?');
+  expect(queries).toBe(2);
 });
 
 test('duplicate merge is auditable and reversible in a project after reload', async ({ page }) => {

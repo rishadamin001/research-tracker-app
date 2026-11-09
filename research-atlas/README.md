@@ -2,9 +2,11 @@
 
 A browser-local research workspace for students and early-career researchers. A project roadmap connects research planning, literature, study records, writing, and publication checks. Short examples and guidance appear beside each activity.
 
-Version 0.8 uses six destinations: **Home, My Research, Discover, Library, Learn and Publish**. Returning Home shows your current question and pending work. Each project shares Overview, Question, Literature, Study, Evidence, Write and Publish tabs. Choose **Step-by-step guidance** for smaller tasks or **Focus workspace** to see all grouped fields. Both preserve the same answers. Open **Overview → My plan** for deadlines, budget and submission materials.
+Version 0.9 uses six destinations: **Home, My Research, Discover, Library, Learn and Publish**. Returning Home shows your current question and pending work. Each project shares Overview, Question, Literature, Study, Evidence, Write and Publish tabs. Choose **Step-by-step guidance** for smaller tasks or **Focus workspace** to see all grouped fields. Both preserve the same answers. Open **Overview → My plan** for deadlines, budget and submission materials.
 
 The [professional standards audit status](docs/PROFESSIONAL-AUDIT-STATUS.md) describes the 0.8 scope and remaining review. [Atlas Library](docs/ATLAS-LIBRARY.md) groups references across projects; [Project history](docs/RESEARCH-TRAIL.md) records explicitly committed question versions and research changes. The unified Library is currently a view over project records, with a canonical reference database still planned.
+
+New in 0.9: explore real paper examples before committing to a question, use provider-specific search filters and failed-page recovery, and find journal candidates from related articles with a visible evidence trail. See [the readiness update](docs/READINESS-090.md) for scope and verification limits.
 
 ## Run
 
@@ -18,7 +20,7 @@ For local development, use Node.js 24. Run `npm ci` and `npm run dev`, then open
 - Search OpenAlex, Europe PMC or Crossref, save each source once, then inspect, screen and record findings in the connected Evidence Desk. Review possible duplicates side by side and explore bounded OpenAlex citation/reference suggestions beyond the saved-library citation view.
 - Choose an optional research pathway, plan methods and ethics, and record data management and analysis. Build section drafts in Writing Studio with deliberate citations and located evidence links; export Markdown, DOCX or cited references for further editing.
 - Shortlist journals, document checks and fees, and look up DOI metadata and open-access locations. Task status records progress through the workspace.
-- Download backups from My projects. Import restores copies, and new exports use backup v2 with source origin and integrity checksum. Previous version 1 backups remain supported. Version 0.8 reads workspace envelopes 1 and 2 and writes envelope 2 on a changed save; project schema and IndexedDB version remain 1. Reload all older tabs after updating and avoid importing newer backups into older app versions. Revision checks and bounded local snapshots protect updated clients on the same device. Data is scoped to the browser origin, so export and import when moving from the local preview to Pages.
+- Download backups from My projects. Import restores copies, and new exports use backup v2 with source origin and integrity checksum. Previous version 1 backups remain supported. Version 0.9 reads workspace envelopes 1, 2 and 3 and writes envelope 3 on a changed save; project schema and IndexedDB version remain 1. Reload all older tabs after updating and avoid importing newer backups into older app versions. Revision checks and bounded local snapshots protect updated clients on the same device. Data is scoped to the browser origin, so export and import when moving from the local preview to Pages.
 
 See [Workflow specification](WORKFLOW.md), [Architecture](ARCHITECTURE.md), and [Deployment](DEPLOYMENT.md). Search uses public [OpenAlex](https://help.openalex.org/api/authentication/), [Europe PMC](https://europepmc.org/RestfulWebService) and [Crossref](https://www.crossref.org/documentation/retrieve-metadata/rest-api/) metadata. No paid subscription, personal API key or billing account is required by this app.
 

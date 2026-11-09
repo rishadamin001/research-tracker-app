@@ -1,0 +1,42 @@
+.beginner-explorer { min-width: 0; }
+.starter-heading { max-width: 820px; margin-bottom: 24px; }
+.starter-heading h1 { margin-top: 8px; }
+.starter-progress { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 0; list-style: none; margin: 20px 0 28px; }
+.starter-progress li { display: flex; align-items: center; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); min-width: 0; }
+.starter-progress li[aria-current='step'] { border-color: var(--green); background: var(--accent-soft); color: var(--green); }
+.starter-progress small { display: block; font-size: .7rem; margin-bottom: 3px; }
+.starter-progress span { font-weight: 650; font-size: .85rem; }
+.starter-progress svg { flex-shrink: 0; }
+.starter-step h2 { margin-top: 0; }
+.starter-fields,.starter-approaches,.starter-directions { border: 0; padding: 0; margin: 22px 0; min-width: 0; }
+.starter-fields legend,.starter-approaches legend,.starter-directions legend { font-weight: 700; font-size: .85rem; margin-bottom: 12px; }
+.starter-field-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.starter-field { min-height: 64px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink); font: inherit; font-weight: 600; font-size: .85rem; padding: 12px; text-align: left; }
+.starter-field[aria-pressed='true'] { border-color: var(--green); background: var(--accent-soft); color: var(--green); }
+.starter-topics { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+.starter-choice { display: flex; align-items: flex-start; gap: 12px; min-height: 64px; padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); margin: 10px 0; cursor: pointer; }
+.starter-choice[data-selected='true'] { border-color: var(--green); background: var(--accent-soft); }
+.starter-choice input { flex-shrink: 0; margin-top: 4px; }
+.starter-choice strong { display: block; line-height: 1.5; }
+.starter-choice small { display: block; color: var(--muted); font-size: .82rem; margin-top: 5px; }
+.starter-evidence-group { border-top: 1px solid var(--line); margin-top: 28px; padding-top: 24px; }
+.starter-angle-heading { display: flex; align-items: flex-start; gap: 12px; }
+.starter-angle-heading > svg { flex-shrink: 0; color: var(--green); margin-top: 3px; }
+.starter-angle-heading h3 { margin: 0 0 7px; }
+.starter-angle-heading p { margin: 0; }
+.starter-query { overflow-wrap: anywhere; font-size: .83rem; }
+.starter-paper-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; margin-top: 16px; }
+.starter-paper { border: 1px solid var(--line); border-radius: 12px; padding: 18px; min-width: 0; background: var(--surface); overflow-wrap: anywhere; }
+.starter-paper h4 { line-height: 1.5; margin: 10px 0; }
+.starter-authors,.starter-reading { font-size: .8rem; }
+.starter-paper .publication-identity { margin: 16px 0; }
+.starter-metrics { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: .78rem; }
+.starter-abstract { white-space: pre-wrap; font-size: .85rem; }
+.starter-keep { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 16px; }
+.starter-paper > .muted { font-size: .75rem; }
+.starter-project { padding: 20px; margin-top: 28px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-soft); }
+.starter-project h3 { display: flex; align-items: center; gap: 10px; margin-top: 0; }
+.starter-support { display: flex; flex-wrap: wrap; gap: 16px; padding: 18px 4px; }
+.starter-support p { flex-basis: 100%; margin: 0; font-size: .78rem; }
+@media (max-width: 850px) { .starter-field-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .starter-paper-grid { grid-template-columns: 1fr; } }
+@media (max-width: 520px) { .starter-progress { grid-template-columns: 1fr; gap: 7px; } .starter-progress li { padding: 10px 12px; } .starter-progress small { display: inline; margin-right: 8px; } .starter-field-grid { grid-template-columns: 1fr; } .starter-project { padding: 16px; } }

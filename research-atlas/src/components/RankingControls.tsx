@@ -37,8 +37,8 @@ export function OrderSelect<Order extends string>({ label, labels, order, onChan
   </label>;
 }
 
-export function usePaperOrder() {
-  return useStoredOrder<PaperOrder>('atlas-literature-sort-v2', paperOrderLabels, 'quartile');
+export function usePaperOrder(fallback: PaperOrder = 'quartile') {
+  return useStoredOrder<PaperOrder>('atlas-literature-sort-v2', paperOrderLabels, fallback);
 }
 
 const publisherMarks = [

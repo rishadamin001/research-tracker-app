@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0 — 2026-11-09
+
+Added interest-first beginner exploration with real paper examples, provider-specific search filters, relevance-first discovery respecting saved preferences, and explicit page retry with retained earlier results. Quartile, citation, date and available price sorts remain.
+
+Added article-backed Journal Match with conservative ISSN or title-and-publisher grouping, supporting-article provenance, separate subject-fit and quartile indicators, and explicit optional fee lookup. Conference discovery distinguishes curated events from external directories and unverified personal leads. Unknown prices remain unknown.
+
+Workspace envelope 3 preserves new drafts and provenance while reading versions 1 and 2. Backup import/export now waits for initial storage loading, preventing an import from being overwritten during startup. No paid services, credentials or billing setup were added. See [readiness and verification](docs/READINESS-090.md).
+
 ## 0.8.0 — 2026-11-08
 
 Added task-based **Step-by-step guidance** and **Focus workspace** using the same saved fields. Question drafts autosave separately; only **Save question revision** commits wording and flags downstream work. Optional quantitative, qualitative, mixed-methods and literature pathways adapt examples without deleting earlier answers.

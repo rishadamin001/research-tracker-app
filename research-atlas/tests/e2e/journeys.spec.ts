@@ -17,9 +17,7 @@ test('beginner onboarding, research plan, backup and restore', async ({ page }) 
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/');
-  await page.getByRole('button', { name: /new to research/i }).click();
-  await page.getByLabel('Try your own research question').fill('How do small retailers describe barriers to digital adoption?');
-  await page.getByRole('button', { name: 'Start a project with this question' }).click();
+  await page.getByRole('button', { name: 'New project', exact: true }).click();
   await page.getByLabel('Working title').fill('Dhaka digital inclusion');
   await page.getByRole('button', { name: 'Create project', exact: true }).click();
   await page.getByLabel('Guidance mode', { exact: true }).selectOption('expert');
@@ -29,7 +27,7 @@ test('beginner onboarding, research plan, backup and restore', async ({ page }) 
   await page.getByLabel('Working topic').fill('Digital adoption in small businesses');
   await page.getByLabel('Why is this topic feasible?').fill('Local retailers can be contacted within the study period.');
   await page.getByRole('button', { name: 'Draft your question' }).click();
-  await expect(page.getByLabel('Your research question')).toHaveValue(/small retailers/);
+  await page.getByLabel('Your research question').fill('How do small retailers describe barriers to digital adoption?');
   await page.getByLabel('Research objectives').fill('Identify common barriers reported by owners.');
   await openStage(page, 'Plan methods and ethics');
   await page.getByText('Work through the design questions', { exact: true }).click();

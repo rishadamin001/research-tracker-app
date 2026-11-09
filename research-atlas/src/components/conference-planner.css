@@ -110,3 +110,21 @@
 .conference-editor h2 { margin: 0; }
 .conference-editor-deadline { border: 1px solid var(--line, #cfddd8); border-radius: .55rem; display: grid; gap: .5rem; margin: 0; min-width: 0; padding: .7rem; }
 .conference-status { background: var(--accent-soft, #e8f3ef); border-radius: .55rem; padding: .55rem .75rem; }
+
+.conference-workspace-panel, .conference-discovery { display: grid; gap: 1rem; min-width: 0; }
+.conference-workspace-panel[hidden] { display: none; }
+.conference-discovery-intro, .conference-lead-next { display: flex; align-items: flex-start; gap: .8rem; }
+.conference-discovery-intro > svg, .conference-lead-next > svg { color: var(--green); flex: 0 0 auto; margin-top: .2rem; }
+.conference-discovery-intro h2, .conference-lead-next h3, .conference-broader-next h2 { margin-top: 0; }
+.conference-discovery-search, .conference-directory-card, .conference-broader-next, .conference-lead-next { background: var(--surface); border: 1px solid var(--line); border-radius: .9rem; padding: 1rem; min-width: 0; }
+.conference-discovery-search { display: grid; gap: .8rem; }
+.conference-discovery-search h3 { display: flex; align-items: center; gap: .5rem; margin: 0; }
+.conference-discovery-search p, .conference-directory-card p, .conference-lead-next p { margin-block: .45rem; }
+.conference-directory-card h4 { font-size: 1rem; margin-block: .7rem .4rem; }
+.conference-directory-card { display: grid; align-content: start; gap: .3rem; }
+.conference-directory-card .conference-badge { justify-self: start; }
+.conference-source-filter { max-width: 28rem; margin-bottom: .7rem; }
+.conference-optional-filters { margin-top: .8rem; }
+.conference-curated-count { margin: 0; font-size: .9rem; font-weight: 650; }
+.conference-discovery-search textarea { white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 540px) { .conference-discovery-intro, .conference-lead-next { gap: .6rem; } .conference-tabs button { flex-grow: 1; } }
