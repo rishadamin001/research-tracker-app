@@ -1,5 +1,27 @@
 import { expect, test } from '@playwright/test';
 
+test('Crossref page failure preserves records and exposes a working manual retry and official fallback', async ({ page }) => {
+  let fail = true;
+  await page.route('https://api.crossref.org/works?**', route => {
+    const offset = Number(new URL(route.request().url()).searchParams.get('offset'));
+    if (offset === 20 && fail) return route.abort('failed');
+    return route.fulfill({ json: { message: { 'total-results': 60, items: Array.from({ length: 20 }, (_, i) => ({ DOI: `10.1234/test${offset+i}`, title: [`Crossref record ${offset+i}`], type: 'journal-article' })) } } });
+  });
+  await page.goto('/#paper-search');
+  await page.getByLabel('Search source', { exact: true }).selectOption('Crossref');
+  await page.getByRole('textbox', { name: 'Search literature' }).fill('Hypothyroidism');
+  await page.getByRole('button', { name: 'Search papers', exact: true }).click();
+  await expect(page.locator('article.paper')).toHaveCount(20);
+  await page.getByRole('button', { name: 'Load next page', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Search error' })).toContainText('20 earlier records are still available');
+  await expect(page.locator('article.paper')).toHaveCount(20);
+  await expect(page.getByRole('link', { name: 'Open keywords on Crossref', exact: true })).toHaveAttribute('href', 'https://search.crossref.org/?q=Hypothyroidism');
+  fail = false;
+  await page.getByRole('button', { name: 'Retry this page', exact: true }).click();
+  await expect(page.locator('article.paper')).toHaveCount(40);
+  await expect(page.getByRole('region', { name: 'Search error' })).toHaveCount(0);
+});
+
 const medical = (start: number, count = 20) => Array.from({ length: count }, (_, i) => ({
   id: String(start + i), source: 'MED', title: `Hypothyroidism study ${start + i}`, authorString: 'Example Author', pubYear: '2025', doi: `10.1234/hypo${start + i}`,
   firstPublicationDate: '2025-02-15', citedByCount: 12, isOpenAccess: 'N',

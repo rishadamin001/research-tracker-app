@@ -38,6 +38,7 @@ jobs:
       - name: Live public literature sources
         run: node scripts/search-smoke.mjs http://127.0.0.1:4173/ --serve
       - run: npm run test:e2e -- --max-failures=8 --reporter=line
+        if: ${{ !cancelled() }}
         env:
           ATLAS_FIREFOX: '1'
           ATLAS_WEBKIT: '1'
