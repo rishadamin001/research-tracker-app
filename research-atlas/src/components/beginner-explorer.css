@@ -16,7 +16,8 @@
 .starter-topics { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
 .starter-choice { display: flex; align-items: flex-start; gap: 12px; min-height: 64px; padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); margin: 10px 0; cursor: pointer; }
 .starter-choice[data-selected='true'] { border-color: var(--green); background: var(--accent-soft); }
-.starter-choice input { flex-shrink: 0; margin-top: 4px; }
+.starter-choice input[type='radio'] { flex: 0 0 18px; width: 18px; height: 18px; min-width: 18px; padding: 0; margin: 4px 0 0; }
+.starter-choice > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .starter-choice strong { display: block; line-height: 1.5; }
 .starter-choice small { display: block; color: var(--muted); font-size: .82rem; margin-top: 5px; }
 .starter-evidence-group { border-top: 1px solid var(--line); margin-top: 28px; padding-top: 24px; }
