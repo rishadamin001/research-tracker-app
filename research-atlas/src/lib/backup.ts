@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { parseBackup, projectSchema, type Project } from './model';
 import type { Preferences } from './preferences';
 
-export const appVersion = '0.9.0';
+export const appVersion = '0.10.2';
 export const backupLimitBytes = 10_000_000;
 const preferencesSchema = z.object({
   theme: z.enum(['light', 'dark', 'system']), density: z.enum(['comfortable', 'compact']),
@@ -15,15 +15,15 @@ const originSchema = z.string().max(1200).refine(value => {
   catch { return false; }
 });
 const payloadSchema = z.object({
-  format: z.literal('research-atlas-backup'), backupVersion: z.literal(2), schemaVersion: z.literal(1),
+  format: z.literal('research-atlas-backup'), backupVersion: z.union([z.literal(2), z.literal(3)]), schemaVersion: z.literal(1),
   appVersion: z.string().min(1).max(40), createdAt: z.iso.datetime(), sourceOrigin: originSchema,
   projectCount: z.number().int().min(0).max(100), projects: z.array(projectSchema).max(100),
   preferences: preferencesSchema.optional(),
 });
 const envelopeSchema = payloadSchema.extend({ checksum: z.string().regex(/^sha256:[0-9a-f]{64}$/) }).strict();
 export type BackupManifest = {
-  backupVersion: 1 | 2; appVersion: string; createdAt: string; sourceOrigin: string;
-  projectCount: number; paperCount: number; screeningEventCount: number; evidenceClaimCount: number;
+  backupVersion: 1 | 2 | 3; appVersion: string; createdAt: string; sourceOrigin: string;
+  projectCount: number; paperCount: number; screeningEventCount: number; evidenceClaimCount: number; notebookNoteCount: number;
   integrity: 'verified' | 'legacy-unchecked'; preferencesIncluded: boolean;
 };
 export type ImportedBackup = { projects: Project[]; manifest: BackupManifest; preferences?: Preferences };
@@ -45,7 +45,7 @@ async function checksum(value: unknown) {
 
 export async function createBackup(projects: Project[], options: { sourceOrigin?: string; preferences?: Preferences; createdAt?: string } = {}) {
   const payload = payloadSchema.parse({
-    format: 'research-atlas-backup', backupVersion: 2, schemaVersion: 1, appVersion,
+    format: 'research-atlas-backup', backupVersion: 3, schemaVersion: 1, appVersion,
     createdAt: options.createdAt ?? new Date().toISOString(), sourceOrigin: options.sourceOrigin ?? 'unknown',
     projectCount: projects.length, projects, preferences: options.preferences,
   });
@@ -59,6 +59,7 @@ export async function createBackup(projects: Project[], options: { sourceOrigin?
 function counts(projects: Project[]) {
   const papers = projects.flatMap(project => project.papers);
   return { projectCount: projects.length, paperCount: papers.length,
+    notebookNoteCount: projects.reduce((count, project) => count + (project.notebookNotes?.length ?? 0), 0),
     screeningEventCount: papers.reduce((count, paper) => count + (paper.screeningEvents?.length ?? 0), 0),
     evidenceClaimCount: papers.reduce((count, paper) => count + (paper.evidenceClaims?.length ?? 0), 0) };
 }
@@ -73,7 +74,7 @@ export async function parseBackupFile(raw: string): Promise<ImportedBackup> {
       createdAt: legacy.exportedAt, sourceOrigin: 'Not recorded in version 1', integrity: 'legacy-unchecked', preferencesIncluded: false } };
   }
   const result = envelopeSchema.safeParse(parsed);
-  if (!result.success) throw Error('This is not a valid Research Atlas version 2 backup. Your projects have not changed.');
+  if (!result.success) throw Error('This is not a valid Research Atlas backup. Your projects have not changed.');
   // Verify the original serialized values before defaults/migrations can alter them.
   const { checksum: supplied, ...original } = parsed as Record<string, unknown>;
   if (await checksum(original) !== supplied) throw Error('Backup integrity check failed. The file may be incomplete or changed. Your projects have not changed.');
@@ -82,6 +83,6 @@ export async function parseBackupFile(raw: string): Promise<ImportedBackup> {
   const ids = data.projects.map(project => project.id);
   if (new Set(ids).size !== ids.length) throw Error('The backup contains repeated project identifiers. Your projects have not changed.');
   return { projects: data.projects, preferences: data.preferences,
-    manifest: { ...counts(data.projects), backupVersion: 2, appVersion: data.appVersion, createdAt: data.createdAt,
+    manifest: { ...counts(data.projects), backupVersion: data.backupVersion, appVersion: data.appVersion, createdAt: data.createdAt,
       sourceOrigin: data.sourceOrigin, integrity: 'verified', preferencesIncluded: data.preferences !== undefined } };
 }

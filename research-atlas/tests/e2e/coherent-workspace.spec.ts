@@ -11,7 +11,7 @@ test('six destinations, project tabs, guided mode and returning home stay connec
   await page.getByLabel('Working title').fill('Student study spaces');
   await page.getByRole('button', { name: 'Create project', exact: true }).click();
   const projectNav = page.getByRole('navigation', { name: 'Project workspace', exact: true });
-  await expect(projectNav.getByRole('button')).toHaveText(['Overview','Question','Literature','Study','Evidence','Write','Publish']);
+  await expect(projectNav.getByRole('button')).toHaveText(['Overview','Question','Literature','Study','Evidence','Notebook','Write','Publish']);
   await projectNav.getByRole('button', { name: 'Question', exact: true }).click();
   await page.getByRole('button', { name: 'Question wording', exact: true }).click();
   await page.getByLabel('Your research question').fill('How do commuter students choose study spaces?');

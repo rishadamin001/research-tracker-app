@@ -1,4 +1,4 @@
-export type PlannerTarget = 'paper-search' | 'discover' | 'extract' | 'methods' | 'data' | 'analysis' | 'draft' | 'publish';
+export type PlannerTarget = 'paper-search' | 'discover' | 'question' | 'screen' | 'extract' | 'methods' | 'data' | 'analysis' | 'draft' | 'publish';
 
 type GuideStep = {
   title: string;

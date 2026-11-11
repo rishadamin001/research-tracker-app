@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.10.2 — 2026-11-11
+
+Question edits use one shared draft and the draft indicator waits for storage confirmation. Guided navigation settles keyboard focus before the next field can receive input. Failed writes leave an explicit recovery path.
+
+The Researcher’s Notebook groups located findings, interpretations and next actions. Open it from a project, saved source or Writing Studio. Learn adds six practice lessons with feedback and revisit dates. Reference exchange supports selected RIS and BibTeX transfers and previews overlapping records.
+
+Workspace envelope 4 and backup version 3 preserve notebook records. Earlier local envelopes and backups remain readable. See [the consolidated update](docs/CONSOLIDATED-010.md).
+
 ## 0.9.0 — 2026-11-09
 
 Added interest-first beginner exploration with real paper examples, provider-specific search filters, relevance-first discovery respecting saved preferences, and explicit page retry with retained earlier results. Quartile, citation, date and available price sorts remain.

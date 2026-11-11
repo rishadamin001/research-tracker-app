@@ -6,12 +6,14 @@ import {
 } from 'lucide-react';
 import { dataRoutes, dataSteps, guideTools, journeySteps, toolGroups, type PlannerTarget } from '@/lib/planner-guide';
 import { External } from './External';
+import { PracticeLessons } from './PracticeLessons';
 import { ResearchGuide } from './ResearchGuide';
 import './research-planner.css';
 
 type OpenSection = (target: PlannerTarget) => void;
 
 const sections = [
+  { id: 'practice', label: 'Practice lessons', icon: BookOpen },
   { id: 'journey', label: 'Your research journey', icon: Compass },
   { id: 'data', label: 'Data, surveys & analysis', icon: FlaskConical },
   { id: 'toolkit', label: 'Toolkit', icon: Wrench },
@@ -65,7 +67,7 @@ function StepExplorer({ steps, icons, label, openSection }: {
 
 function Journey({ openSection }: { openSection?: OpenSection }) {
   return <section className="planner-view" aria-labelledby="planner-journey">
-    <h2 id="planner-journey">From a first idea to a paper</h2>
+    <h2 id="planner-journey">Plan and develop a research paper</h2>
     <p className="planner-intro">Research starts with one question the evidence has yet to answer. Use this map to see what to do, what to write down, and what you’ll have at the end of each step. You can revisit a step whenever the evidence changes your plan.</p>
     <StepExplorer steps={journeySteps} icons={journeyIcons} label="Steps from idea to peer review" openSection={openSection} />
     <div className="planner-feature-grid">
@@ -224,23 +226,20 @@ function PublishingChecks({ openSection }: { openSection?: OpenSection }) {
   </section>;
 }
 
-export function ResearchPlanner({ onStart, onConferences, openSection, workbench, introduction }: {
+export function ResearchPlanner({ onStart, onConferences, openSection, workbench }: {
   onStart: () => void;
   onConferences: () => void;
   openSection?: OpenSection;
   workbench?: ReactNode;
-  introduction?: ReactNode;
 }) {
-  const [section, setSection] = useState<typeof sections[number]['id']>('journey');
-  const [showIntroduction, setShowIntroduction] = useState(() => { try { return localStorage.getItem('atlas-learn-introduction-seen') !== '1'; } catch { return true; } });
-  function hideIntroduction() { setShowIntroduction(false); try { localStorage.setItem('atlas-learn-introduction-seen', '1'); } catch { /* Lessons work without optional display persistence. */ } }
-  function chooseSection(id: typeof section) { setSection(id); hideIntroduction(); }
+  const [section, setSection] = useState<typeof sections[number]['id']>('practice');
+  const [showIntroduction, setShowIntroduction] = useState(false);
+  function chooseSection(id: typeof section) { setSection(id); setShowIntroduction(false); }
   return <div className="research-planner">
-    <div className="page-heading"><div><span className="eyebrow">LEARN THROUGH YOUR NEXT TASK</span><h1>Research planner</h1><p>Short examples and actions that lead back into your project.</p></div><button type="button" className="text-button" onClick={() => showIntroduction ? hideIntroduction() : setShowIntroduction(true)}>{showIntroduction ? 'Hide introduction' : 'Show introduction'}</button></div>
-    {showIntroduction && <>{introduction}<header className="planner-hero">
+    <div className="page-heading"><div><h1>Research planner</h1><p>Short examples and actions that lead back into your project.</p></div><button type="button" className="text-button" aria-expanded={showIntroduction} onClick={() => setShowIntroduction(!showIntroduction)}>{showIntroduction ? 'Hide introduction' : 'Show introduction'}</button></div>
+    {showIntroduction && <header className="planner-hero">
       <div>
-        <span className="eyebrow">FROM FIRST IDEA TO PEER REVIEW</span>
-        <h2>From first idea to peer review</h2>
+        <h2>Plan and develop a research paper</h2>
         <p>Find your next step, see an example, and keep your plan beside the work. Start anywhere and come back as your project takes shape.</p>
         <div className="button-row">
           {workbench && <button type="button" className="button" onClick={() => chooseSection('plan')}>Open my plan <ArrowRight size={16} aria-hidden="true" /></button>}
@@ -252,12 +251,13 @@ export function ResearchPlanner({ onStart, onConferences, openSection, workbench
         <li><FlaskConical size={18} aria-hidden="true" /><span><small>02 · INVESTIGATE</small><strong>Gather evidence</strong></span></li>
         <li><FileText size={18} aria-hidden="true" /><span><small>03 · SHARE</small><strong>Write and revise</strong></span></li>
       </ol>
-    </header></>}
+    </header>}
     <nav className="planner-nav" aria-label="Research planner sections">
       {sections.filter(item => item.id !== 'plan' || workbench).map(({ id, label, icon: Icon }) =>
         <button key={id} type="button" aria-pressed={section === id} onClick={() => chooseSection(id)}><Icon size={17} aria-hidden="true" />{label}</button>
       )}
     </nav>
+    {section === 'practice' && <PracticeLessons openSection={openSection} />}
     {section === 'journey' && <Journey openSection={openSection} />}
     {section === 'data' && <DataGuide openSection={openSection} />}
     {section === 'toolkit' && <Toolkit />}

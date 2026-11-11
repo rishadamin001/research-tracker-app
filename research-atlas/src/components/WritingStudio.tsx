@@ -8,10 +8,10 @@ import { changeWritingBody, citationSourceUrl, currentWritingStudio, draftBiblio
 import { External } from './External';
 import './writing-studio.css';
 
-type Props = { project: Project; update: (patch: Partial<Project>) => void; interfaceMode?: 'guided' | 'expert'; initialSelection?: WritingSelection };
+type Props = { project: Project; update: (patch: Partial<Project>) => void; interfaceMode?: 'guided' | 'expert'; initialSelection?: WritingSelection; onNote?: (paperId?: string) => void };
 const evidenceLabels = { metadata: 'Metadata only', abstract: 'Abstract', full_text: 'Full text', user_observation: 'Author observation' } as const;
 
-export function WritingStudio({ project, update, interfaceMode = 'guided', initialSelection }: Props) {
+export function WritingStudio({ project, update, interfaceMode = 'guided', initialSelection, onNote }: Props) {
   const [sectionId, setSectionId] = useState<WritingSectionId>('introduction');
   const [paperId, setPaperId] = useState(initialSelection?.paperId ?? '');
   const [claimId, setClaimId] = useState(initialSelection?.claimId ?? '');
@@ -104,6 +104,7 @@ export function WritingStudio({ project, update, interfaceMode = 'guided', initi
               {selectedPaper.url && <External href={selectedPaper.url}>Open selected reference</External>}
               <a className="text-button" href={`#extract?paper=${encodeURIComponent(selectedPaper.id)}`}>Read and extract evidence <ArrowRight size={15} /></a>
             </>}
+            {onNote && <button type="button" className="button secondary small" onClick={() => onNote(selectedPaper?.id)}>Add my note</button>}
             <div className="button-row"><button type="button" className="button secondary" disabled={!selectedPaper} onClick={() => insert(false)}>Insert citation</button><button type="button" className="button" disabled={!selectedClaim} onClick={() => insert(true)}>Insert located evidence</button></div>
             <p className="muted">A numbered draft citation adds a bibliography record. A located evidence insertion also retains the note, location and review state. Source summaries are author-entered notes, not automatically verified quotations.</p>
           </>}

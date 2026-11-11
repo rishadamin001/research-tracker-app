@@ -4,7 +4,7 @@ import { createBackup, parseBackupFile } from '../src/lib/backup';
 import { createProject } from '../src/lib/model';
 import { defaultPreferences } from '../src/lib/preferences';
 
-test('v2 backup verifies checksum and preserves project decisions, claims and settings across origins', async () => {
+test('v3 backup verifies checksum and preserves project decisions, claims and settings across origins', async () => {
   const project = createProject('Portable research');
   const at = '2026-11-07T00:00:00.000Z';
   project.question = 'How do commuters describe study-space access?';
@@ -14,8 +14,13 @@ test('v2 backup verifies checksum and preserves project decisions, claims and se
     screeningEvents: [{ id: crypto.randomUUID(), stage: 'title_abstract', decision: 'include', reason: 'Relevant population', reviewer: 'Researcher', sourceReference: 'https://example.org/source', at }],
     evidenceClaims: [{ id: crypto.randomUUID(), claimType: 'finding', claimText: 'Travel time shaped access',
       evidenceLevel: 'full_text', locator: 'Page 4', interpretation: '', uncertainty: '', reviewStatus: 'reviewed', reviewedAt: at, createdAt: at, gapRole: 'supports' }] }];
+  project.notebookNotes = [{
+    id: crypto.randomUUID(), kind: 'question', text: 'Check whether travel time was measured.',
+    sources: [{ paperId: 'reference', title: 'A source', doi: null }],
+    createdAt: at, updatedAt: at, status: 'open', nextStep: 'Read the methods section',
+  }];
   const envelope = await createBackup([project], { sourceOrigin: 'https://rishadamin001.github.io', createdAt: at, preferences: defaultPreferences });
-  assert.equal(envelope.backupVersion, 2);
+  assert.equal(envelope.backupVersion, 3);
   assert.equal(envelope.sourceOrigin, 'https://rishadamin001.github.io');
   assert.match(envelope.checksum, /^sha256:[a-f0-9]{64}$/);
   const restored = await parseBackupFile(JSON.stringify(envelope));
@@ -24,6 +29,7 @@ test('v2 backup verifies checksum and preserves project decisions, claims and se
   assert.equal(restored.manifest.integrity, 'verified');
   assert.equal(restored.manifest.screeningEventCount, 1);
   assert.equal(restored.manifest.evidenceClaimCount, 1);
+  assert.equal(restored.manifest.notebookNoteCount, 1);
   // Import is deliberately not tied to the source origin or current website.
   const reordered = Object.fromEntries(Object.entries(envelope).reverse());
   assert.deepEqual((await parseBackupFile(JSON.stringify(reordered))).projects, [project]);

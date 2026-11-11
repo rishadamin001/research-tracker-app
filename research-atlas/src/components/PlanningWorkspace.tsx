@@ -187,20 +187,21 @@ function Question({ project, update, next, saveState, interfaceMode = 'guided' }
       {project.topic.trim() && <p>Working topic <strong>{project.topic}</strong></p>}
       <p>{interfaceMode === 'expert' ? 'Edit the grouped fields directly. Commit a question version when you intentionally change its wording.' : 'Work through a small part at a time. These are planning prompts, not an assessment of whether the question is scientifically valid.'}</p>
       <TaskSteps label="Question planning steps" interfaceMode={interfaceMode} initialStep={draft.trim() ? 2 : 0} steps={[
-        { id: 'problem', title: 'Problem to investigate', description: 'What is happening, and why is it worth understanding?', content: <>
+        { id: 'problem', canSkip: !project.problem.trim(), title: 'Problem to investigate', description: 'What is happening, and why is it worth understanding?', content: <>
           <TextField label="The problem you want to explore" value={project.problem} onChange={problem => update({ problem })} hint="Explain what is happening and why it matters." multiline />
           {interfaceMode !== 'expert' && <div className="task-example"><strong>Example starting point</strong><p>Commuter students may struggle to find a useful study space between classes. That is a problem to investigate, not yet a research conclusion.</p></div>}
         </> },
-        { id: 'scope', title: 'Scope and setting', description: 'Which people, records, texts or system will your question cover?', content: <>
+        { id: 'scope', canSkip: !project.setting.trim(), title: 'Scope and setting', description: 'Which people, records, texts or system will your question cover?', content: <>
           <TextField label="Population, setting, or corpus" value={project.setting} onChange={setting => update({ setting })} hint="Specify the people, place, time period, texts, or data you will study." />
           {interfaceMode !== 'expert' && <div className="task-example"><strong>Make the boundary visible</strong><p>{pathway?.id === 'literature' ? 'For example, eligible published studies on commuter students, with a justified date range and database coverage.' : 'For example, commuter students at one campus during one semester. State what you can access and what falls outside your study.'}</p></div>}
         </> },
-        { id: 'wording', title: 'Question wording', description: 'Ask what you could answer with evidence inside those boundaries.', content: <div className="question-version-editor">
+        { id: 'wording', canSkip: !draft.trim(), title: 'Question wording', description: 'Ask what you could answer with evidence inside those boundaries.', content: <div className="question-version-editor">
           <label className="field" htmlFor={questionId}><span>Your research question</span></label>
-          <small id={`${questionId}-hint`}>Your draft saves automatically. Only Save question revision creates a committed version; changing steps or leaving this page keeps it as a draft.</small>
+          <small id={`${questionId}-hint`}>Write your own question here. Wait for the draft saved message before reloading. Save question revision creates a committed version.</small>
+          {interfaceMode !== 'expert' && <details><summary>Why this matters</summary><p>A bounded question tells you which sources or observations can answer it and which fall outside the study.</p></details>}
           <textarea id={questionId} aria-describedby={`${questionId}-hint`} value={draft} onChange={event => update({ questionDraft: event.target.value })} rows={4} maxLength={20000} disabled={historyFull} />
           <label className="field"><span>Reason for this question revision (optional)</span><input value={changeReason} onChange={event => update({ questionDraftReason: event.target.value })} maxLength={2000} placeholder="For example, narrow to commuters after examining evidence access" disabled={historyFull} /></label>
-          {interfaceMode !== 'expert' && <div className="task-example"><strong>Example — adapt it to your study</strong><p>{pathway?.questionExample ?? discipline?.example ?? 'How do commuter students choose study spaces at one campus?'}</p></div>}
+          {interfaceMode !== 'expert' && <details className="task-example"><summary>See an example</summary><p>{pathway?.questionExample ?? discipline?.example ?? 'How do commuter students choose study spaces at one campus?'}</p></details>}
         </div> },
         { id: 'objectives', title: 'Objectives and review', description: 'Describe the work needed to answer your question and check what is still missing.', content: <>
           <TextField label="Research objectives" value={project.objectives} onChange={objectives => update({ objectives })} hint="List the steps needed to answer your question, such as describing a pattern or comparing sources." multiline />

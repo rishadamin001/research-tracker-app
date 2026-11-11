@@ -93,7 +93,7 @@ test('editing a version 1 workspace upgrades its envelope and preserves both man
   await expect(page.getByLabel('Section draft', { exact: true })).toHaveValue(`${structuredBody}[1]`);
   await expect(page.getByText('Saved on this device', { exact: true })).toBeAttached();
   const saved = await readStored();
-  expect(saved.schemaVersion).toBe(3);
+  expect(saved.schemaVersion).toBe(4);
   expect(saved.revision).toBeGreaterThan(0);
   expect(saved.projects).toHaveLength(1);
   expect(saved.projects[0].id).toBe(legacyProject.id);

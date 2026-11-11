@@ -11,6 +11,7 @@ type Citation = {
   key?: string;
   doi?: string;
   openalex?: string;
+  accession?: string;
   url?: string;
   date?: string;
   year?: string;
@@ -19,6 +20,7 @@ type Citation = {
   serials?: string[];
   isbn?: string;
   kind?: string;
+  database?: string;
 };
 
 function clean(value = '', limit = 20_000) {
@@ -52,6 +54,23 @@ function openAlexId(...values: (string | undefined)[]) {
   }
 }
 
+function scholarlyRecordId(...values: (string | undefined)[]) {
+  const openAlex = openAlexId(...values);
+  if (openAlex) return openAlex;
+  for (const value of values) {
+    const safe = referenceUrl(value);
+    if (!safe) continue;
+    const { hostname, pathname } = new URL(safe);
+    const pubmed = hostname === 'pubmed.ncbi.nlm.nih.gov' && /^\/(\d+)\/?$/.exec(pathname);
+    if (pubmed) return `https://europepmc.org/article/MED/${pubmed[1]}`;
+    if (hostname !== 'europepmc.org') continue;
+    const record = /^\/article\/([A-Za-z]{2,12})\/([A-Za-z0-9._-]+)\/?$/.exec(pathname);
+    if (record) return `https://europepmc.org/article/${record[1].toUpperCase()}/${record[2]}`;
+    const pmc = /^\/articles\/(PMC\d+)\/?$/i.exec(pathname);
+    if (pmc) return `https://europepmc.org/article/PMC/${pmc[1].toUpperCase()}`;
+  }
+}
+
 function dateParts(value = '', fallback = '') {
   const match = /^(\d{4})(?=$|[-/\s])(?:[-/](\d{1,2})[-/](\d{1,2})(?:[T/\s]|$))?/.exec(value.trim());
   const year = Number(match?.[1] ?? /^(\d{4})\b/.exec(fallback.trim())?.[1]) || null;
@@ -75,12 +94,14 @@ function paperFromCitation(citation: Citation, format: ReferenceFormat): Paper |
   const title = clean(citation.title);
   if (!title) return undefined;
   const doi = doiFrom(citation.doi, citation.url);
-  const openAlex = openAlexId(citation.openalex, citation.key, citation.url);
+  const record = scholarlyRecordId(citation.openalex, citation.accession, citation.key, citation.url);
   const issns = serials(citation.serials ?? []);
   const referenceAuthors = citation.authors.map(author => clean(author, 500)).filter(Boolean).slice(0, 500);
   const workType = citation.kind;
+  const database = clean(citation.database, 150);
+  const importLabel = format === 'ris' ? 'RIS import' : 'BibTeX import';
   return paperSchema.parse({
-    id: openAlex ?? `reference:${crypto.randomUUID()}`,
+    id: record ?? `reference:${crypto.randomUUID()}`,
     title,
     authors: clean(referenceAuthors.join(', ')),
     referenceAuthors,
@@ -93,9 +114,9 @@ function paperFromCitation(citation: Citation, format: ReferenceFormat): Paper |
     venueType: workType === 'article' ? 'journal' : workType === 'conference-paper' ? 'conference' : undefined,
     workType,
     issns: issns.length ? issns : undefined,
-    url: referenceUrl(citation.url) ?? (doi ? `https://doi.org/${doi.split('/').map(encodeURIComponent).join('/')}` : openAlex ?? ''),
+    url: referenceUrl(citation.url) ?? (doi ? `https://doi.org/${doi.split('/').map(encodeURIComponent).join('/')}` : record ?? ''),
     oa: null,
-    source: format === 'ris' ? 'RIS import' : 'BibTeX import',
+    source: database ? `${importLabel} · Database reported in file: ${database}` : importLabel,
   });
 }
 
@@ -125,7 +146,7 @@ function parseRis(text: string) {
       const kind = risTypes.get(one('TY')?.trim().toUpperCase() ?? '');
       const sn = all('SN');
       entries.push({ title: one('TI', 'T1', 'CT', 'BT') ?? '', authors: (fields.get('AU') ?? fields.get('A1') ?? []).map(displayAuthor),
-        doi: one('DO'), url: one('UR'), key: one('ID', 'AN'), openalex: one('AN'), date: one('DA', 'Y1', 'PY'), year: one('PY', 'Y1'),
+        doi: one('DO'), url: one('UR'), key: one('ID', 'AN'), accession: one('AN'), database: one('DB'), date: one('DA', 'Y1', 'PY'), year: one('PY', 'Y1'),
         venue: one('JF', 'JO', 'T2', 'JA'), publisher: one('PB'), serials: sn, isbn: sn.find(value => /^(?:\d[ -]?){9,12}[\dX]$/i.test(value.trim())), kind });
       if (entries.length > projectReferenceLimit) throw Error(`Import up to ${projectReferenceLimit.toLocaleString()} references at a time.`);
       fields = undefined;
@@ -279,7 +300,8 @@ function parseBibtex(text: string) {
     }
     const get = (name: string) => bibText(fields.get(name));
     entries.push({ title: get('title'), authors: bibAuthors(fields.get('author')), key, doi: get('doi'), url: get('url'),
-      openalex: get('openalex'), venue: get('journaltitle') || get('journal') || get('booktitle'), publisher: get('publisher'),
+      openalex: get('openalex'), accession: get('accession'), database: get('database'),
+      venue: get('journaltitle') || get('journal') || get('booktitle'), publisher: get('publisher'),
       date: get('date'), year: get('year'), serials: [get('issn')], isbn: get('isbn'), kind: bibTypes.get(type) });
     if (entries.length > projectReferenceLimit) throw Error(`Import up to ${projectReferenceLimit.toLocaleString()} references at a time.`);
   }
@@ -303,20 +325,30 @@ function creators(paper: Paper) {
   return paper.referenceAuthors ?? paper.authors.split(',').map(author => author.trim()).filter(Boolean);
 }
 
+type ComparedReference = { paper: Paper; origin: 'project' | 'file' };
+type ExactMatch = { paper: Paper; match: ComparedReference; by: 'DOI' | 'record ID' };
+
 export function reviewReferenceImport(incoming: Paper[], existing: Paper[]) {
-  const ids = new Set<string>();
-  const dois = new Set<string>();
-  const byTitle = new Map<string, Paper>();
-  const additions: { paper: Paper; similar?: Paper }[] = [];
-  let duplicates = 0;
+  const ids = new Map<string, ComparedReference>();
+  const dois = new Map<string, ComparedReference>();
+  const byTitle = new Map<string, ComparedReference>();
+  const additions: { paper: Paper; similar?: Paper; similarOrigin?: ComparedReference['origin'] }[] = [];
+  const exactMatches: ExactMatch[] = [];
 
   for (const [papers, reviewing] of [[existing, false], [incoming, true]] as const) {
     for (const paper of papers) {
-      const id = openAlexId(paper.id, paper.url) ?? paper.id;
+      const id = scholarlyRecordId(paper.id, paper.url) ?? paper.id;
       const doi = doiFrom(paper.doi ?? undefined, paper.url);
-      if (reviewing && (ids.has(id) || (doi && dois.has(doi)))) { duplicates++; continue; }
-      ids.add(id);
-      if (doi) dois.add(doi);
+      const doiMatch = doi ? dois.get(doi) : undefined;
+      const idMatch = ids.get(id);
+      const exact = doiMatch ?? idMatch;
+      if (reviewing && exact) {
+        exactMatches.push({ paper, match: exact, by: doiMatch ? 'DOI' : 'record ID' });
+        continue;
+      }
+      const record: ComparedReference = { paper, origin: reviewing ? 'file' : 'project' };
+      if (!idMatch) ids.set(id, record);
+      if (doi && !doiMatch) dois.set(doi, record);
 
       const title = comparisonText(paper.title);
       const firstAuthor = comparisonText((creators(paper)[0] ?? '').split(',')[0]).split(' ').at(-1) ?? '';
@@ -326,12 +358,12 @@ export function reviewReferenceImport(incoming: Paper[], existing: Paper[]) {
       }
       const key = `${title}|${firstAuthor}|`;
       const similar = byTitle.get(`${key}${paper.year}`) ?? byTitle.get(`${key}${paper.year - 1}`) ?? byTitle.get(`${key}${paper.year + 1}`);
-      if (reviewing) additions.push({ paper, similar });
+      if (reviewing) additions.push({ paper, similar: similar?.paper, similarOrigin: similar?.origin });
       const exactYear = `${key}${paper.year}`;
-      if (!byTitle.has(exactYear)) byTitle.set(exactYear, paper);
+      if (!byTitle.has(exactYear)) byTitle.set(exactYear, record);
     }
   }
-  return { additions, duplicates };
+  return { additions, duplicates: exactMatches.length, exactMatches };
 }
 
 const exportTypes = new Map([
@@ -344,12 +376,17 @@ function exportType(paper: Paper) {
   return exportTypes.get(type) ?? ['GEN', 'misc'];
 }
 
+function referenceDatabase(source: string) {
+  const reported = /^(?:RIS|BibTeX) import · Database reported in file: (.+)$/.exec(source)?.[1];
+  return reported ?? (['OpenAlex', 'Europe PMC', 'Crossref'].includes(source) ? source : undefined);
+}
+
 function risRecord(paper: Paper) {
-  const openAlex = openAlexId(paper.id);
+  const record = scholarlyRecordId(paper.id, paper.url);
   const fields = [['TY', exportType(paper)[0]], ['TI', paper.title], ...creators(paper).map(author => ['AU', author]),
-    ['PY', paper.publicationDate?.replaceAll('-', '/') ?? paper.year], ['T2', paper.journal], ['PB', paper.publisher],
-    ['DO', paper.doi], ['UR', referenceUrl(paper.url)], ['ID', paper.referenceKey ?? openAlex],
-    ['AN', paper.referenceKey && paper.referenceKey !== openAlex ? openAlex : undefined],
+    ['PY', paper.publicationDate?.replaceAll('-', '/') ?? paper.year], ['T2', paper.journal === 'Source not supplied' ? '' : paper.journal], ['PB', paper.publisher],
+    ['DO', paper.doi], ['UR', referenceUrl(paper.url) ?? record], ['ID', paper.referenceKey ?? record],
+    ['AN', paper.referenceKey && paper.referenceKey !== record ? record : undefined], ['DB', referenceDatabase(paper.source)],
     ...[...(paper.issns ?? []), paper.isbn].map(identifier => ['SN', identifier])];
   return `${fields.filter(([, value]) => value != null && value !== '').map(([key, value]) => `${key}  - ${clean(String(value))}`).join('\r\n')}\r\nER  -`;
 }
@@ -358,9 +395,12 @@ function bibRecord(paper: Paper, key: string) {
   const escape = (value: string) => clean(value).replace(/[\\{}#$%&_~^]/g, character => texCharacters[character]);
   const type = exportType(paper)[1];
   const author = creators(paper).map(name => /\s+and\s+|,/i.test(name) ? `{${escape(name)}}` : escape(name)).join(' and ');
-  const fields = [['title', paper.title], [type === 'inproceedings' || type === 'incollection' ? 'booktitle' : 'journal', paper.journal],
+  const record = scholarlyRecordId(paper.id, paper.url);
+  const openAlex = openAlexId(record);
+  const fields = [['title', paper.title], [type === 'inproceedings' || type === 'incollection' ? 'booktitle' : 'journal', paper.journal === 'Source not supplied' ? '' : paper.journal],
     ['publisher', paper.publisher], ['year', paper.year], ['date', paper.publicationDate], ['doi', paper.doi],
-    ['url', referenceUrl(paper.url)], ['openalex', openAlexId(paper.id)], ['issn', paper.issns?.join(', ')], ['isbn', paper.isbn]];
+    ['url', referenceUrl(paper.url) ?? record], ['openalex', openAlex], ['accession', openAlex ? undefined : record], ['issn', paper.issns?.join(', ')],
+    ['isbn', paper.isbn], ['database', referenceDatabase(paper.source)]];
   const lines = fields.filter(([, value]) => value != null && value !== '').map(([field, value]) => `  ${field} = {${escape(String(value))}}`);
   if (author) lines.push(`  author = {${author}}`);
   return `@${type}{${key},\n${lines.join(',\n')}\n}`;

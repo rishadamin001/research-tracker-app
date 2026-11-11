@@ -20,6 +20,7 @@ test('the visual guide leads into upcoming conferences', async ({ page }) => {
 test('the beginner planner connects research steps, data choices, and tools', async ({ page }) => {
   await page.goto('/#guide');
   await expect(page.getByRole('heading', { name: 'Research planner', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Your research journey', exact: true }).click();
   await page.getByRole('button', { name: /Respond to review/ }).click();
   await expect(page.getByText(/A revised manuscript and a point-by-point response/)).toBeVisible();
 

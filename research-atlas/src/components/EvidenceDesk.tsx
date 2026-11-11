@@ -16,6 +16,7 @@ export type EvidenceDeskProps = {
   mode: 'screen' | 'extract';
   interfaceMode?: 'guided' | 'expert';
   initialPaperId?: string;
+  onNote?: (paperId: string) => void;
   onWrite?: (paperId: string, claimId?: string) => void;
   onEditingChange?: (editing: boolean) => void;
   onSelectionChange?: (paperId: string) => void;
@@ -38,7 +39,7 @@ function SourceLinks({ paper }: { paper: Paper }) {
   return <div className="button-row">{paper.url && <External href={paper.url}>Open source</External>}{paper.oa && paper.oa !== paper.url && <External href={paper.oa}>Read open copy</External>}</div>;
 }
 
-export function EvidenceDesk({ project, update, mode, interfaceMode = 'guided', initialPaperId, onWrite, onEditingChange, onSelectionChange }: EvidenceDeskProps) {
+export function EvidenceDesk({ project, update, mode, interfaceMode = 'guided', initialPaperId, onNote, onWrite, onEditingChange, onSelectionChange }: EvidenceDeskProps) {
   const [query, setQuery] = useState('');
   const [decision, setDecision] = useState<Paper['decision'] | 'all'>('all');
   const [order, setOrder] = usePaperOrder();
@@ -94,6 +95,9 @@ export function EvidenceDesk({ project, update, mode, interfaceMode = 'guided', 
         </aside>
         {selected && <div className="desk-detail" key={`${actualIndex}:${selected.id}`}>
           <section className="panel desk-source-heading" aria-label="Selected source"><span className="eyebrow">SOURCE CONTEXT</span><h3>{selected.title || 'Untitled source'}</h3><p>{selected.authors || 'Author metadata unavailable'} · {selected.publicationDate || selected.year || 'Date unavailable'}</p><PublicationIdentity title={selected.journal || 'Publication venue unavailable'} publisher={selected.publisher} type={selected.venueType} /><div className="chips"><span className="tag">{selected.journalQuartile ? `${selected.journalQuartile.source} ${selected.journalQuartile.quartile} · ${selected.journalQuartile.year}` : 'Quartile unavailable'}</span><span className="tag">{selected.citedByCount == null ? 'Citation count unavailable' : `${selected.citedByCount.toLocaleString()} citations`}</span></div><SourceLinks paper={selected} /><label className="field"><span>Reading status for this project</span><select value={selected.readingStatus ?? 'unread'} onChange={event => patchPaper({ readingStatus: event.target.value as Paper['readingStatus'] })}><option value="unread">Unread</option><option value="reading">Reading</option><option value="read">Read</option></select></label></section>
+          {onNote && selectedHasUniqueId && <div className="button-row">
+            <button type="button" className="button secondary small" disabled={claimEditing} onClick={() => onNote(selected.id)}>Add my note</button>
+          </div>}
           {guided && <nav className="desk-task-nav" aria-label="Evidence Desk tasks">{steps.map(([id, label]) => <button type="button" className="button secondary" key={id} aria-pressed={activeStep === id} disabled={claimEditing && id !== 'extract'} onClick={() => setStep(id)}>{label}</button>)}</nav>}
           <section className="panel" hidden={guided && activeStep !== 'read'} aria-label="Inspect selected source">
             <h3>Inspect the source</h3><PaperImpact paper={selected} /><p>Metadata identifies this record; it does not establish what the study found. Atlas does not download full text automatically. Open an available source or legal open copy and record what you actually read.</p>{selected.abstract ? <details open={guided}><summary>Supplied abstract · {selected.source}</summary><p className="desk-abstract">{selected.abstract}</p><small>This is supplied source metadata, not an Atlas or AI summary. Check it against the publication and distinguish abstract-only impressions from full-text findings.</small></details> : <p className="muted">No abstract was supplied with this record.</p>}{selected.doi && <p className="desk-identifier">DOI: {selected.doi}</p>}{!selected.url && !selected.oa && <p className="workspace-note">No source link was supplied. Locate and verify the work by its DOI or title before treating it as evidence.</p>}{guided && <button type="button" className="button" onClick={() => setStep('screen')}>Continue to screen this source <ArrowRight size={15} aria-hidden="true" /></button>}

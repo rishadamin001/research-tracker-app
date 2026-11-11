@@ -21,8 +21,14 @@ test('reference import previews exact and possible duplicates and exports both f
   await exchange.getByRole('button', { name: 'Add references to project' }).click();
   await expect(exchange.getByText('1 reference added to Reference exchange project.')).toBeVisible();
 
-  await file.setInputFiles({ name: 'more.ris', mimeType: 'text/plain', buffer: Buffer.from(first + reference('10.1234/revision', 2026)) });
+  const extra = reference('10.1234/skip', 2025).replace(title, 'Research participation in coastal towns');
+  await file.setInputFiles({ name: 'more.ris', mimeType: 'text/plain', buffer: Buffer.from(first + reference('10.1234/revision', 2026) + extra) });
+  await expect(exchange.getByText(/1 ready to add · 1 exact matches skipped/)).toBeVisible();
+  await exchange.getByRole('checkbox', { name: /add research participation in coastal towns/i }).uncheck();
   await expect(exchange.getByText(/0 ready to add · 1 exact matches skipped/)).toBeVisible();
+  await exchange.getByText('Review skipped exact matches').click();
+  await expect(exchange.getByText('Same DOI in this project')).toBeVisible();
+  await expect(exchange.getByText('Possible match in this project')).toBeVisible();
   await expect(exchange.getByRole('button', { name: 'Add references to project' })).toBeDisabled();
   await exchange.getByRole('checkbox', { name: /keep housing affordability/i }).check();
   await expect(exchange.getByText(/1 ready to add · 1 exact matches skipped/)).toBeVisible();
@@ -35,4 +41,14 @@ test('reference import previews exact and possible duplicates and exports both f
     expect(contents).toContain('10.1234/housing');
     expect(contents).toContain('10.1234/revision');
   }
+
+  await exchange.getByRole('button', { name: 'Choose references to export' }).click();
+  await expect(exchange.getByRole('button', { name: 'Export RIS' })).toBeDisabled();
+  await exchange.getByLabel('Filter export references').fill('10.1234/revision');
+  await exchange.getByRole('button', { name: 'Select all matching references' }).click();
+  await expect(exchange.getByText('1 of 2 selected · 1 match the filter')).toBeVisible();
+  const [selected] = await Promise.all([page.waitForEvent('download'), exchange.getByRole('button', { name: 'Export BibTeX' }).click()]);
+  const contents = await readFile((await selected.path())!, 'utf8');
+  expect(contents).toContain('10.1234/revision');
+  expect(contents).not.toContain('10.1234/housing');
 });

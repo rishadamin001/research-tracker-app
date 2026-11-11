@@ -1,0 +1,11 @@
+.reference-exchange { overflow-wrap: anywhere; }
+.reference-options { min-inline-size: 0; }
+.reference-export-actions, .reference-transfer { margin-block: 14px; }
+.reference-select { display: grid; grid-template-columns: 18px minmax(0, 1fr); align-items: start; gap: 10px; padding: 10px 0; cursor: pointer; }
+.reference-select > input[type='checkbox'] { inline-size: 18px; block-size: 18px; padding: 0; margin: 3px 0 0; accent-color: var(--green); }
+.reference-detail { display: block; color: var(--muted); font-size: .85rem; }
+.reference-review { border-block-end: 1px solid var(--line); padding-block-end: 10px; margin-block-end: 10px; }
+.reference-match { border-inline-start: 3px solid var(--line); padding-inline-start: 12px; margin-inline-start: 28px; }
+.reference-exact { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.reference-exact .reference-match { margin-inline-start: 0; }
+@media (max-width: 600px) { .reference-exact { grid-template-columns: minmax(0, 1fr); } }

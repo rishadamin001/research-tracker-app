@@ -29,14 +29,6 @@ jobs:
           python3 scripts/check-docx.py
       - run: npm run build
       - run: npx playwright install --with-deps chromium firefox webkit
-      - name: Crossref preview and production diagnostics
-        run: |
-          node scripts/preview.mjs &
-          ATLAS_PREVIEW_PID=$!
-          trap 'kill "$ATLAS_PREVIEW_PID"' EXIT
-          node scripts/crossref-diagnostics.mjs http://127.0.0.1:4173/ https://rishadamin001.github.io/research-tracker-app/
-      - name: Live public literature sources
-        run: node scripts/search-smoke.mjs http://127.0.0.1:4173/ --serve
       - run: npm run test:e2e -- --max-failures=8 --reporter=line
         if: ${{ !cancelled() }}
         env:

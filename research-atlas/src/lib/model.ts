@@ -5,6 +5,7 @@ import { searchRunSchema } from './search-provenance';
 import { dmpMarkdown, methodContextSchema, structuredDmpSchema } from './study-planning';
 import { projectEventLimit, projectEventSchema, questionVersionLimit, questionVersionSchema } from './research-trail';
 import { writingStudioSchema } from './writing-studio';
+import { notebookNoteLimit, notebookNoteSchema } from './research-notebook';
 const text = z.string().max(20000);
 const journalQuartile = z.object({
   quartile: z.enum(['Q1', 'Q2', 'Q3', 'Q4']),
@@ -86,6 +87,7 @@ export const projectSchema=z.object({id:z.string(),title:text,discipline:text,do
   duplicateReviews: z.array(duplicateReview).max(50).optional(),
   questionVersions: z.array(questionVersionSchema).max(questionVersionLimit).optional(),
   questionChangeReason: z.string().max(2000).optional(),
+  notebookNotes: z.array(notebookNoteSchema).max(notebookNoteLimit).optional(),
   questionDraft: z.string().max(20000).optional(),
   questionDraftReason: z.string().max(2000).optional(),
   projectEvents: z.array(projectEventSchema).max(projectEventLimit).optional(),

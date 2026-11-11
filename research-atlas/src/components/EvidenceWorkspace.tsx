@@ -20,6 +20,7 @@ interface EvidenceWorkspaceProps {
   update: (patch: Partial<Project>) => void;
   notify: (message: string) => void;
   mode: 'discover' | 'screen' | 'extract';
+  onNote?: (paperId: string) => void;
   initialQuery?: string;
 }
 
@@ -30,6 +31,7 @@ interface PaperSearchProps {
   initialQuery?: string;
   initialRun?: SearchRun;
   openProjects: () => void;
+  onNote?: (paperId: string) => void;
 }
 
 function SourceLinks({ paper }: { paper: Paper }) {
@@ -103,7 +105,7 @@ function PaperPublished({ paper }: { paper: Paper }) {
     : paper.year ?? 'Year unknown';
 }
 
-function Discover({ project, update, notify, initialQuery, initialRun, openProjects }: Omit<PaperSearchProps, 'openProjects'> & { openProjects?: PaperSearchProps['openProjects'] }) {
+function Discover({ project, update, notify, initialQuery, initialRun, openProjects, onNote }: Omit<PaperSearchProps, 'openProjects'> & { openProjects?: PaperSearchProps['openProjects'] }) {
   const [query, setQuery] = useState(initialRun?.userQuery ?? initialQuery ?? (openProjects ? '' : project?.searches.at(-1)?.query ?? ''));
   const [provider, setProvider] = useState<SearchProvider>(initialRun?.provider ?? 'OpenAlex');
   const [year, setYear] = useState(searchYear(initialRun));
@@ -333,6 +335,7 @@ function Discover({ project, update, notify, initialQuery, initialRun, openProje
             <RelatedDiscovery paper={paper} project={project} update={update} notify={notify} />
             <div className="paper-bottom">
               <SourceLinks paper={paper} />
+              {savedPaper && onNote && <button type="button" className="button secondary small" onClick={() => onNote(savedPaper.id)}>Add my note</button>}
               {project && update && <button
                 type="button"
                 className="button secondary small"
@@ -504,7 +507,7 @@ function PaperPanel({ title, detail, children }: { title: string; detail: ReactN
   </details>;
 }
 
-function Screen({ project, update }: Pick<EvidenceWorkspaceProps, 'project' | 'update'>) {
+function Screen({ project, update, onNote }: Pick<EvidenceWorkspaceProps, 'project' | 'update' | 'onNote'>) {
   const [filter, setFilter] = useState<Paper['decision'] | 'all'>('all');
   const [query, setQuery] = useState('');
   const [order, setOrder] = usePaperOrder();
@@ -564,7 +567,8 @@ function Screen({ project, update }: Pick<EvidenceWorkspaceProps, 'project' | 'u
             <PublicationIdentity title={paper.journal} publisher={paper.publisher} type={paper.venueType} />
             <PaperImpact paper={paper} />
             <SourceLinks paper={paper} />
-            <PaperScreening paper={paper} criteria={criteria} onDraft={screeningDraft => update({ papers: project.papers.map(item => item.id === paper.id ? { ...item, screeningDraft } : item) })} onRecord={event => recordDecision(paper, event)} />
+            {onNote && <button type="button" className="button secondary small" onClick={() => onNote(paper.id)}>Add my note</button>}
+          <PaperScreening paper={paper} criteria={criteria} onDraft={screeningDraft => update({ papers: project.papers.map(item => item.id === paper.id ? { ...item, screeningDraft } : item) })} onRecord={event => recordDecision(paper, event)} />
             <button type="button" className="text-button danger" onClick={() => {
               if (window.confirm('Remove this paper, its screening history, and its saved evidence notes?')) {
                 update({ papers: project.papers.filter(item => item.id !== paper.id) });
@@ -588,7 +592,7 @@ const extractionFields = [
   { key: 'notes', label: 'Your notes', hint: 'Keep your interpretation separate from the authors’ finding.' },
 ] as const;
 
-function Extract({ project, update }: Pick<EvidenceWorkspaceProps, 'project' | 'update'>) {
+function Extract({ project, update, onNote }: Pick<EvidenceWorkspaceProps, 'project' | 'update' | 'onNote'>) {
   const [order, setOrder] = usePaperOrder();
   const ordered = orderPapers(project.papers, order);
   const active = ordered.filter(paper => paper.decision !== 'exclude');
@@ -637,6 +641,7 @@ function Extract({ project, update }: Pick<EvidenceWorkspaceProps, 'project' | '
       </section>
       {active.map(paper => (
         <PaperPanel key={paper.id} title={`Edit notes for ${paper.title}`} detail={<><PaperPublished paper={paper} /> · {decisionLabels[paper.decision]}</>}>
+          {onNote && <button type="button" className="button secondary small" onClick={() => onNote(paper.id)}>Add my note</button>}
             <PublicationIdentity title={paper.journal} publisher={paper.publisher} type={paper.venueType} />
             <PaperImpact paper={paper} />
             <SourceLinks paper={paper} />

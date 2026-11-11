@@ -3,7 +3,7 @@ import { nextTask } from './workflow';
 
 export const projectTabs = [
   ['roadmap', 'Overview'], ['question', 'Question'], ['screen', 'Literature'],
-  ['methods', 'Study'], ['extract', 'Evidence'], ['writing', 'Write'], ['publication', 'Publish'],
+  ['methods', 'Study'], ['extract', 'Evidence'], ['notebook', 'Notebook'], ['writing', 'Write'], ['publication', 'Publish'],
 ] as const;
 export type ProjectDestination = typeof projectTabs[number][0] | Stage | 'history' | 'projects' | 'guide' | 'paper-search';
 export function projectTab(view: string) {
@@ -14,7 +14,7 @@ export function projectTab(view: string) {
   return view;
 }
 export function primaryDestination(view: string) {
-  if (['roadmap', 'projects', 'history', 'profile', 'topic', 'question', 'screen', 'extract', 'methods', 'data', 'writing', 'publication'].includes(view)) return 'roadmap';
+  if (['roadmap', 'projects', 'history', 'notebook', 'profile', 'topic', 'question', 'screen', 'extract', 'methods', 'data', 'writing', 'publication'].includes(view)) return 'roadmap';
   if (view === 'explore') return 'paper-search';
   if (view === 'discover') return 'paper-search';
   if (view === 'conferences') return 'publish-hub';

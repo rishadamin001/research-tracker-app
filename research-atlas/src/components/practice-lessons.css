@@ -1,0 +1,101 @@
+.practice-layout {
+  display: grid;
+  grid-template-columns: minmax(190px, .45fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.practice-list button {
+  display: block;
+}
+
+.practice-exercise h3,
+.practice-choices legend {
+  scroll-margin-top: 8rem;
+}
+
+.practice-exercise .planner-example summary,
+.practice-sources summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.practice-choices {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 18px 0 12px;
+  padding: 0;
+  border: 0;
+}
+
+.practice-choices legend {
+  margin-bottom: 10px;
+  font-weight: 650;
+}
+
+.practice-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--planner-border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.practice-choice:has(input:checked) {
+  border-color: var(--green);
+  background: var(--planner-soft);
+}
+
+.practice-choice input[type='radio'] {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  margin: .15em 0 0;
+  padding: 0;
+  accent-color: var(--green);
+}
+
+.practice-choice span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.practice-feedback {
+  padding: 10px 12px;
+  border-left: 3px solid var(--green);
+  border-radius: 4px;
+  background: var(--planner-soft);
+  color: var(--ink);
+}
+
+.practice-repeat {
+  min-height: 44px;
+}
+
+.practice-revisit {
+  font-size: .85rem;
+}
+
+.practice-reflection {
+  margin-top: 18px;
+}
+
+.practice-reflection small {
+  font-size: .85rem;
+}
+
+.practice-task,
+.practice-sources {
+  margin-top: 16px;
+}
+
+@media (max-width: 700px) {
+  .practice-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

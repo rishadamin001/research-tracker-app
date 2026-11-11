@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight } from 'lucide-react';
 import './task-steps.css';
 
 export type InterfaceMode = 'guided' | 'expert';
-export type TaskStep = { id: string; title: string; description?: string; content: ReactNode };
+export type TaskStep = { id: string; title: string; description?: string; canSkip?: boolean; content: ReactNode };
 
 /** Presentation only: project answers remain owned by the caller. */
 export function TaskSteps({ label, steps, interfaceMode = 'guided', initialStep = 0 }: {
@@ -39,6 +39,6 @@ export function TaskSteps({ label, steps, interfaceMode = 'guided', initialStep 
       {guided && step.description && <p>{step.description}</p>}
       {step.content}
     </section>)}</div>
-    {guided && steps.length > 1 && <div className="button-row task-step-actions"><button type="button" className="button secondary" disabled={active === 0} onClick={() => go(active - 1)}><ArrowLeft size={15} aria-hidden="true" /> Previous step</button><button type="button" className="button secondary" disabled={active === steps.length - 1} onClick={() => go(active + 1)}>Next step <ArrowRight size={15} aria-hidden="true" /></button></div>}
+    {guided && steps.length > 1 && <div className="button-row task-step-actions"><button type="button" className="button secondary" disabled={active === 0} onClick={() => go(active - 1)}><ArrowLeft size={15} aria-hidden="true" /> Previous step</button><button type="button" className="button secondary" disabled={active === steps.length - 1} onClick={() => go(active + 1)}>{steps[active]?.canSkip ? 'Skip for now' : 'Next step'} <ArrowRight size={15} aria-hidden="true" /></button></div>}
   </div>;
 }

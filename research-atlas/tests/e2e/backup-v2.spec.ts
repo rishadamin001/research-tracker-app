@@ -24,7 +24,7 @@ test('portable backup from a different origin imports as copies and corrupt back
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download backup', exact: true }).click();
   const downloaded = JSON.parse(await readFile((await (await downloadPromise).path())!, 'utf8'));
-  expect(downloaded.backupVersion).toBe(2);
+  expect(downloaded.backupVersion).toBe(3);
   expect(downloaded.projects).toHaveLength(1);
   expect(downloaded.projects[0].question).toBe(project.question);
   expect(downloaded.projects[0].id).not.toBe(project.id);

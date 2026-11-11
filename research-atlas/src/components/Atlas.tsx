@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowDownToLine, ArrowRight, BookOpen, CalendarDays, Check, ChevronRight, ClipboardCheck, Compass, FolderOpen, LibraryBig, Map, Menu, Plus, Search, Settings, X } from 'lucide-react';
 import { createProject, matrixCsv, protocolMarkdown, type Project, type Stage } from '@/lib/model';
-import { createBackup, parseBackupFile, type BackupManifest } from '@/lib/backup';
+import { appVersion, createBackup, parseBackupFile, type BackupManifest } from '@/lib/backup';
 import { download, loadWorkspace, saveWorkspace, subscribeWorkspace, WorkspaceConflictError } from '@/lib/storage';
 import { disciplines } from '@/lib/content';
 import { nextTask, roadmap, taskStatus, updateProject, type TaskStatus } from '@/lib/workflow';
@@ -21,7 +21,7 @@ import { InstallApp } from './InstallApp';
 import './discipline-explorer.css';
 import { DuplicateReview } from './DuplicateReview';
 import { PublicInformation } from './PublicInformation';
-import { MiniLessons, NextAction, ProjectShell, ResearchDashboard } from './CoherentWorkspace';
+import { NextAction, ProjectShell, ResearchDashboard } from './CoherentWorkspace';
 import { primaryDestination } from '@/lib/workspace-navigation';
 import { AtlasLibrary } from './AtlasLibrary';
 import { ProjectHistory } from './ProjectHistory';
@@ -31,8 +31,9 @@ import { BeginnerExplorer } from './BeginnerExplorer';
 import type { BeginnerProjectSeed } from '@/lib/beginner-exploration';
 import { JournalMatch } from './JournalMatch';
 import { ResearchReadiness } from './ResearchReadiness';
+import { ResearchNotebook } from './ResearchNotebook';
 
-type View = 'overview' | 'primer' | 'explore' | 'guide' | 'conferences' | 'paper-search' | 'roadmap' | 'projects' | 'preferences' | 'privacy' | 'terms' | 'support' | 'library' | 'publish-hub' | 'history' | Stage;
+type View = 'overview' | 'primer' | 'explore' | 'guide' | 'conferences' | 'paper-search' | 'roadmap' | 'projects' | 'preferences' | 'privacy' | 'terms' | 'support' | 'library' | 'publish-hub' | 'history' | 'notebook' | Stage;
 const mainNav = [
   { id: 'overview', title: 'Home', icon: Compass },
   { id: 'roadmap', title: 'My Research', icon: Map },
@@ -44,7 +45,7 @@ const mainNav = [
 
 function currentView(): View {
   const page = window.location.hash.slice(1).split('?')[0];
-  if (roadmap.some(task => task.id === page) || mainNav.some(tab => tab.id === page) || ['primer', 'terms', 'support', 'projects', 'preferences', 'privacy', 'explore', 'conferences', 'history'].includes(page)) return page as View;
+  if (roadmap.some(task => task.id === page) || mainNav.some(tab => tab.id === page) || ['primer', 'terms', 'support', 'projects', 'preferences', 'privacy', 'explore', 'conferences', 'history', 'notebook'].includes(page)) return page as View;
   return 'overview';
 }
 
@@ -58,7 +59,7 @@ function currentTopic() {
 
 function currentSourceSelection() {
   const [view, parameters] = window.location.hash.slice(1).split('?');
-  if (!['writing', 'screen', 'extract'].includes(view) || !parameters) return undefined;
+  if (!['writing', 'screen', 'extract', 'notebook'].includes(view) || !parameters) return undefined;
   const params = new URLSearchParams(parameters), paperId = params.get('paper'), claimId = params.get('claim');
   return paperId && paperId.length <= 500 ? { paperId, ...(claimId && claimId.length <= 500 ? { claimId } : {}) } : undefined;
 }
@@ -111,7 +112,7 @@ export default function Atlas() {
 
   useEffect(() => {
     const onHash = () => {
-      if (evidenceEditingRef.current) { window.history.replaceState(null, '', currentRoute.current || '#overview'); setNotice('Save or cancel your evidence claim before leaving this source.'); return; }
+      if (evidenceEditingRef.current) { window.history.replaceState(null, '', currentRoute.current || '#overview'); setNotice('Save or cancel your open edits before leaving this view.'); return; }
       const destination = currentView();
       currentRoute.current = window.location.hash;
       setView(destination); setSearchTopic(currentTopic()); setReusedSearch(undefined); setSourceSelection(currentSourceSelection()); setMobile(false); window.scrollTo({ top: 0 }); main.current?.focus({ preventScroll: true });
@@ -194,10 +195,10 @@ export default function Atlas() {
   }
 
   function go(destination: View, topic?: string, reuse?: Project['searches'][number]['run']) {
-    if (evidenceEditingRef.current) { setNotice('Save or cancel your evidence claim before leaving this source.'); return; }
+    if (evidenceEditingRef.current) { setNotice('Save or cancel your open edits before leaving this view.'); return; }
     const carriedSource = ['screen', 'extract'].includes(destination) && ['screen', 'extract'].includes(view) ? sourceSelection : undefined;
     const hash = topic ? `#${destination}?${new URLSearchParams({ topic })}` : carriedSource ? `#${destination}?${new URLSearchParams({ paper: carriedSource.paperId })}` : `#${destination}`;
-    if (view !== destination || searchTopic !== topic) window.history.pushState(null, '', hash);
+    if (window.location.hash !== hash) window.history.pushState(null, '', hash);
     setView(destination);
     setSearchTopic(topic);
     setReusedSearch(reuse);
@@ -208,8 +209,8 @@ export default function Atlas() {
     main.current?.focus({ preventScroll: true });
   }
 
-  function openSource(destination: 'screen' | 'extract' | 'writing', paperId: string, claimId?: string) {
-    if (evidenceEditingRef.current) { setNotice('Save or cancel your evidence claim before leaving this source.'); return; }
+  function openSource(destination: 'screen' | 'extract' | 'writing' | 'notebook', paperId: string, claimId?: string) {
+    if (evidenceEditingRef.current) { setNotice('Save or cancel your open edits before leaving this view.'); return; }
     go(destination);
     const selection = { paperId, ...(claimId ? { claimId } : {}) };
     window.history.replaceState(null, '', `#${destination}?${new URLSearchParams({ paper: paperId, ...(claimId ? { claim: claimId } : {}) })}`);
@@ -219,9 +220,19 @@ export default function Atlas() {
   }
 
   function selectProject(id: string) {
-    if (evidenceEditingRef.current) { setNotice('Save or cancel your evidence claim before switching projects.'); return; }
+    if (evidenceEditingRef.current) { setNotice('Save or cancel your open edits before switching projects.'); return; }
     setActive(id);
     try { sessionStorage.setItem('atlas-active', id); } catch { /* Session selection is optional. */ }
+  }
+
+  function setOpenEdits(editing: boolean) {
+    evidenceEditingRef.current = editing;
+    setEvidenceEditing(editing);
+  }
+
+  function openNote(paperId?: string) {
+    if (paperId) openSource('notebook', paperId);
+    else go('notebook');
   }
 
   function markDirty() {
@@ -374,12 +385,12 @@ export default function Atlas() {
         {view === 'paper-search' && <>
           <div className="page-heading"><div><span className="eyebrow">LITERATURE</span><h1>Paper search</h1><p>Look up papers by topic or title. Start with relevance, or sort retrieved papers by journal quartile, date, citations or available prices.</p></div></div>
           <nav className="discover-tools" aria-label="Discovery tools"><button className="button secondary" aria-pressed={discoverySection === 'search'} onClick={() => setDiscoverySection('search')}>Search</button><button className="button secondary" onClick={() => go('library')}>Explore connections</button><button className="button secondary" aria-pressed={discoverySection === 'notebook'} onClick={() => setDiscoverySection('notebook')}>Search history</button><button className="text-button" onClick={() => go('explore')}>Explore disciplines</button></nav>
-          {discoverySection === 'notebook' ? <SearchNotebook project={project} onReuse={search => { setDiscoverySection('search'); go('paper-search', search.run?.userQuery ?? search.query, search.run); }} /> : ready ? <PaperSearch key={`${project?.id ?? 'standalone'}-${searchTopic ?? ''}-${reusedSearch?.id ?? ''}`} project={project} initialQuery={searchTopic} initialRun={reusedSearch} update={project ? update : undefined} notify={setNotice} openProjects={() => go('projects')} />
+          {discoverySection === 'notebook' ? <SearchNotebook project={project} onReuse={search => { setDiscoverySection('search'); go('paper-search', search.run?.userQuery ?? search.query, search.run); }} /> : ready ? <PaperSearch key={`${project?.id ?? 'standalone'}-${searchTopic ?? ''}-${reusedSearch?.id ?? ''}`} project={project} initialQuery={searchTopic} initialRun={reusedSearch} update={project ? update : undefined} notify={setNotice} onNote={openNote} openProjects={() => go('projects')} />
             : <p className="panel" role="status">Opening paper search…</p>}
         </>}
         {view === 'library' && <AtlasLibrary projects={projects} activeProjectId={active} onChangeProjects={items => { markDirty(); setProjects(current => items.map(item => { const previous = current.find(p => p.id === item.id); return previous && previous !== item ? updateProject(previous, item) : item; })); }} onOpenProject={id => { selectProject(id); go('screen'); }} notify={setNotice} />}
         {view === 'guide' && <ResearchPlanner
-          introduction={<MiniLessons onNavigate={go} />}
+         
           onStart={() => go('primer')}
           onConferences={() => go('conferences')}
           openSection={target => go(target === 'analysis' ? 'data' : target === 'draft' ? 'writing' : target === 'publish' ? 'publication' : target)}
@@ -404,14 +415,22 @@ export default function Atlas() {
           <button className="button" onClick={openNewProject} disabled={!ready}><Plus size={16} />Start a project</button>
         </>}
 
-        {(view === 'roadmap' || current) && !project && <section className="panel empty-state">
+        {(view === 'roadmap' || view === 'notebook' || current) && !project && <section className="panel empty-state">
           <FolderOpen size={28} /><h1>Create your research project</h1><p>Set a direction and keep your questions, evidence, and plans together.</p>
           {view === 'discover' && searchTopic
             ? <button className="button" onClick={() => searchDiscipline(searchTopic)} disabled={!ready}><Search size={17} />Search {searchTopic}</button>
             : <button className="button" onClick={openNewProject} disabled={!ready}><Plus size={17} />Start a project</button>}
         </section>}
 
-        {(view === 'roadmap' || view === 'history' || current) && project && <ProjectShell project={project} view={view} onNavigate={go} />}
+        {(view === 'roadmap' || view === 'history' || view === 'notebook' || current) && project && <ProjectShell project={project} view={view} onNavigate={go} />}
+        {view === 'notebook' && project && <ResearchNotebook
+          key={`${project.id}:${sourceSelection?.paperId ?? ''}`}
+          project={project}
+          initialPaperId={sourceSelection?.paperId}
+          onSaveNotes={notebookNotes => update({ notebookNotes })}
+          onOpenEvidence={paperId => openSource('extract', paperId)}
+          onEditingChange={setOpenEdits}
+        />}
         {view === 'history' && project && <><div className="page-heading"><div><span className="eyebrow">RESEARCH TRAIL</span><h1>Project history</h1><p>Inspect how questions, sources and decisions shaped this project.</p></div></div><ProjectHistory project={project} /></>}
         {view === 'roadmap' && project && <>
           <div className="page-heading"><div><span className="eyebrow">PROJECT ROADMAP</span><h1>{project.title}</h1><p>{project.discipline}{project.goal ? ` · ${project.goal}` : ''}</p></div><button className="button secondary" onClick={() => go('projects')}><ArrowDownToLine size={16} />Export project</button></div>
@@ -439,16 +458,16 @@ export default function Atlas() {
           {view === 'screen' && <DuplicateReview project={project} update={update} disabled={evidenceEditing} />}
           {view === 'profile' || view === 'topic' || view === 'question' || view === 'methods' ? <PlanningWorkspace key={`${project.id}-${view}`} project={project} mode={view} interfaceMode={preferences.interfaceMode} saveState={saveState} update={update} next={advance} /> : null}
           {(view === 'screen' || view === 'extract') && <nav className="button-row" aria-label="Literature workspace layout"><button type="button" className="button secondary" aria-pressed={literatureLayout === 'desk'} onClick={() => setLiteratureLayout('desk')}>Evidence Desk</button><button type="button" className="button secondary" aria-pressed={literatureLayout === 'cards'} disabled={evidenceEditing} onClick={() => setLiteratureLayout('cards')}>Cards & matrix</button></nav>}
-          {(view === 'screen' || view === 'extract') && literatureLayout === 'desk' && <EvidenceDesk key={`${project.id}-${view}`} project={project} mode={view} interfaceMode={preferences.interfaceMode} initialPaperId={sourceSelection?.paperId} update={update} onWrite={(paperId, claimId) => openSource('writing', paperId, claimId)} onEditingChange={editing => { evidenceEditingRef.current = editing; setEvidenceEditing(editing); }} onSelectionChange={paperId => { if (!paperId || project.papers.filter(paper => paper.id === paperId).length !== 1) return; setSourceSelection({ paperId }); window.history.replaceState(null, '', `#${view}?${new URLSearchParams({ paper: paperId })}`); currentRoute.current = window.location.hash; }} />}
-          {view === 'discover' || (view === 'screen' || view === 'extract') && literatureLayout === 'cards' ? <EvidenceWorkspace key={`${project.id}-${view}-${searchTopic ?? ''}`} project={project} mode={view} update={update} notify={setNotice} initialQuery={view === 'discover' ? searchTopic : undefined} /> : null}
-          {view === 'data' || view === 'writing' || view === 'publication' ? <ExecutionWorkspace key={`${project.id}-${view}-${view === 'writing' ? `${sourceSelection?.paperId ?? ''}-${sourceSelection?.claimId ?? ''}` : ''}`} project={project} mode={view} interfaceMode={preferences.interfaceMode} initialSelection={view === 'writing' ? sourceSelection : undefined} update={update} /> : null}
+          {(view === 'screen' || view === 'extract') && literatureLayout === 'desk' && <EvidenceDesk key={`${project.id}-${view}`} project={project} mode={view} interfaceMode={preferences.interfaceMode} initialPaperId={sourceSelection?.paperId} update={update} onWrite={(paperId, claimId) => openSource('writing', paperId, claimId)} onNote={openNote} onEditingChange={setOpenEdits} onSelectionChange={paperId => { if (!paperId || project.papers.filter(paper => paper.id === paperId).length !== 1) return; setSourceSelection({ paperId }); window.history.replaceState(null, '', `#${view}?${new URLSearchParams({ paper: paperId })}`); currentRoute.current = window.location.hash; }} />}
+          {view === 'discover' || (view === 'screen' || view === 'extract') && literatureLayout === 'cards' ? <EvidenceWorkspace key={`${project.id}-${view}-${searchTopic ?? ''}`} project={project} mode={view} update={update} notify={setNotice} onNote={openNote} initialQuery={view === 'discover' ? searchTopic : undefined} /> : null}
+          {view === 'data' || view === 'writing' || view === 'publication' ? <ExecutionWorkspace key={`${project.id}-${view}-${view === 'writing' ? `${sourceSelection?.paperId ?? ''}-${sourceSelection?.claimId ?? ''}` : ''}`} project={project} mode={view} interfaceMode={preferences.interfaceMode} initialSelection={view === 'writing' ? sourceSelection : undefined} onNote={openNote} update={update} /> : null}
           <NextAction project={project} onNavigate={go} />
           <div className="journey-actions"><button className="button secondary" onClick={() => go('roadmap')}>Back to roadmap</button>{view !== 'profile' && view !== 'topic' && view !== 'question' && view !== 'methods' && <button className="button" onClick={advance}>{view === 'publication' ? 'Return to roadmap' : 'Continue to next task'}<ArrowRight size={17} /></button>}</div>
         </>}
 
         {view === 'projects' && <>
           <div className="page-heading"><div><span className="eyebrow">TRACK YOUR WORK</span><h1>My projects</h1><p>Open a project, review progress, and download a backup.</p></div></div>
-          <section className="panel"><h2>Back up and restore</h2><p>Projects are saved in this browser. A backup can restore them on another device.</p><BackupStatus date={backupDate} />
+          <section className="panel"><h2>Back up and restore</h2><p>Download a backup and keep a copy somewhere you can access if this device is lost. On another device, import the file and compare the project and source counts before relying on the restored copy.</p><BackupStatus date={backupDate} />
             <div className="button-row"><button className="button" onClick={backup} disabled={!ready}><ArrowDownToLine size={17} />Download backup</button><label className="button secondary upload">Import backup<input type="file" disabled={!ready} accept=".json,application/json" onChange={async event => {
               const input = event.currentTarget;
               const file = input.files?.[0];
@@ -466,7 +485,7 @@ export default function Atlas() {
             }} /></label></div>
             {imported && <div className="recommendation"><h3>Import preview: {imported.length} projects</h3><p>{imported.map(item => item.title).join(', ') || 'This backup contains no projects.'}</p>
               {importManifest && <><p>Backup v{importManifest.backupVersion} · app {importManifest.appVersion} · created {new Date(importManifest.createdAt).toLocaleString()} · source: {importManifest.sourceOrigin}</p>
-                <p>{importManifest.paperCount} references · {importManifest.screeningEventCount} screening events · {importManifest.evidenceClaimCount} evidence claims. {importManifest.integrity === 'verified' ? 'Integrity checksum verified.' : 'Older backup: no checksum was recorded.'}</p>
+                <p>{importManifest.paperCount} references · {importManifest.screeningEventCount} screening events · {importManifest.evidenceClaimCount} evidence claims · {importManifest.notebookNoteCount} notebook notes. {importManifest.integrity === 'verified' ? 'Integrity checksum verified.' : 'Older backup: no checksum was recorded.'}</p>
                 <p>Your existing projects and display preferences stay in place. {importManifest.preferencesIncluded && 'Display preferences are present in the backup for reference.'} New project copies receive new identifiers.</p></>}
               <div className="button-row"><button className="button" onClick={importBackup} disabled={!ready || !imported.length}>Import as new copies</button><button className="button secondary" onClick={() => { ++importRevision.current; setImported(null); setImportManifest(null); }}>Cancel</button></div></div>}
           </section>
@@ -477,7 +496,7 @@ export default function Atlas() {
         </>}
         </div>
         {view === 'projects' && <StorageRecovery revision={diskRevision.current} disabled={saveRevision.current !== savedLocalRevision.current || saveState === 'Saving…' || loadFailed.current || storageConflict} onBusyChange={setStorageOperation} onRestored={workspace => { diskRevision.current = workspace.revision; loadFailed.current = false; writeBlocked.current = false; setStorageConflict(false); setRecoveryRaw(''); savedLocalRevision.current = saveRevision.current; setProjects(workspace.projects); selectProject(workspace.projects[0]?.id ?? ''); setSaveState('Saved on this device'); requestAnimationFrame(() => main.current?.focus({ preventScroll: true })); }} notify={setNotice} />}
-        <footer inert={storageOperation} className="public-footer" aria-label="Research Atlas information"><a href="#privacy" onClick={event => { event.preventDefault(); go('privacy'); }}>Privacy & data</a><a href="#terms" onClick={event => { event.preventDefault(); go('terms'); }}>Terms</a><a href="#support" onClick={event => { event.preventDefault(); go('support'); }}>Support</a><span className="muted">Research Atlas 0.9.0 beta · Free · Stored on your device</span></footer>
+        <footer inert={storageOperation} className="public-footer" aria-label="Research Atlas information"><a href="#privacy" onClick={event => { event.preventDefault(); go('privacy'); }}>Privacy & data</a><a href="#terms" onClick={event => { event.preventDefault(); go('terms'); }}>Terms</a><a href="#support" onClick={event => { event.preventDefault(); go('support'); }}>Support</a><span className="muted">Research Atlas {appVersion} beta · Free · Stored on your device</span></footer>
       </main>
     </div>
     <dialog ref={dialog} className="journey-dialog" aria-labelledby="project-dialog-title" onKeyDown={event => {

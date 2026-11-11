@@ -1,3 +1,9 @@
+# Version 0.10 migration
+
+Version 0.10 reads workspace envelopes 1 through 4 and writes envelope 4 on the next changed save. Backups export as version 3, with the same integrity checksum and origin metadata as version 2. The new version prevents older importers from silently dropping notebook entries. Existing version 1 and 2 backups still import. Project schema and IndexedDB stay at version 1. Reload older tabs and keep a downloaded backup somewhere you can reach from another device.
+
+The notes below describe earlier release behavior.
+
 # Version 0.9 migration
 
 Version 0.9 writes local workspace envelope 3 and reads envelopes 1, 2 and 3. This protects new Journal Match provenance and expanded provider filters from being silently removed by a version 0.8 tab. Reload older tabs before continuing; keep a downloaded backup. Portable backup version remains 2, project schema remains 1, and IndexedDB remains version 1. The export app version is 0.9.0. Import newer backups only into the current app.
