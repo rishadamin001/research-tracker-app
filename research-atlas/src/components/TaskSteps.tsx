@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type ReactNode } from 'react';
+import { useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import './task-steps.css';
 
@@ -14,9 +14,20 @@ export function TaskSteps({ label, steps, interfaceMode = 'guided', initialStep 
   const id = useId();
   const heading = useRef<HTMLHeadingElement>(null);
   const guided = interfaceMode !== 'expert';
+  const focusStep = useRef(false);
+  useLayoutEffect(() => {
+    if (!focusStep.current) return;
+    focusStep.current = false;
+    heading.current?.focus({ preventScroll: true });
+  }, [active]);
+
   function go(index: number) {
+    if (index === active) {
+      heading.current?.focus({ preventScroll: true });
+      return;
+    }
+    focusStep.current = true;
     setSelected(index);
-    requestAnimationFrame(() => heading.current?.focus({ preventScroll: true }));
   }
   return <div className={`task-sequence ${guided ? 'guided' : 'focus'}`}>
     {guided && <>

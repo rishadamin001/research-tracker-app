@@ -170,11 +170,15 @@ export default function Atlas() {
   }, [ready]);
 
   useEffect(() => {
-    if (!ready || saveState === 'Saved on this device' && !evidenceEditing) return;
-    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); };
+    if (!ready) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      if (saveRevision.current === savedLocalRevision.current && !evidenceEditingRef.current) return;
+      event.preventDefault();
+      event.returnValue = true;
+    };
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
-  }, [ready, saveState, evidenceEditing]);
+  }, [ready]);
 
   const project = projects.find(item => item.id === active);
   const current = roadmap.find(task => task.id === view);
@@ -433,7 +437,7 @@ export default function Atlas() {
           {status === 'Needs review' && <div className="review-banner" role="status"><p>Your question changed. Check this work against the revised question before proceeding.</p><button className="button secondary" onClick={() => update({ needsReview: project.needsReview.filter(id => id !== current.id) })}><Check size={16} />Mark reviewed</button></div>}
           <ContextGuide stage={current.id} expanded={preferences.interfaceMode !== 'expert' && !['question', 'methods', 'data', 'screen', 'extract', 'writing'].includes(current.id)} />
           {view === 'screen' && <DuplicateReview project={project} update={update} disabled={evidenceEditing} />}
-          {view === 'profile' || view === 'topic' || view === 'question' || view === 'methods' ? <PlanningWorkspace key={`${project.id}-${view}`} project={project} mode={view} interfaceMode={preferences.interfaceMode} update={update} next={advance} /> : null}
+          {view === 'profile' || view === 'topic' || view === 'question' || view === 'methods' ? <PlanningWorkspace key={`${project.id}-${view}`} project={project} mode={view} interfaceMode={preferences.interfaceMode} saveState={saveState} update={update} next={advance} /> : null}
           {(view === 'screen' || view === 'extract') && <nav className="button-row" aria-label="Literature workspace layout"><button type="button" className="button secondary" aria-pressed={literatureLayout === 'desk'} onClick={() => setLiteratureLayout('desk')}>Evidence Desk</button><button type="button" className="button secondary" aria-pressed={literatureLayout === 'cards'} disabled={evidenceEditing} onClick={() => setLiteratureLayout('cards')}>Cards & matrix</button></nav>}
           {(view === 'screen' || view === 'extract') && literatureLayout === 'desk' && <EvidenceDesk key={`${project.id}-${view}`} project={project} mode={view} interfaceMode={preferences.interfaceMode} initialPaperId={sourceSelection?.paperId} update={update} onWrite={(paperId, claimId) => openSource('writing', paperId, claimId)} onEditingChange={editing => { evidenceEditingRef.current = editing; setEvidenceEditing(editing); }} onSelectionChange={paperId => { if (!paperId || project.papers.filter(paper => paper.id === paperId).length !== 1) return; setSourceSelection({ paperId }); window.history.replaceState(null, '', `#${view}?${new URLSearchParams({ paper: paperId })}`); currentRoute.current = window.location.hash; }} />}
           {view === 'discover' || (view === 'screen' || view === 'extract') && literatureLayout === 'cards' ? <EvidenceWorkspace key={`${project.id}-${view}-${searchTopic ?? ''}`} project={project} mode={view} update={update} notify={setNotice} initialQuery={view === 'discover' ? searchTopic : undefined} /> : null}

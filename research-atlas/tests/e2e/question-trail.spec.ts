@@ -7,8 +7,9 @@ test('question editing autosaves an uncommitted draft, records one revision and 
   await page.getByRole('button', { name: 'Create project', exact: true }).click();
   await page.goto('/#question');
   await page.getByRole('button', { name: 'Question wording', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Question wording', exact: true })).toBeFocused();
   await page.getByLabel('Your research question', { exact: true }).fill('How do students choose study spaces?');
-  await expect(page.getByText('Saved on this device', { exact: true })).toBeAttached();
+  await expect(page.getByText('Uncommitted question draft saved locally.', { exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByLabel('Your research question', { exact: true })).toHaveValue('How do students choose study spaces?');
   await page.getByRole('button', { name: 'Save question revision' }).click();

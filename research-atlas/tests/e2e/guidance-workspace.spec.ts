@@ -37,6 +37,7 @@ test('Question guidance and focus preserve answers and keep drafts separate from
   await expect(page.getByText('Question versions (1)', { exact: true })).toBeVisible();
   await page.goto('/#question');
   await expect(page.getByLabel('Your research question', { exact: true })).toHaveValue('Provisional alternative wording.');
+  await expect(page.getByText('Uncommitted question draft saved locally.', { exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByLabel('Your research question', { exact: true })).toHaveValue('Provisional alternative wording.');
   await page.screenshot({ path: `../atlas-guidance-question-${testInfo.project.name}.png` });

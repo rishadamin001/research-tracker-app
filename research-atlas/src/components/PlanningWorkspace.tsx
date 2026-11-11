@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react';
+import { useId } from 'react';
 import { ArrowRight, Download } from 'lucide-react';
 import { disciplines } from '@/lib/content';
 import { sourceLinks } from '@/lib/links';
@@ -18,6 +18,7 @@ type PlanningProps = {
   update: (patch: Partial<Project>) => void;
   next: () => void;
   interfaceMode?: InterfaceMode;
+  saveState?: string;
 };
 
 type TextFieldProps = {
@@ -163,25 +164,21 @@ function Topic({ project, update, next }: PlanningProps) {
   );
 }
 
-function Question({ project, update, next, interfaceMode = 'guided' }: PlanningProps) {
+function Question({ project, update, next, saveState, interfaceMode = 'guided' }: PlanningProps) {
   const discipline = disciplines.find(item => item.name === project.discipline);
   const pathway = pathwayFor(project);
-  const [draft, setDraft] = useState(project.questionDraft ?? project.question);
-  const [changeReason, setChangeReason] = useState(project.questionDraftReason ?? '');
-  const lastCommitted = useRef(project.question);
+  const draft = project.questionDraft ?? project.question;
+  const changeReason = project.questionDraftReason ?? '';
   const questionId = useId();
   const historyFull = (project.questionVersions?.length ?? 0) >= questionVersionLimit;
-  const changed = draft.trim() !== lastCommitted.current.trim();
+  const changed = draft.trim() !== project.question.trim();
   const hasDraft = project.questionDraft !== undefined || project.questionDraftReason !== undefined;
   const versions = [...(project.questionVersions ?? [])].reverse();
   function commitQuestion() {
     if (historyFull || !changed) return;
-    lastCommitted.current = draft;
     update({ question: draft, questionChangeReason: changeReason.trim(), questionDraft: undefined, questionDraftReason: undefined });
-    setChangeReason('');
   }
   function discardDraft() {
-    setDraft(project.question); setChangeReason('');
     update({ questionDraft: undefined, questionDraftReason: undefined });
   }
   return <div className={`content-grid question-composer ${interfaceMode === 'expert' ? 'focus-workspace' : ''}`}>
@@ -201,8 +198,8 @@ function Question({ project, update, next, interfaceMode = 'guided' }: PlanningP
         { id: 'wording', title: 'Question wording', description: 'Ask what you could answer with evidence inside those boundaries.', content: <div className="question-version-editor">
           <label className="field" htmlFor={questionId}><span>Your research question</span></label>
           <small id={`${questionId}-hint`}>Your draft saves automatically. Only Save question revision creates a committed version; changing steps or leaving this page keeps it as a draft.</small>
-          <textarea id={questionId} aria-describedby={`${questionId}-hint`} value={draft} onChange={event => { setDraft(event.target.value); update({ questionDraft: event.target.value }); }} rows={4} maxLength={20000} disabled={historyFull} />
-          <label className="field"><span>Reason for this question revision (optional)</span><input value={changeReason} onChange={event => { setChangeReason(event.target.value); update({ questionDraftReason: event.target.value }); }} maxLength={2000} placeholder="For example, narrow to commuters after examining evidence access" disabled={historyFull} /></label>
+          <textarea id={questionId} aria-describedby={`${questionId}-hint`} value={draft} onChange={event => update({ questionDraft: event.target.value })} rows={4} maxLength={20000} disabled={historyFull} />
+          <label className="field"><span>Reason for this question revision (optional)</span><input value={changeReason} onChange={event => update({ questionDraftReason: event.target.value })} maxLength={2000} placeholder="For example, narrow to commuters after examining evidence access" disabled={historyFull} /></label>
           {interfaceMode !== 'expert' && <div className="task-example"><strong>Example — adapt it to your study</strong><p>{pathway?.questionExample ?? discipline?.example ?? 'How do commuter students choose study spaces at one campus?'}</p></div>}
         </div> },
         { id: 'objectives', title: 'Objectives and review', description: 'Describe the work needed to answer your question and check what is still missing.', content: <>
@@ -213,7 +210,7 @@ function Question({ project, update, next, interfaceMode = 'guided' }: PlanningP
           </ul><p className="muted">These checks only detect recorded text. Review feasibility and methodological fit with your supervisor.</p>
         </> },
       ]} />
-      <div className="question-draft-state" role="status">{hasDraft && changed ? 'Uncommitted question draft saved locally.' : project.question ? 'Showing the committed question.' : 'No question version has been committed yet.'} {versions.length > 0 && <span>Question v{versions[0].version}</span>}</div>
+      <div className="question-draft-state" role="status">{hasDraft ? (saveState === 'Saved on this device' ? 'Uncommitted question draft saved locally.' : saveState === 'Saving…' ? 'Saving your question draft…' : 'Question draft is in this tab. Download a backup to keep a copy.') : project.question ? 'Showing the committed question.' : 'No question version has been committed yet.'} {versions.length > 0 && <span>Question v{versions[0].version}</span>}</div>
       <div className="button-row"><button type="button" className="button" disabled={historyFull || !changed} onClick={commitQuestion}>Save question revision</button>{hasDraft && <button type="button" className="button secondary" onClick={discardDraft}>Discard uncommitted draft</button>}</div>
       {historyFull && <p className="info-bar">This project has reached its {questionVersionLimit}-revision history limit. The draft is preserved. Export a backup before continuing in a new project.</p>}
       <p>You can explore literature while the question is provisional. Commit the wording intentionally before treating it as your agreed study question. Exploring papers does not commit this draft.</p>
