@@ -105,7 +105,7 @@ test('an unfinished evidence claim blocks navigation until it is saved or cancel
   await expect(merge).toBeDisabled();
   await page.goto('/#roadmap');
   await expect(page).toHaveURL(/#screen\?paper=source-0$/);
-  await expect(page.getByText('Save or cancel your evidence claim before leaving this source.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Save or cancel your open edits before leaving this view.', { exact: true })).toBeVisible();
   await expect(page.getByLabel('Evidence claim', { exact: true })).toHaveValue('An unfinished interpretation that must remain available.');
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(merge).toBeEnabled();

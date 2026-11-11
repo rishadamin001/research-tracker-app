@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useRef, useState, type FormEvent } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { BookOpen, Download, Plus } from 'lucide-react';
 import type { Paper, Project } from '@/lib/model';
 import {
@@ -72,6 +72,10 @@ export function ResearchNotebook({ project, onSaveNotes, initialPaperId, onOpenE
   const hasUnsavedText = Boolean(draft.text.trim() || draft.nextStep.trim());
   const editing = Boolean(draft.id || hasUnsavedText);
 
+  useLayoutEffect(() => {
+    if (draft.id) editor.current?.focus();
+  }, [draft.id]);
+
   function changeDraft(patch: Partial<Draft>) {
     const next = { ...draft, ...patch };
     setDraft(next);
@@ -130,7 +134,6 @@ export function ResearchNotebook({ project, onSaveNotes, initialPaperId, onOpenE
       nextStep: note.kind === 'question' ? note.nextStep : '',
       status: note.kind === 'question' ? note.status : 'open',
     });
-    requestAnimationFrame(() => editor.current?.focus());
   }
 
   return <section className="research-notebook" aria-labelledby="research-notebook-title">

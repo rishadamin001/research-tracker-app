@@ -246,7 +246,7 @@ export default function Atlas() {
   }
 
   function openNewProject() {
-    if (evidenceEditingRef.current) { setNotice('Save or cancel your evidence claim before starting another project.'); return; }
+    if (evidenceEditingRef.current) { setNotice('Save or cancel your open edits before starting another project.'); return; }
     if (!ready) return;
     if (projects.length >= 100) { setNotice('Back up and remove an old project before adding another.'); return; }
     setNewTitle('');
@@ -354,7 +354,7 @@ export default function Atlas() {
     <div className="main-shell">
       <header inert={storageOperation} className="topbar journey-topbar">
         <button type="button" className="mobile-toggle icon-button" onClick={() => setMobile(true)} aria-label="Open navigation" aria-expanded={mobile}><Menu /></button>
-        <div className="journey-breadcrumb">{current ? <><button className="text-button" onClick={() => go('roadmap')}>Project roadmap</button><ChevronRight size={15} /><span>{current.title}</span></> : <span>{mainNav.find(item => item.id === view)?.title ?? 'Get started'}</span>}</div>
+        <div className="journey-breadcrumb">{current ? <><button className="text-button" onClick={() => go('roadmap')}>Project roadmap</button><ChevronRight size={15} /><span>{current.title}</span></> : <span>{view === 'notebook' ? 'Notebook' : mainNav.find(item => item.id === view)?.title ?? 'Get started'}</span>}</div>
         <span className="saved" role="status">{saveState}</span>
         <label className="mode-select"><span>Workspace</span><select aria-label="Guidance mode" value={preferences.interfaceMode ?? 'guided'} onChange={event => changePreferences({ interfaceMode: event.target.value as 'guided' | 'expert' })}><option value="guided">Step-by-step guidance</option><option value="expert">Focus workspace</option></select></label>
         <button className="button small" onClick={openNewProject} disabled={!ready}><Plus size={16} />New project</button>

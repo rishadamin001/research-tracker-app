@@ -54,6 +54,8 @@ test('source notes keep their context through writing, export and restoration on
   await page.getByLabel('Next step (optional)', { exact: true }).fill(finalAction);
   await page.getByLabel('Action status', { exact: true }).selectOption('done');
   await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await expect(page.getByText(note, { exact: true })).toBeVisible();
+  await expect(page.getByText(`Next step: ${finalAction}`, { exact: true })).toBeVisible();
   await page.getByLabel('Find notebook entries', { exact: true }).fill('timetable');
   await expect(page.getByText('1 entry', { exact: true })).toBeVisible();
   await expect(page.getByText('Status: Done', { exact: true })).toBeVisible();
@@ -64,7 +66,7 @@ test('source notes keep their context through writing, export and restoration on
   expect(exported).toContain('Question / next action');
   expect(exported).toContain('Earlier working note');
   expect(exported).toContain('DOI: 10.1234/commutes');
-  expect(exported).toContain(finalAction);
+  expect(exported).toContain(`Next step: ${finalAction}`);
 
   await expect(page.getByText('Saved on this device', { exact: true })).toBeAttached();
   await page.goto(`/#writing?paper=${paperId}`);
