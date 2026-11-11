@@ -151,14 +151,15 @@ export function ResearchNotebook({ project, onSaveNotes, initialPaperId, onOpenE
       <form onSubmit={saveNote} className="notebook-form">
         <label className="field">
           <span>Note type</span>
-          <select value={draft.kind} disabled={atLimit} onChange={event => changeDraft({ kind: event.target.value as Draft['kind'] })}>
+          <select aria-label="Note type" value={draft.kind} disabled={atLimit}
+            onChange={event => changeDraft({ kind: event.target.value as Draft['kind'] })}>
             <option value="interpretation">My interpretation</option>
             <option value="question">Question / next action</option>
           </select>
         </label>
         <label className="field">
           <span>My note</span>
-          <textarea ref={editor} rows={4} maxLength={6000} value={draft.text} disabled={atLimit} required
+          <textarea ref={editor} aria-label="My note" rows={4} maxLength={6000} value={draft.text} disabled={atLimit} required
             onChange={event => changeDraft({ text: event.target.value })} />
         </label>
         {draft.kind === 'question' && <div className="notebook-fields">
@@ -168,7 +169,8 @@ export function ResearchNotebook({ project, onSaveNotes, initialPaperId, onOpenE
           </label>
           <label className="field">
             <span>Action status</span>
-            <select value={draft.status} onChange={event => changeDraft({ status: event.target.value as Draft['status'] })}>
+            <select aria-label="Action status" value={draft.status}
+              onChange={event => changeDraft({ status: event.target.value as Draft['status'] })}>
               <option value="open">Open</option>
               <option value="done">Done</option>
             </select>
@@ -176,7 +178,7 @@ export function ResearchNotebook({ project, onSaveNotes, initialPaperId, onOpenE
         </div>}
         {papers.length > 0 && <label className="field">
           <span>Link a saved source (optional)</span>
-          <select value="" disabled={atLimit || draft.sources.length >= notebookSourceLimit}
+          <select aria-label="Link a saved source (optional)" value="" disabled={atLimit || draft.sources.length >= notebookSourceLimit}
             onChange={event => attachSource(event.target.value)}>
             <option value="">Choose a source</option>
             {papers.filter(paper => !draft.sources.some(source => source.paperId === paper.id)).map(paper =>
@@ -207,7 +209,7 @@ export function ResearchNotebook({ project, onSaveNotes, initialPaperId, onOpenE
         {papers.length ? <div className="notebook-finding-controls">
           <label className="field">
             <span>Source for finding</span>
-            <select value={findingPaper} onChange={event => setFindingPaper(event.target.value)}>
+            <select aria-label="Source for finding" value={findingPaper} onChange={event => setFindingPaper(event.target.value)}>
               <option value="">Choose a source</option>
               {papers.map(paper => <option key={paper.id} value={paper.id}>{paper.title.slice(0, 180) || 'Untitled source'}</option>)}
             </select>
@@ -229,7 +231,8 @@ export function ResearchNotebook({ project, onSaveNotes, initialPaperId, onOpenE
         </label>
         <label className="field">
           <span>Entry type</span>
-          <select value={kind} onChange={event => { setKind(event.target.value as typeof kind); setPage(0); }}>
+          <select aria-label="Entry type" value={kind}
+            onChange={event => { setKind(event.target.value as typeof kind); setPage(0); }}>
             <option value="">All types</option>
             <option value="finding">Source findings</option>
             <option value="interpretation">My interpretations</option>
@@ -239,7 +242,8 @@ export function ResearchNotebook({ project, onSaveNotes, initialPaperId, onOpenE
         </label>
         {papers.length > 0 && <label className="field">
           <span>Filter by source</span>
-          <select value={paperFilter} onChange={event => { setPaperFilter(event.target.value); setPage(0); }}>
+          <select aria-label="Filter by source" value={paperFilter}
+            onChange={event => { setPaperFilter(event.target.value); setPage(0); }}>
             <option value="">All sources and project notes</option>
             {papers.map(paper => <option key={paper.id} value={paper.id}>{paper.title.slice(0, 180) || 'Untitled source'}</option>)}
           </select>
