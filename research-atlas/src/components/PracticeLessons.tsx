@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type Ref } from 'react';
+import { useId, useLayoutEffect, useRef, useState, type Ref } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { z } from 'zod';
 import { practiceLessons, type PracticeLesson } from '@/lib/practice-lessons';
@@ -101,6 +101,21 @@ export function PracticeLessons({ openSection }: { openSection?: (target: Planne
   const [saveFailed, setSaveFailed] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const active = practiceLessons.find(lesson => lesson.id === activeId)!;
+  const focusLesson = useRef(false);
+  useLayoutEffect(() => {
+    if (!focusLesson.current) return;
+    focusLesson.current = false;
+    headingRef.current?.focus();
+  }, [activeId]);
+
+  function chooseLesson(id: string) {
+    if (id === activeId) {
+      headingRef.current?.focus();
+      return;
+    }
+    focusLesson.current = true;
+    setActiveId(id);
+  }
 
   function save(value: LessonProgress) {
     const next = { ...progress, [activeId]: value };
@@ -122,10 +137,7 @@ export function PracticeLessons({ openSection }: { openSection?: (target: Planne
           const saved = progress[lesson.id];
           const due = (saved?.revisitAt ?? Infinity) <= Date.now();
           return <li key={lesson.id}>
-            <button type="button" aria-pressed={activeId === lesson.id} onClick={() => {
-              setActiveId(lesson.id);
-              requestAnimationFrame(() => headingRef.current?.focus());
-            }}>
+            <button type="button" aria-pressed={activeId === lesson.id} onClick={() => chooseLesson(lesson.id)}>
               <span><strong>{lesson.title}</strong>
                 {due ? <small>Ready to revisit</small> : saved?.checkedOption !== undefined && <small>Practiced</small>}
               </span>
