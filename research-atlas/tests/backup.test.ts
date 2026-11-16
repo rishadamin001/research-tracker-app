@@ -61,3 +61,11 @@ test('backup exports known project/settings fields and omits added secret fields
   assert.equal((await parseBackupFile(JSON.stringify(envelope))).manifest.projectCount, 1);
   assert.equal((await parseBackupFile(JSON.stringify(await createBackup([])))).projects.length, 0);
 });
+
+test('portable backup validation rejects deeply nested optional data before checksumming', async () => {
+  const envelope = await createBackup([createProject('Original')]);
+  const extra = Array.from({ length: 65 }).reduce<unknown>(value => ({ nested: value }), 'end');
+  const imported = { ...envelope, projects: envelope.projects.map(project => ({ ...project, extra })) };
+  await assert.rejects(() => parseBackupFile(JSON.stringify(imported)), /nested too deeply/);
+  assert.deepEqual((await parseBackupFile(JSON.stringify(envelope))).projects, envelope.projects);
+});

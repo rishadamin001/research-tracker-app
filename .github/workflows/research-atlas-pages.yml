@@ -1,37 +1,33 @@
 name: Publish Research Atlas to GitHub Pages
+run-name: Publish Research Atlas at ${{ github.sha }}
 on:
   workflow_dispatch:
-permissions:
-  contents: read
-  pages: write
-  id-token: write
+permissions: {}
 concurrency:
   group: research-atlas-pages
   cancel-in-progress: false
 jobs:
+  verify:
+    if: github.ref == 'refs/heads/main' && github.repository == 'rishadamin001/research-tracker-app'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/research-atlas.yml
+    with:
+      upload_pages: true
+
   deploy:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.repository == 'rishadamin001/research-tracker-app'
+    needs: verify
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    defaults:
-      run:
-        working-directory: research-atlas
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: research-atlas/package-lock.json
-      - uses: actions/configure-pages@v5
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run build
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: research-atlas/out
-      - uses: actions/deploy-pages@v4
+      - name: Publish the checked artifact
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
         id: deployment
+

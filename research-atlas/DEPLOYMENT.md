@@ -12,7 +12,9 @@ For a local production preview, run `npm ci`, `npm run build`, and `npm run prev
 
 ## Optional gateway
 
-The default Pages build uses direct anonymous OpenAlex and public Crossref requests. OpenAlex discovery uses manually requested basic pages, bounded to 5 × 20 records per run. Related-paper actions retrieve at most 20 records. A verified-key gateway remains deferred. The existing template is available for independently operated deployments and keeps OpenAlex anonymous. Set `VITE_API_URL` only if you intentionally operate a gateway. The browser value is public and should contain only a URL. Optional Unpaywall configuration belongs on the server.
+The default Pages build uses direct public OpenAlex, Europe PMC and Crossref requests. OpenAlex discovery uses manually requested basic pages, bounded to 5 × 20 records per run. Related-paper actions retrieve at most 20 records. A verified-key gateway remains deferred. The existing template is available for independently operated deployments and keeps OpenAlex anonymous. Set `VITE_API_URL` only if you intentionally operate a gateway. Use a same-origin absolute path or an HTTPS URL without credentials, query parameters or a fragment. The build adds its exact origin to `connect-src`. The browser value is public. Optional Unpaywall configuration belongs on the server.
+
+Production builds include a CSP and referrer policy in `index.html`, and generate `out/_headers` for static hosts that support that file. Verify the actual HTTP response after activating a compatible host. GitHub Pages currently supplies HSTS for the public app. HTTP frame restrictions, `nosniff` and Permissions Policy require host support. The release remains a manual workflow and must verify the revision used to produce the deployed artifact. [Security assessment](docs/SECURITY-ASSESSMENT-0103.md)
 
 After publishing, run `node scripts/smoke.mjs <published-url> <commit-sha>` from `research-atlas`. To verify a local production preview, run `node scripts/smoke.mjs` with the preview running. The two reports are written separately under `docs/smoke/`.
 
