@@ -4,6 +4,8 @@
 
 Added a production Content Security Policy, an explicit referrer policy and generated configuration for compatible static hosts. Limited backup checksum nesting while retaining the supported backup formats. Prepared a manual Pages workflow that gates the artifact on checks for the dispatched revision and gives deployment permissions only to the publishing job. See the [delivery matrix](docs/BETA-CANDIDATE-MATRIX.md) for scope and remaining work.
 
+Discover has a **Load next page** button above and below the results. Each successful continuation shows only new papers, excluding repeated record IDs and DOIs. **Show all retrieved papers** brings back the complete list from the current search.
+
 ## 0.10.2 — 2026-11-11
 
 Question edits use one shared draft and the draft indicator waits for storage confirmation. Guided navigation settles keyboard focus before the next field can receive input. Failed writes leave an explicit recovery path.

@@ -19,18 +19,23 @@ for (const url of urls) for (const [engine, launcher] of Object.entries({ chromi
     await page.getByLabel('Search source', { exact: true }).selectOption('Crossref');
     await page.getByRole('textbox', { name: 'Search literature' }).fill('Hypothyroidism');
     await page.getByRole('button', { name: 'Search papers', exact: true }).click();
-    await page.getByRole('region', { name: 'Search result controls' }).waitFor({ timeout: 25000 });
+    const controls = page.getByRole('region', { name: 'Search result controls' });
+    await controls.waitFor({ timeout: 25000 });
     observation.firstPage = await page.locator('article.paper h3').allTextContents();
-    await page.getByRole('button', { name: 'Load next page', exact: true }).click();
-    await page.waitForFunction(() => !document.querySelector('button[disabled]')?.textContent?.includes('Loading next'));
+    await controls.getByRole('button', { name: 'Load next page', exact: true }).click();
     await Promise.race([
-      page.getByText(/2 pages retrieved/).waitFor({ timeout: 25000 }),
+      controls.getByText(/2 pages retrieved/).waitFor({ timeout: 25000 }),
       page.getByRole('button', { name: /Retry/ }).first().waitFor({ timeout: 25000 }),
     ]);
+    const showAll = controls.getByRole('button', { name: 'Show all retrieved papers', exact: true });
+    if (await showAll.isVisible()) {
+      observation.latestPage = await page.locator('article.paper h3').allTextContents();
+      await showAll.click();
+    }
     observation.afterPaging = await page.locator('article.paper h3').allTextContents();
     observation.firstPageRetained = observation.firstPage.every(title => observation.afterPaging.includes(title));
     observation.addedRecords = observation.afterPaging.length > observation.firstPage.length;
-    observation.visibleStatus = await page.getByRole('region', { name: 'Search result controls' }).innerText();
+    observation.visibleStatus = await controls.innerText();
     observation.retryVisible = await page.getByRole('button', { name: /Retry/ }).first().isVisible();
     await mkdir('docs/smoke', { recursive: true });
     await page.screenshot({ path: `docs/smoke/crossref-${new URL(url).hostname}-${engine}.png` });

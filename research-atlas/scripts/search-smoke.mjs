@@ -41,17 +41,25 @@ try {
     await page.getByLabel('Search source', { exact: true }).selectOption(provider);
     await page.getByRole('textbox', { name: 'Search literature' }).fill(report.query);
     await page.getByRole('button', { name: 'Search papers', exact: true }).click();
-    await page.getByRole('region', { name: 'Search result controls' }).waitFor({ timeout: 25000 });
+    const controls = page.getByRole('region', { name: 'Search result controls' });
+    await controls.waitFor({ timeout: 25000 });
     const before = await page.locator('article.paper').count();
     assert.ok(before > 0, `${provider}: first page has records`);
     assert.equal(await page.getByLabel('Sort papers').inputValue(), 'original');
-    await page.getByRole('button', { name: 'Load next page', exact: true }).click();
-    await page.getByText(/2 pages retrieved/).waitFor({ timeout: 25000 });
+    await controls.getByRole('button', { name: 'Load next page', exact: true }).click();
+    await controls.getByText(/2 pages retrieved/).waitFor({ timeout: 25000 });
+    const latestCount = await page.getByText('New in the latest loaded page', { exact: true }).count();
+    const showAll = controls.getByRole('button', { name: 'Show all retrieved papers', exact: true });
+    if (await showAll.isVisible()) {
+      assert.ok(latestCount > 0, `${provider}: the latest page contains new papers`);
+      assert.equal(await page.locator('article.paper').count(), latestCount, `${provider}: only the latest papers are shown`);
+      await showAll.click();
+    }
     const after = await page.locator('article.paper').count();
     assert.ok(after > before, `${provider}: second page adds records`);
     const titles = await page.locator('article.paper h3').allTextContents();
     report.providers.push({ provider, firstPageCount: before, twoPageCount: after, titles: titles.slice(0, 5) });
-    await page.getByRole('region', { name: 'Search result controls' }).scrollIntoViewIfNeeded();
+    await controls.scrollIntoViewIfNeeded();
     await page.screenshot({ path: `docs/smoke/search-${provider.toLowerCase().replace(/ /g, '-')}.png` });
   }
   activeProvider = 'Europe PMC (mobile)';
