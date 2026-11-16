@@ -4,12 +4,15 @@ const records = (start: number, length: number) => Array.from({ length }, (_, in
 
 test('load more, stop/resume, page errors, audit export and refresh preserve bounded search history', async ({ page }) => {
   const pages: number[] = [];
-  let failPageTwo = true;
+  let pageTwoFailures = 2;
   let refresh = false;
   await page.route('https://api.openalex.org/works?**', route => {
     const number = Number(new URL(route.request().url()).searchParams.get('page') ?? 1);
     pages.push(number);
-    if (number === 2 && failPageTwo) { failPageTwo = false; return route.fulfill({ status: 503, body: '' }); }
+    if (number === 2 && pageTwoFailures > 0) {
+      pageTwoFailures--;
+      return route.fulfill({ status: 503, body: '' });
+    }
     return route.fulfill({ json: { meta: { count: 75 }, results: refresh ? records(101, 20) : records((number - 1) * 20 + 1, 20) } });
   });
   await page.goto('/#paper-search');
@@ -41,9 +44,52 @@ test('load more, stop/resume, page errors, audit export and refresh preserve bou
   refresh = true;
   await page.getByRole('button', { name: 'Refresh this search', exact: true }).click();
   await expect(results).toContainText('20 newly discovered records');
-  expect(pages).toEqual([1, 2, 2, 1]);
+  expect(pages).toEqual([1, 2, 2, 2, 1]);
   await page.reload();
   await expect(page.getByText('Search audit trail (2)', { exact: true })).toBeVisible();
+});
+
+test('cancels a search and a page load without losing results or advancing the page', async ({ page }) => {
+  const pages: number[] = [];
+  let holdPage = 1;
+  let deliver: (() => void) | undefined;
+  function releasePage() {
+    holdPage = 0;
+    deliver?.();
+    deliver = undefined;
+  }
+  await page.route('https://api.openalex.org/works?**', async route => {
+    const number = Number(new URL(route.request().url()).searchParams.get('page') ?? 1);
+    pages.push(number);
+    if (number === holdPage) await new Promise<void>(resolve => { deliver = resolve; });
+    await route.fulfill({ json: { meta: { count: 60 }, results: records((number - 1) * 20 + 1, 20) } }).catch(error => {
+      if (!route.request().failure()) throw error;
+    });
+  });
+  await page.goto('/#paper-search');
+  await page.getByRole('textbox', { name: 'Search literature' }).fill('student housing');
+  const search = page.getByRole('button', { name: 'Search papers', exact: true });
+  await search.click();
+  await expect.poll(() => deliver !== undefined).toBe(true);
+  await page.getByRole('button', { name: 'Cancel search', exact: true }).click();
+  await expect(page.getByText('Search canceled.', { exact: true })).toBeVisible();
+  releasePage();
+  await search.click();
+  const controls = page.getByRole('region', { name: 'Search result controls' });
+  const bottom = page.getByRole('navigation', { name: 'Result pagination' });
+  const next = bottom.getByRole('button', { name: 'Load next page', exact: true });
+  await expect(controls).toContainText('20 of 20 results shown');
+  holdPage = 2;
+  await next.click();
+  await expect.poll(() => deliver !== undefined).toBe(true);
+  await bottom.getByRole('button', { name: 'Cancel page load', exact: true }).click();
+  await expect(controls).toContainText('Page load canceled');
+  await expect(page.getByRole('heading', { name: 'Housing study 1', exact: true })).toBeVisible();
+  releasePage();
+  await next.click();
+  await expect(controls).toContainText('20 of 40 results shown');
+  await expect(page.getByRole('heading', { name: 'Housing study 21', exact: true })).toBeVisible();
+  expect(pages).toEqual([1, 1, 2, 2]);
 });
 
 test('continuation is usable after a previously exhausted allowance has reset', async ({ page }) => {
