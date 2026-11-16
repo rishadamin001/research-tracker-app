@@ -2,13 +2,17 @@ name: Publish Research Atlas to GitHub Pages
 run-name: Publish Research Atlas at ${{ github.sha }}
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
 permissions: {}
 concurrency:
   group: research-atlas-pages
   cancel-in-progress: false
 jobs:
   verify:
-    if: github.ref == 'refs/heads/main' && github.repository == 'rishadamin001/research-tracker-app'
+    if: >-
+      github.ref == 'refs/heads/main' && github.repository == 'rishadamin001/research-tracker-app' &&
+      (github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, 'Publish approved Research Atlas '))
     permissions:
       contents: read
     uses: ./.github/workflows/research-atlas.yml
@@ -16,7 +20,9 @@ jobs:
       upload_pages: true
 
   deploy:
-    if: github.ref == 'refs/heads/main' && github.repository == 'rishadamin001/research-tracker-app'
+    if: >-
+      github.ref == 'refs/heads/main' && github.repository == 'rishadamin001/research-tracker-app' &&
+      (github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, 'Publish approved Research Atlas '))
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 10
