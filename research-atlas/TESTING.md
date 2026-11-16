@@ -2,6 +2,14 @@
 
 ## Release checks
 
+## Version 0.10.2
+
+The [release checks](https://github.com/rishadamin001/research-tracker-app/actions/runs/43028264637) passed **95 unit tests and all 296 browser cases** across desktop Chromium, Pixel 7 emulation, Firefox and WebKit. The suite also passed type checking, lint, build and DOCX structure validation. The [GitHub Pages deployment](https://github.com/rishadamin001/research-tracker-app/actions/runs/43029782654) published commit `13da2d482e92199432ded947f7c413189b6c222c`.
+
+The [published-site check on 16 November 2026](docs/smoke/production-0102.json) opened all six lesson choices, exercised answer feedback, changed guidance modes and reloaded a saved question draft. A fresh browser profile imported a v3 backup and re-exported the same test project data, including its draft and notebook entry. Import assigned the copy a new ID and added “(imported)” to its title. The Learn page fit the emulated Pixel 7 viewport. The check captured no JavaScript page errors.
+
+The separate live provider workflow records upstream variability. An [earlier candidate](https://github.com/rishadamin001/research-tracker-app/actions/runs/43026579419) loaded 20 to 40 records from Europe PMC, Crossref and OpenAlex, and completed its mobile check. The [release candidate provider run](https://github.com/rishadamin001/research-tracker-app/actions/runs/43028264475) timed out on the first Europe PMC search, then on page two in its retry. The app suite exercised paging and recovery with controlled responses. The public acceptance check focused on the new lesson, draft, notebook and backup workflows.
+
 ## Version 0.9.0 — 9 November 2026 (Asia/Dhaka)
 
 The [complete release CI run](https://github.com/rishadamin001/research-tracker-app/actions/runs/42582944516) passed typecheck, lint, all **92 unit tests**, build, independent DOCX structure validation, live public-provider searches and **284/284 browser cases** across desktop Chromium, Pixel 7 emulation, Firefox and WebKit. Checked application revision: `4efb0ce256752a2d8d577af8ea4c0424c96962db`.

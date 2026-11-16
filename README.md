@@ -4,7 +4,7 @@
 
 A free, browser-local academic research workspace for students and early-career researchers. Research Atlas connects paper discovery, literature screening, study planning, writing, and publication checks in one guided workflow.
 
-**[Open Research Atlas](https://rishadamin001.github.io/research-tracker-app/)** · [App guide](research-atlas/README.md) · [0.9 readiness update](research-atlas/docs/READINESS-090.md) · [Report an issue](https://github.com/rishadamin001/research-tracker-app/issues)
+**[Open Research Atlas](https://rishadamin001.github.io/research-tracker-app/)** · [App guide](research-atlas/README.md) · [0.10 consolidated update](research-atlas/docs/CONSOLIDATED-010.md) · [Report an issue](https://github.com/rishadamin001/research-tracker-app/issues)
 
 ## What you can do
 
@@ -13,6 +13,7 @@ A free, browser-local academic research workspace for students and early-career 
 | **Paper search** | Choose OpenAlex, Europe PMC or Crossref; manually retrieve up to 100 records per search, retain provider/filter/page history and export logs. Sort by quartile, provider relevance, citations, date or available cost. Open Scholar, PubMed, ResearchGate or Semantic Scholar query links externally. |
 | **Literature & evidence** | Inspect, screen and record located findings in Evidence Desk, compare sources, review duplicate candidates and connect claims to writing. Exchange RIS/BibTeX references. |
 | **Research planner** | Develop an autosaved question draft and explicitly save revisions; choose a reversible research pathway, review conditional designs, build a data management plan, and plan deadlines, budgets, submissions and reviewer replies. |
+| **Researcher’s Notebook** | Record source-linked interpretations and next actions alongside located findings. Search and export notebook entries. |
 | **Writing Studio** | Draft sections with deliberate numbered citations and located evidence links; export Markdown, minimal DOCX or cited references. Review recorded-completeness prompts and export a Research Passport. |
 | **Journal Match** | Find related publications, inspect supporting articles and ISSNs, and retain journal suggestions with query provenance. Unknown fees stay explicit. |
 | **Conferences** | Distinguish curated events from external directories, save unverified personal leads, track dates and export calendar entries. |
@@ -23,10 +24,10 @@ A free, browser-local academic research workspace for students and early-career 
 
 1. [Open the live app](https://rishadamin001.github.io/research-tracker-app/).
 2. Explore real paper examples from your interests, use **Discover** to search papers, or create a project in **My Research**.
-3. Use **Library** for sources across projects, **Learn** for short lessons and the planner, and **Publish** for venues, conferences and submissions.
+3. Use **Library** for sources across projects, **Learn** for interactive practice and the planner, and **Publish** for venues, conferences and submissions.
 4. Export project backups regularly. Browser data does not automatically sync between devices. Use the [migration guide](research-atlas/docs/BACKUP-MIGRATION.md) when changing browser or website address.
 
-Navigation has six destinations: Home, My Research, Discover, Library, Learn and Publish. Returning Home shows the active question and actual pending work. Projects share Overview, Question, Literature, Study, Evidence, Write and Publish tabs. [Privacy & data](https://rishadamin001.github.io/research-tracker-app/#privacy), [Terms](https://rishadamin001.github.io/research-tracker-app/#terms) and [Support](https://rishadamin001.github.io/research-tracker-app/#support) are public.
+Navigation has six destinations: Home, My Research, Discover, Library, Learn and Publish. Returning Home shows the active question and actual pending work. Projects share Overview, Question, Literature, Study, Evidence, Notebook, Write and Publish tabs. [Privacy & data](https://rishadamin001.github.io/research-tracker-app/#privacy), [Terms](https://rishadamin001.github.io/research-tracker-app/#terms) and [Support](https://rishadamin001.github.io/research-tracker-app/#support) are public.
 
 The published app requires no paid subscription, payment card, or personal API key. Search requests go to external scholarly providers and are subject to their availability and limits. Project records stay in your browser.
 
@@ -68,7 +69,7 @@ package.json         Earlier tracker's workspace commands
 | Read this | For |
 | --- | --- |
 | [App overview](research-atlas/README.md) | Features, preferences, and everyday use |
-| [Readiness update](research-atlas/docs/READINESS-090.md) | Version 0.9 behavior, remaining validation and free-operation boundaries |
+| [Consolidated update](research-atlas/docs/CONSOLIDATED-010.md) | Version 0.10 changes and validation |
 | [Guidance and pathways](research-atlas/docs/GUIDANCE-WORKSPACE.md) | Task groups, mode changes and explicit question commits |
 | [Evidence Desk](research-atlas/docs/EVIDENCE-DESK.md) | Source work, completeness review and Research Passport |
 | [Writing Studio](research-atlas/docs/WRITING-STUDIO.md) | Section drafts, evidence links and local exports |
@@ -94,8 +95,8 @@ package.json         Earlier tracker's workspace commands
 - **Costs:** reading access and author publishing fees are separate. Missing prices remain unavailable rather than being treated as zero.
 - **Conference dates:** source links and check dates help you verify listings. Calendar exports are copies and do not automatically update.
 - **Library:** the unified Library currently derives its view from project references. A migrated canonical reference database and PDF attachments remain later work.
-- **Storage:** browser storage can be cleared. Version 0.9 reads envelopes 1, 2 and 3 and writes local workspace envelope 3; backup format remains 2, project schema 1 and IndexedDB version 1. Reload all older tabs after updating and avoid importing newer backups into older app versions, whose parsers may omit new fields. Keep downloaded backups. Standalone search history is local and exported separately; Research Passport is not a restore backup.
-- **Coverage:** each provider is bounded to five manually requested pages and does not prove exhaustive coverage. Methods suggestions and completeness prompts do not certify scientific quality. The [0.9 readiness update](research-atlas/docs/READINESS-090.md) records remaining human, device and content review. Completed release checks belong in [Testing](research-atlas/TESTING.md).
+- **Storage:** browser storage can be cleared. Version 0.10 reads local workspace envelopes 1 through 4 and writes envelope 4. Backups export as version 3 and can import versions 1 and 2. Reload all older tabs after updating and avoid importing newer backups into older app versions, whose parsers may omit new fields. Keep downloaded backups. Standalone search history is local and exported separately; Research Passport is not a restore backup.
+- **Coverage:** each provider is bounded to five manually requested pages and does not prove exhaustive coverage. Methods suggestions and completeness prompts do not certify scientific quality. The [0.10 consolidated update](research-atlas/docs/CONSOLIDATED-010.md) records remaining human, device and content review. Completed release checks belong in [Testing](research-atlas/TESTING.md).
 
 ## Development checks
 

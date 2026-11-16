@@ -1,0 +1,13 @@
+{
+  "url": "https://rishadamin001.github.io/research-tracker-app/",
+  "release": "13da2d482e92199432ded947f7c413189b6c222c",
+  "checkedAt": "2026-11-16T10:35:07.078Z",
+  "checks": [
+    "Published version and six lessons with feedback",
+    "Question draft persisted through guidance changes and reload",
+    "Notebook and draft included in portable backup",
+    "Backup restored in a fresh browser context with all project data preserved",
+    "Learn fits Pixel 7 emulation"
+  ],
+  "pageErrors": []
+}
