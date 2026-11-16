@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const [html, headers] = await Promise.all([
+const [html, headers, manifest] = await Promise.all([
   readFile(new URL('../out/index.html', import.meta.url), 'utf8'),
   readFile(new URL('../out/_headers', import.meta.url), 'utf8'),
+  readFile(new URL('../package.json', import.meta.url), 'utf8').then(JSON.parse),
 ]);
 const policy = html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)">/);
 assert.ok(policy, 'The production HTML must carry its Content Security Policy');
@@ -22,9 +23,12 @@ for (const source of ["'self'", 'https://api.openalex.org', 'https://api.crossre
   assert.ok(directives.get('connect-src')?.includes(source), `Expected connection source ${source}`);
 }
 assert.match(html, /<meta name="referrer" content="strict-origin-when-cross-origin">/);
+const marker = name => html.match(new RegExp(`<meta name="atlas-build-${name}" content="([^"]+)">`))?.[1];
+assert.equal(marker('version'), manifest.version);
+assert.equal(marker('commit'), process.env.GITHUB_SHA || undefined);
 assert.equal(headers.split(/\r?\n/).find(line => line.startsWith('  Content-Security-Policy: ')),
   `  Content-Security-Policy: ${csp}; frame-ancestors 'none'`);
 for (const header of ['X-Content-Type-Options: nosniff', 'Referrer-Policy: strict-origin-when-cross-origin', 'X-Frame-Options: DENY']) {
   assert.ok(headers.includes(`  ${header}\n`));
 }
-console.log('Production HTML policy and static host headers verified.');
+console.log('Production HTML policy, static host headers and build identity verified.');

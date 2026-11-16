@@ -6,7 +6,7 @@ The default release is a static Vite site for the public GitHub repository. Its 
 2. From **Actions**, run **Publish Research Atlas to GitHub Pages** on `main`.
 3. Open the URL printed by the deployment job. Create a test project, enter a question, reload, and check persistence. Run a short scholarly search and verify a DOI.
 
-Project data belongs to its browser origin. Use **My projects → Download backup** on the source app, then **Import backup** at the destination. Backup v2 records source origin, app/version details, counts and an integrity checksum; legacy v1 backups remain supported. Imports add new copies. Follow the [migration guide](docs/BACKUP-MIGRATION.md).
+Project data belongs to its browser origin. Use **My projects → Download backup** on the source app, then **Import backup** at the destination. Atlas exports portable v3 backups and reads v1, v2 and v3. Current exports include origin, version, counts and an integrity checksum. Imports add new copies. Follow the [migration guide](docs/BACKUP-MIGRATION.md).
 
 For a local production preview, run `npm ci`, `npm run build`, and `npm run preview`. The default preview address is http://127.0.0.1:4173.
 
@@ -16,7 +16,7 @@ The default Pages build uses direct public OpenAlex, Europe PMC and Crossref req
 
 Production builds include a CSP and referrer policy in `index.html`, and generate `out/_headers` for static hosts that support that file. Verify the actual HTTP response after activating a compatible host. GitHub Pages currently supplies HSTS for the public app. HTTP frame restrictions, `nosniff` and Permissions Policy require host support. The release remains a manual workflow and must verify the revision used to produce the deployed artifact. [Security assessment](docs/SECURITY-ASSESSMENT-0103.md)
 
-After publishing, run `node scripts/smoke.mjs <published-url> <commit-sha>` from `research-atlas`. To verify a local production preview, run `node scripts/smoke.mjs` with the preview running. The two reports are written separately under `docs/smoke/`.
+After publishing, run `node scripts/smoke.mjs <published-url> <deployed-commit-sha>` from `research-atlas`. The browser reads the published build version and commit from HTML and rejects a mismatch. When no expected commit is supplied, older builds can report an unknown revision. To verify a local production preview, run `node scripts/smoke.mjs` with the preview running. Reports are written separately under `docs/smoke/`.
 
 ## Migration and release limits
 

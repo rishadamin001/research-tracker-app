@@ -2,9 +2,12 @@ import { fileURLToPath, URL } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import { productionPolicy } from './scripts/production-policy';
+import { version } from './package.json';
 
 function securityPolicyPlugin(gateway: string | undefined): Plugin {
   const policy = productionPolicy(gateway);
+  const commit = process.env.GITHUB_SHA;
+  if (commit && !/^[0-9a-f]{40}$/.test(commit)) throw new Error('GITHUB_SHA must be a full Git commit SHA.');
   return {
     name: 'atlas-production-policy',
     transformIndexHtml: {
@@ -12,6 +15,8 @@ function securityPolicyPlugin(gateway: string | undefined): Plugin {
       handler: () => [
         { tag: 'meta', attrs: { 'http-equiv': 'Content-Security-Policy', content: policy.csp }, injectTo: 'head-prepend' },
         { tag: 'meta', attrs: { name: 'referrer', content: policy.referrerPolicy }, injectTo: 'head-prepend' },
+        { tag: 'meta', attrs: { name: 'atlas-build-version', content: version }, injectTo: 'head-prepend' },
+        ...(commit ? [{ tag: 'meta', attrs: { name: 'atlas-build-commit', content: commit }, injectTo: 'head-prepend' as const }] : []),
       ],
     },
     generateBundle() {

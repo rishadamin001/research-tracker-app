@@ -51,6 +51,8 @@ jobs:
       - run: npx playwright install --with-deps chromium firefox webkit
       - name: Check the production policy in a browser
         run: node scripts/check-production-browser.mjs
+      - name: Verify served release identity and project recovery
+        run: node scripts/smoke.mjs http://127.0.0.1:4173/ "$GITHUB_SHA" --serve
       - run: npm run test:e2e -- --max-failures=8 --reporter=line
         env:
           ATLAS_FIREFOX: '1'
@@ -63,6 +65,7 @@ jobs:
             research-atlas/test-results/
             research-atlas/docs/smoke/
             research-atlas/docx-verification.docx
+            atlas-local-*.png
       - name: Upload checked build for GitHub Pages
         if: >-
           inputs.upload_pages && github.event_name == 'workflow_dispatch' &&
