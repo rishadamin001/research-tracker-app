@@ -105,6 +105,19 @@ function PaperPublished({ paper }: { paper: Paper }) {
     : paper.year ?? 'Year unknown';
 }
 
+function newSearchPapers(papers: Paper[], previouslySeen?: ReadonlySet<string>) {
+  const seen = new Set(previouslySeen);
+  const newPapers = papers.filter(paper => {
+    const id = `id:${paper.id}`;
+    const doi = paper.doi ? `doi:${paper.doi.toLowerCase()}` : null;
+    const duplicate = seen.has(id) || (doi !== null && seen.has(doi));
+    seen.add(id);
+    if (doi) seen.add(doi);
+    return !duplicate;
+  });
+  return { papers: newPapers, seen };
+}
+
 function Discover({ project, update, notify, initialQuery, initialRun, openProjects, onNote }: Omit<PaperSearchProps, 'openProjects'> & { openProjects?: PaperSearchProps['openProjects'] }) {
   const [query, setQuery] = useState(initialRun?.userQuery ?? initialQuery ?? (openProjects ? '' : project?.searches.at(-1)?.query ?? ''));
   const [provider, setProvider] = useState<SearchProvider>(initialRun?.provider ?? 'OpenAlex');
@@ -112,24 +125,31 @@ function Discover({ project, update, notify, initialQuery, initialRun, openProje
   const [openAccess, setOpenAccess] = useState(searchOpenAccess(initialRun));
   const [documentType, setDocumentType] = useState<SearchOptions['documentType']>(searchOptionsFromRun(initialRun).documentType);
   const [sourceType, setSourceType] = useState<SearchOptions['sourceType']>(searchOptionsFromRun(initialRun).sourceType);
-  const [results, setResults] = useState<{ run: SearchRun; papers: Paper[] } | null>(null);
+  const [results, setResults] = useState<{ run: SearchRun; papers: Paper[]; seen: ReadonlySet<string> } | null>(null);
   const [failedRun, setFailedRun] = useState<SearchRun>();
   const [localSearches, setLocalSearches] = useState(readLocalSearches);
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
-  const [latestPageIds, setLatestPageIds] = useState<Set<string>>(new Set());
+  const [latestPageIds, setLatestPageIds] = useState<Set<string> | null>(null);
   const [latestOnly, setLatestOnly] = useState(false);
   const [pageNotice, setPageNotice] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [requestKind, setRequestKind] = useState<'search' | 'page' | null>(null);
+  const busy = requestKind !== null;
   const [error, setError] = useState('');
   const [order, setOrder] = usePaperOrder('original');
   const [hideSaved, setHideSaved] = useState(false);
   const request = useRef<AbortController | null>(null);
   const searchInput = useRef<HTMLInputElement | null>(null);
+  const firstResult = useRef<HTMLHeadingElement | null>(null);
+  const resultNotice = useRef<HTMLParagraphElement | null>(null);
 
   useEffect(() => () => {
     request.current?.abort();
     request.current = null;
   }, []);
+
+  useEffect(() => {
+    if (latestPageIds) (firstResult.current ?? resultNotice.current)?.focus();
+  }, [latestPageIds]);
 
   function recordRun(run: SearchRun) {
     const searches = project?.searches ?? localSearches;
@@ -151,10 +171,10 @@ function Discover({ project, update, notify, initialQuery, initialRun, openProje
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
-    setBusy(true);
+    setRequestKind('search');
     setError('');
     setFailedRun(undefined);
-    setPageNotice(''); setLatestPageIds(new Set()); setLatestOnly(false);
+    setPageNotice('');
 
 
     try {
@@ -162,8 +182,12 @@ function Discover({ project, update, notify, initialQuery, initialRun, openProje
       if (request.current !== controller || controller.signal.aborted) return;
 
       const earlier = [...(project?.searches ?? localSearches)].reverse().find(item => !item.run?.error && item.run?.provider === run.provider && item.run?.executedQuery === run.executedQuery && item.run?.filters.join(',') === run.filters.join(',') && item.run.resultIds);
-      setNewIds(earlier?.run?.resultIds ? new Set(papers.filter(paper => !earlier.run!.resultIds!.includes(paper.id)).map(paper => paper.id)) : new Set());
-      setResults({ run, papers });
+      const unique = newSearchPapers(papers);
+      const earlierIds = earlier?.run?.resultIds;
+      setNewIds(new Set(earlierIds ? unique.papers.filter(paper => !earlierIds.includes(paper.id)).map(paper => paper.id) : []));
+      setLatestPageIds(null);
+      setLatestOnly(false);
+      setResults({ run, ...unique });
       recordRun(run);
     } catch (failure) {
       if (request.current !== controller || controller.signal.aborted) return;
@@ -179,7 +203,7 @@ function Discover({ project, update, notify, initialQuery, initialRun, openProje
     } finally {
       if (request.current === controller) {
         request.current = null;
-        setBusy(false);
+        setRequestKind(null);
       }
     }
   }
@@ -188,17 +212,17 @@ function Discover({ project, update, notify, initialQuery, initialRun, openProje
     if (!results || busy || request.current || !results.run.nextPage) return;
     const controller = new AbortController();
     request.current = controller;
-    setBusy(true); setError(''); setFailedRun(undefined);
+    setRequestKind('page'); setError(''); setFailedRun(undefined);
     setPageNotice(`Loading page ${results.run.nextPage}. Your ${results.papers.length} existing papers remain available.`);
     try {
       const next = await continuePublicationSearch(results.run, controller.signal);
       if (request.current !== controller || controller.signal.aborted) return;
-      const unique = new Map([...results.papers, ...next.papers].map(paper => [paper.id, paper]));
-      const existing = new Set(results.papers.map(paper => paper.id));
-      const added = new Set(next.papers.filter(paper => !existing.has(paper.id)).map(paper => paper.id));
-      setLatestPageIds(added); setLatestOnly(false);
-      setPageNotice(added.size ? `Page ${results.run.nextPage} loaded: ${added.size} new records added. ${unique.size} distinct provider records are now available. Sorting can keep earlier papers near the top.` : `Page ${results.run.nextPage} returned ${next.papers.length} records and no new provider records. Earlier results are preserved.${next.run.stopReason === 'provider-end' ? ` ${next.run.provider} has reached the end of this result set.` : ' You can request the next page or refine the search.'}`);
-      setResults({ run: next.run, papers: [...unique.values()] });
+      const added = newSearchPapers(next.papers, results.seen);
+      const papers = [...results.papers, ...added.papers];
+      setLatestPageIds(new Set(added.papers.map(paper => paper.id)));
+      setLatestOnly(true);
+      setPageNotice(added.papers.length ? `Page ${results.run.nextPage} loaded: ${added.papers.length} new records added. ${papers.length} distinct provider records are now available.` : `Page ${results.run.nextPage} returned ${next.papers.length} records and no new provider records. Earlier results are preserved.${next.run.nextPage ? ' You can request the next page or refine the search.' : ''}`);
+      setResults({ run: next.run, papers, seen: added.seen });
       recordRun(next.run);
     } catch (failure) {
       if (request.current !== controller || controller.signal.aborted) return;
@@ -206,7 +230,7 @@ function Discover({ project, update, notify, initialQuery, initialRun, openProje
       setError(failure instanceof Error ? failure.message : 'Could not load this page. Earlier results are still available.');
       if (failure instanceof PaperSearchError && failure.run) { setFailedRun(failure.run); setResults({ ...results, run: failure.run }); recordRun(failure.run); }
     } finally {
-      if (request.current === controller) { request.current = null; setBusy(false); }
+      if (request.current === controller) { request.current = null; setRequestKind(null); }
     }
   }
 
@@ -220,7 +244,13 @@ function Discover({ project, update, notify, initialQuery, initialRun, openProje
   const savedDois = new Set(savedPapers.flatMap(paper => paper.doi ? [paper.doi.toLowerCase()] : []));
   const libraryFull = savedPapers.length >= 2000;
   const isSaved = (paper: Paper) => savedPapersById.has(paper.id) || (paper.doi !== null && savedDois.has(paper.doi.toLowerCase()));
-  const visible = results ? orderPapers(results.papers.filter(paper => (!hideSaved || !isSaved(paper)) && (!latestOnly || latestPageIds.has(paper.id))), order) : [];
+  const papersInView = results?.papers.filter(paper => !latestOnly || latestPageIds?.has(paper.id)) ?? [];
+  const visible = orderPapers(papersInView.filter(paper => !hideSaved || !isSaved(paper)), order);
+  const nextPageButton = results?.run.nextPage && results.run.stopReason !== 'user-stopped' ? (
+    <button type="button" className="button secondary" disabled={busy} onClick={() => void loadNext()}>
+      {requestKind === 'page' ? 'Loading next page…' : 'Load next page'}
+    </button>
+  ) : null;
   const retryRun = failedRun ?? (results?.run.error ? results.run : undefined);
   const canRetryPage = Boolean(retryRun && results && retryRun.id === results.run.id && results.papers.length && retryRun.nextPage);
   function retryFailedSearch() {
@@ -245,7 +275,7 @@ function Discover({ project, update, notify, initialQuery, initialRun, openProje
           <External href={openAlexSearch.docsUrl}>OpenAlex advanced search guidance</External>
         </details>
         <form role="search" aria-label="Search for research papers" onSubmit={event => { event.preventDefault(); void search(query); }}>
-          <label className="field"><span>Search source</span><select aria-label="Search source" value={provider} disabled={busy} onChange={event => { const source = event.target.value as SearchProvider; setProvider(source); if (source === 'Crossref') setOpenAccess(false); setDocumentType(undefined); setSourceType(undefined); setResults(null); setFailedRun(undefined); setError(''); setPageNotice(''); setLatestPageIds(new Set()); setLatestOnly(false); }}>{Object.entries(searchProviders).map(([source, value]) => <option key={source} value={source}>{value.label}</option>)}</select></label>
+          <label className="field"><span>Search source</span><select aria-label="Search source" value={provider} disabled={busy} onChange={event => { const source = event.target.value as SearchProvider; setProvider(source); if (source === 'Crossref') setOpenAccess(false); setDocumentType(undefined); setSourceType(undefined); setResults(null); setFailedRun(undefined); setError(''); setPageNotice(''); setLatestPageIds(null); setLatestOnly(false); }}>{Object.entries(searchProviders).map(([source, value]) => <option key={source} value={source}>{value.label}</option>)}</select></label>
           <p className="muted">{searchProviders[provider].description}</p>
           <div className="search-row">
             <Search size={21} aria-hidden="true" />
@@ -286,11 +316,11 @@ function Discover({ project, update, notify, initialQuery, initialRun, openProje
           <p role="status">{visible.length} of {results.papers.length} results shown for “{results.run.userQuery}”{project && ` · ${savedPapers.length} in your library`}</p>
           <p>{results.run.provider}{results.run.resultCountReported !== undefined && ` reported ${results.run.resultCountReported.toLocaleString()} matches`}. Atlas has retrieved {results.papers.length} distinct provider records so far; this is not the full result set. Provider totals are not combined because indexes and duplicate records overlap.</p>
           <p className="muted">{results.run.pages.filter(page => page.returnedCount !== undefined).length} pages retrieved · checked {new Date(results.run.completedAt).toLocaleString()}. Ranking applies to retrieved records only.</p>
-          {pageNotice && <p className="info-bar" role="status">{pageNotice}</p>}
-          {latestPageIds.size > 0 && <button type="button" className="button secondary" aria-pressed={latestOnly} onClick={() => setLatestOnly(!latestOnly)}>{latestOnly ? 'Show all retrieved papers' : `View ${latestPageIds.size} newly loaded papers`}</button>}
+          {pageNotice && <p className="info-bar" role="status" ref={resultNotice} tabIndex={-1}>{pageNotice}</p>}
+          {latestPageIds && <button type="button" className="button secondary" onClick={() => setLatestOnly(!latestOnly)}>{latestOnly ? 'Show all retrieved papers' : latestPageIds.size ? `View ${latestPageIds.size} newly loaded papers` : 'View latest page'}</button>}
           {newIds.size > 0 && <p role="status">{newIds.size} newly discovered records compared with your previous search snapshot. These may include older publications.</p>}
           <div className="button-row">
-            {results.run.nextPage && results.run.stopReason !== 'user-stopped' && <button type="button" className="button secondary" disabled={busy} onClick={() => void loadNext()}>Load next page</button>}
+            {nextPageButton}
             {results.run.nextPage && <button type="button" className="text-button" disabled={busy} onClick={() => { const run = { ...results.run, stopReason: results.run.stopReason === 'user-stopped' ? undefined : 'user-stopped' as const }; setResults({ ...results, run }); recordRun(run); }}>{results.run.stopReason === 'user-stopped' ? 'Resume page loading' : 'Stop here'}</button>}
             <button type="button" className="text-button" disabled={busy} onClick={() => { const fromYear = searchYear(results.run), onlyOpen = searchOpenAccess(results.run), options = searchOptionsFromRun(results.run); setQuery(results.run.userQuery); setProvider(results.run.provider); setYear(fromYear); setOpenAccess(onlyOpen); setDocumentType(options.documentType); setSourceType(options.sourceType); void search(results.run.userQuery, fromYear, onlyOpen, results.run.provider, options); }}>Refresh this search</button>
           </div>
@@ -309,9 +339,9 @@ function Discover({ project, update, notify, initialQuery, initialRun, openProje
           {!project && openProjects && visible.length > 0 && <button type="button" className="text-button" onClick={openProjects}>Open My projects to save papers</button>}
         </section>
       )}
-      {results?.papers.length === 0 && <p className="panel">Try a broader phrase or a different source. An empty result set cannot establish a gap in the literature.</p>}
-      {results && results.papers.length > 0 && !visible.length && <p className="panel">All of these results are in your library. Turn off Hide saved papers to see them.</p>}
-      {visible.map(paper => {
+      {results?.papers.length === 0 && !latestOnly && <p className="panel">Try a broader phrase or a different source. An empty result set cannot establish a gap in the literature.</p>}
+      {hideSaved && papersInView.length > 0 && !visible.length && <p className="panel">All of these results are in your library. Turn off Hide saved papers to see them.</p>}
+      {visible.map((paper, index) => {
         const saved = isSaved(paper);
         const savedPaper = savedPapersById.get(paper.id);
         const canRefreshReferences = savedPaper && savedPaper.referenceIds === undefined && paper.referenceIds !== undefined;
@@ -323,12 +353,12 @@ function Discover({ project, update, notify, initialQuery, initialRun, openProje
           || savedPaper.journalFee?.usd !== paper.journalFee?.usd);
         return (
           <article className="panel paper" key={paper.id}>
-            {latestPageIds.has(paper.id) && <span className="tag">New in the latest loaded page</span>}
+            {latestPageIds?.has(paper.id) && <span className="tag">New in the latest loaded page</span>}
             <span className="tag">{paper.source} · <PaperPublished paper={paper} /></span>
             {newIds.has(paper.id) && <span className="tag">New to this search snapshot</span>}
             {paper.oa && <span className="oa-badge">Open-access link</span>}
             <PublicationIdentity title={paper.journal} publisher={paper.publisher} type={paper.venueType} />
-            <h3>{paper.title}</h3>
+            <h3 ref={index === 0 ? firstResult : undefined} tabIndex={index === 0 ? -1 : undefined}>{paper.title}</h3>
             <p>{paper.authors || 'Authors not supplied'}</p>
             <PaperImpact paper={paper} />
             {paper.doi && <p className="muted">DOI {paper.doi}</p>}
@@ -367,6 +397,7 @@ function Discover({ project, update, notify, initialQuery, initialRun, openProje
           </article>
         );
       })}
+      {nextPageButton && <nav className="panel button-row" aria-label="Result pagination">{nextPageButton}</nav>}
       <SearchLog searches={project?.searches ?? localSearches} reuseSearch={search => {
         setQuery(search.run?.userQuery ?? search.query);
         if (search.run) {

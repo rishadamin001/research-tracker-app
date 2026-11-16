@@ -1,3 +1,4 @@
+import './app/schema-policy';
 import { createRoot } from 'react-dom/client';
 import Atlas from './components/Atlas';
 import { initAppInstall } from './lib/appInstall';

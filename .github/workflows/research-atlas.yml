@@ -1,25 +1,43 @@
 name: Research Atlas checks
 on:
+  workflow_call:
+    inputs:
+      upload_pages:
+        description: Upload the checked build for an explicit Pages release.
+        type: boolean
+        default: false
   push:
-    paths: ['research-atlas/**', '.github/workflows/research-atlas.yml']
+    paths: ['research-atlas/**', '.github/workflows/research-atlas.yml', '.github/workflows/research-atlas-pages.yml']
   pull_request:
-    paths: ['research-atlas/**', '.github/workflows/research-atlas.yml']
+    branches: [main]
 permissions:
   contents: read
 jobs:
   verify:
+    name: Verify Research Atlas
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     defaults:
       run:
         working-directory: research-atlas
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: research-atlas/package-lock.json
-      - run: npm ci
+      - name: Confirm checked-out revision
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          test "$actual_sha" = "$GITHUB_SHA"
+          printf 'Checked source revision: `%s`\n' "$actual_sha" >> "$GITHUB_STEP_SUMMARY"
+      - name: Audit locked npm dependencies
+        run: npm audit --include=dev --audit-level=high
+      - run: npm ci --no-audit
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
@@ -28,13 +46,18 @@ jobs:
           node --import tsx scripts/check-docx.ts
           python3 scripts/check-docx.py
       - run: npm run build
+      - name: Verify production content policy
+        run: node scripts/check-production-policy.mjs
       - run: npx playwright install --with-deps chromium firefox webkit
+      - name: Check the production policy in a browser
+        run: node scripts/check-production-browser.mjs
+      - name: Verify served release identity and project recovery
+        run: node scripts/smoke.mjs http://127.0.0.1:4173/ "$GITHUB_SHA" --serve
       - run: npm run test:e2e -- --max-failures=8 --reporter=line
-        if: ${{ !cancelled() }}
         env:
           ATLAS_FIREFOX: '1'
           ATLAS_WEBKIT: '1'
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         if: always()
         with:
           name: atlas-verification
@@ -42,3 +65,13 @@ jobs:
             research-atlas/test-results/
             research-atlas/docs/smoke/
             research-atlas/docx-verification.docx
+            atlas-local-*.png
+      - name: Upload checked build for GitHub Pages
+        if: >-
+          inputs.upload_pages && github.ref == 'refs/heads/main' && github.repository == 'rishadamin001/research-tracker-app' &&
+          (github.event_name == 'workflow_dispatch' ||
+          (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'Publish approved Research Atlas ')))
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+        with:
+          path: research-atlas/out
+

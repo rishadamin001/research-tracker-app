@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { parseBackup, projectSchema, type Project } from './model';
 import type { Preferences } from './preferences';
 
-export const appVersion = '0.10.2';
+export const appVersion = '0.10.3';
 export const backupLimitBytes = 10_000_000;
 const preferencesSchema = z.object({
   theme: z.enum(['light', 'dark', 'system']), density: z.enum(['comfortable', 'compact']),
@@ -28,11 +28,14 @@ export type BackupManifest = {
 };
 export type ImportedBackup = { projects: Project[]; manifest: BackupManifest; preferences?: Preferences };
 
-function canonical(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
+function canonical(value: unknown, depth = 0): string {
+  // Existing records use shallow, fixed schemas. Bound the work for unknown
+  // fields in an imported envelope while still verifying its original bytes.
+  if (depth > 64) throw Error('This backup contains records nested too deeply. Your projects have not changed.');
+  if (Array.isArray(value)) return `[${value.map(item => canonical(item, depth + 1)).join(',')}]`;
   if (value !== null && typeof value === 'object') {
     const object = value as Record<string, unknown>;
-    return `{${Object.keys(object).filter(key => object[key] !== undefined).sort().map(key => `${JSON.stringify(key)}:${canonical(object[key])}`).join(',')}}`;
+    return `{${Object.keys(object).filter(key => object[key] !== undefined).sort().map(key => `${JSON.stringify(key)}:${canonical(object[key], depth + 1)}`).join(',')}}`;
   }
   return JSON.stringify(value);
 }
