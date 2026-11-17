@@ -1,6 +1,6 @@
 # Encrypted portable backups
 
-Design for Phase 2. The 0.10.2 app exports plaintext backups and keeps its active workspace in IndexedDB. This document specifies an encrypted export and recovery flow for a subsequent release.
+Implementation and verification contract for version 0.11.0. My projects offers a passphrase-protected export, preview for an encrypted import, and a read-only check of encrypted and plaintext backups. The working workspace and local snapshots remain in normal IndexedDB storage.
 
 ## Storage and compatibility
 
@@ -8,7 +8,7 @@ Design for Phase 2. The 0.10.2 app exports plaintext backups and keeps its activ
 
 The portable copy represents the project state in the current tab at the moment export starts. Finish or cancel any open notebook or evidence editor before exporting to include those changes. Committed questions, question drafts, screening decisions and events, evidence and locators, notebook entries, writing and citation links, and project search records travel in the file. Preserve recognized fields through the same v3 validator. Keep the raw recovery download for unreadable stored data distinct from the validated project backup.
 
-## Proposed file format
+## File format
 
 Use a binary `.atlas-backup` download with MIME `application/octet-stream`. Read the format bytes rather than trusting the extension or browser-supplied MIME. A compact binary header avoids base64 overhead and allows a cheap size and version check before cryptographic work. Verify the Android picker can select this extension before relying on it in the TWA.
 

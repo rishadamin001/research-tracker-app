@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowDownToLine, ArrowRight, BookOpen, CalendarDays, Check, ChevronRight, ClipboardCheck, Compass, FolderOpen, LibraryBig, Map, Menu, Plus, Search, Settings, X } from 'lucide-react';
 import { createProject, matrixCsv, protocolMarkdown, type Project, type Stage } from '@/lib/model';
-import { appVersion, createBackup, parseBackupFile, type BackupManifest } from '@/lib/backup';
+import { appVersion, backupLimitBytes, createBackup, parseBackupFile, type BackupManifest, type ImportedBackup } from '@/lib/backup';
 import { download, loadWorkspace, saveWorkspace, subscribeWorkspace, WorkspaceConflictError } from '@/lib/storage';
 import { disciplines } from '@/lib/content';
 import { nextTask, roadmap, taskStatus, updateProject, type TaskStatus } from '@/lib/workflow';
@@ -13,6 +13,7 @@ import { ExecutionWorkspace } from './ExecutionWorkspace';
 import { ResearchPlanner } from './ResearchPlanner';
 import { PlannerWorkbench } from './PlannerWorkbench';
 import { BackupStatus, PrivacyData, backupDateKey, lastBackupDate } from './PrivacyData';
+import { EncryptedBackupTools } from './EncryptedBackupTools';
 import { ConferencePlanner } from './ConferencePlanner';
 import { ContextGuide } from './ContextGuide';
 import { ReferenceExchange } from './ReferenceExchange';
@@ -107,6 +108,7 @@ export default function Atlas() {
   const loadFailed = useRef(false);
   const saveRevision = useRef(0);
   const importRevision = useRef(0);
+  useEffect(() => () => { ++importRevision.current; }, [view]);
   const diskRevision = useRef(0);
   const savedLocalRevision = useRef(0);
   const writeBlocked = useRef(false);
@@ -307,13 +309,31 @@ export default function Atlas() {
     go('discover', topic);
   }
 
+  function recordBackupDownload(createdAt: string) {
+    setBackupDate(createdAt);
+    try { localStorage.setItem(backupDateKey, createdAt); } catch { /* Backup still downloads. */ }
+  }
+
+  function clearBackupPreview() {
+    const revision = ++importRevision.current;
+    setImported(null);
+    setImportManifest(null);
+    return revision;
+  }
+
+  function acceptBackupPreview(backupFile: ImportedBackup, revision: number) {
+    if (revision !== importRevision.current) return false;
+    setImported(backupFile.projects);
+    setImportManifest(backupFile.manifest);
+    return true;
+  }
+
   async function backup() {
     if (!ready) return;
     try {
       const data = await createBackup(projects, { sourceOrigin: window.location.origin, preferences });
       download('research-atlas-backup.json', JSON.stringify(data, null, 2), 'application/json');
-      setBackupDate(data.createdAt);
-      try { localStorage.setItem(backupDateKey, data.createdAt); } catch { /* Backup still downloads. */ }
+      recordBackupDownload(data.createdAt);
     } catch (error) { setNotice(error instanceof Error ? error.message : 'Could not prepare this backup. Your projects remain in this tab.'); }
   }
 
@@ -324,8 +344,7 @@ export default function Atlas() {
     markDirty();
     setProjects(items => [...copies, ...items]);
     if (copies[0]) selectProject(copies[0].id);
-    setImported(null);
-    setImportManifest(null);
+    clearBackupPreview();
     setNotice(`${copies.length} project${copies.length === 1 ? '' : 's'} imported as new copies.`);
   }
 
@@ -480,23 +499,21 @@ export default function Atlas() {
             <div className="button-row"><button className="button" onClick={backup} disabled={!ready}><ArrowDownToLine size={17} />Download backup</button><label className="button secondary upload">Import backup<input type="file" disabled={!ready} accept=".json,application/json" onChange={async event => {
               const input = event.currentTarget;
               const file = input.files?.[0];
-              const revision = ++importRevision.current;
+              const revision = clearBackupPreview();
               input.value = '';
-              setImported(null);
               if (!file) return;
               try {
-                if (file.size > 10000000) throw Error('This backup exceeds the 10 MB import limit.');
+                if (file.size > backupLimitBytes) throw Error('This backup exceeds the 10 MB import limit.');
                 const backupFile = await parseBackupFile(await file.text());
-                if (revision !== importRevision.current) return;
-                setImported(backupFile.projects);
-                setImportManifest(backupFile.manifest);
+                acceptBackupPreview(backupFile, revision);
               } catch (error) { if (revision === importRevision.current) setNotice(error instanceof Error ? error.message : 'Could not read this backup.'); }
             }} /></label></div>
+            <EncryptedBackupTools projects={projects} preferences={preferences} ready={ready} onReadyToImport={acceptBackupPreview} onBackupStarted={recordBackupDownload} onClearImport={clearBackupPreview} />
             {imported && <div className="recommendation"><h3>Import preview: {imported.length} projects</h3><p>{imported.map(item => item.title).join(', ') || 'This backup contains no projects.'}</p>
               {importManifest && <><p>Backup v{importManifest.backupVersion} · app {importManifest.appVersion} · created {new Date(importManifest.createdAt).toLocaleString()} · source: {importManifest.sourceOrigin}</p>
                 <p>{importManifest.paperCount} references · {importManifest.screeningEventCount} screening events · {importManifest.evidenceClaimCount} evidence claims · {importManifest.notebookNoteCount} notebook notes. {importManifest.integrity === 'verified' ? 'Integrity checksum verified.' : 'Older backup: no checksum was recorded.'}</p>
                 <p>Your existing projects and display preferences stay in place. {importManifest.preferencesIncluded && 'Display preferences are present in the backup for reference.'} New project copies receive new identifiers.</p></>}
-              <div className="button-row"><button className="button" onClick={importBackup} disabled={!ready || !imported.length}>Import as new copies</button><button className="button secondary" onClick={() => { ++importRevision.current; setImported(null); setImportManifest(null); }}>Cancel</button></div></div>}
+              <div className="button-row"><button className="button" onClick={importBackup} disabled={!ready || !imported.length}>Import as new copies</button><button className="button secondary" onClick={clearBackupPreview}>Cancel</button></div></div>}
           </section>
           {project && <ReferenceExchange key={project.id} project={project} onImport={papers => update({ papers })} />}
           <div className="project-grid">{projects.map(item => <article key={item.id} className="panel journey-project"><h2>{item.title}</h2><p>{item.discipline} · {item.papers.length} saved references</p>

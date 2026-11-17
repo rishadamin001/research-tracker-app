@@ -371,10 +371,12 @@ function Discover({ project, update, notify, initialQuery, initialRun, openProje
           || savedPaper.journalFee?.usd !== paper.journalFee?.usd);
         return (
           <article className="panel paper" key={paper.id}>
-            {latestPageIds?.has(paper.id) && <span className="tag">New in the latest loaded page</span>}
-            <span className="tag">{paper.source} · <PaperPublished paper={paper} /></span>
-            {newIds.has(paper.id) && <span className="tag">New to this search snapshot</span>}
-            {paper.oa && <span className="oa-badge">Open-access link</span>}
+            <div className="paper-result-tags">
+              {latestPageIds?.has(paper.id) && <span className="tag">New in the latest loaded page</span>}
+              <span className="tag">{paper.source} · <PaperPublished paper={paper} /></span>
+              {newIds.has(paper.id) && <span className="tag">New to this search snapshot</span>}
+              {paper.oa && <span className="oa-badge">Open-access link</span>}
+            </div>
             <PublicationIdentity title={paper.journal} publisher={paper.publisher} type={paper.venueType} />
             <h3 ref={index === 0 ? firstResult : undefined} tabIndex={index === 0 ? -1 : undefined}>{paper.title}</h3>
             <p>{paper.authors || 'Authors not supplied'}</p>

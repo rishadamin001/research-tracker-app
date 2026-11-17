@@ -6,7 +6,7 @@ The default release is a static Vite site for the public GitHub repository. Its 
 2. From **Actions**, run **Publish Research Atlas to GitHub Pages** on `main`. To publish as part of an explicitly approved merge, use a merge commit title beginning with `Publish approved Research Atlas ` followed by the release version. Ordinary merges skip publishing.
 3. Open the URL printed by the deployment job. Create a test project, enter a question, reload, and check persistence. Run a short scholarly search and verify a DOI.
 
-Project data belongs to its browser origin. Use **My projects → Download backup** on the source app, then **Import backup** at the destination. Atlas exports portable v3 backups and reads v1, v2 and v3. Current exports include origin, version, counts and an integrity checksum. Imports add new copies. Follow the [migration guide](docs/BACKUP-MIGRATION.md).
+Project data belongs to its browser origin. Use **My projects → Download backup** on the source app, then **Import backup** at the destination. Atlas exports portable v3 backups and reads v1, v2 and v3. **Download encrypted backup** protects a v3 backup with a passphrase and uses the `.atlas-backup` extension. Use **Import encrypted backup** with the original passphrase on a compatible release. Current exports include origin, version, counts and an integrity checksum. Imports add new copies. Follow the [migration guide](docs/BACKUP-MIGRATION.md).
 
 For a local production preview, run `npm ci`, `npm run build`, and `npm run preview`. The default preview address is http://127.0.0.1:4173.
 
