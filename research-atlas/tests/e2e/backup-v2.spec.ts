@@ -9,7 +9,7 @@ test('portable backup from a different origin imports as copies and corrupt back
   const envelope = await createBackup([project], { sourceOrigin: 'https://rishadamin001.github.io' });
   await page.goto('/#projects');
   await page.getByRole('heading', { name: 'My projects', exact: true }).waitFor();
-  await page.locator('input[type=file]').setInputFiles({ name: 'portable.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(envelope)) });
+  await page.getByLabel('Import backup', { exact: true }).setInputFiles({ name: 'portable.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(envelope)) });
   await expect(page.getByText(/source: https:\/\/rishadamin001.github.io/)).toBeVisible();
   await expect(page.getByText(/Integrity checksum verified/)).toBeVisible();
   await page.getByRole('button', { name: 'Import as new copies' }).click();
@@ -17,7 +17,7 @@ test('portable backup from a different origin imports as copies and corrupt back
   await expect(page.getByText('Saved on this device', { exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Migrated source project (imported)', exact: true })).toBeVisible();
-  await page.locator('input[type=file]').setInputFiles({ name: 'corrupt.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(envelope).replace('Migrated source project', 'Tampered source project')) });
+  await page.getByLabel('Import backup', { exact: true }).setInputFiles({ name: 'corrupt.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(envelope).replace('Migrated source project', 'Tampered source project')) });
   await expect(page.getByRole('status').filter({ hasText: 'Backup integrity check failed' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Migrated source project (imported)', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Import as new copies' })).toHaveCount(0);

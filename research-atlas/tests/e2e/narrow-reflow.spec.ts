@@ -20,7 +20,7 @@ test('dark beginner, trust, and study-planning views reflow at 320 CSS pixels', 
   }
   const project = createProject('Reflow study planning');
   await page.goto('/#projects');
-  await page.locator('input[type=file]').setInputFiles({ name: 'reflow.json', mimeType: 'application/json',
+  await page.getByLabel('Import backup', { exact: true }).setInputFiles({ name: 'reflow.json', mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify({ schemaVersion: 1, exportedAt: new Date().toISOString(), projects: [project] })) });
   await page.getByRole('button', { name: 'Import as new copies' }).click();
   await expect(page.getByText('Saved on this device', { exact: true })).toBeAttached();
