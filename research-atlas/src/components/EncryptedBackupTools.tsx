@@ -3,6 +3,7 @@ import { backupLimitBytes, parseBackupFile, type BackupManifest, type ImportedBa
 import { createEncryptedBackup, encryptedBackupExtension, encryptedBackupLimitBytes, encryptedBackupMimeType, hasEncryptedBackupMarker, openEncryptedBackup, readEncryptedBackupFile } from '@/lib/encrypted-backup';
 import type { Project } from '@/lib/model';
 import type { Preferences } from '@/lib/preferences';
+import { recordBackupFileCheck } from './PrivacyData';
 
 type Props = {
   projects: Project[];
@@ -97,6 +98,11 @@ export function EncryptedBackupTools({ projects, preferences, ready, onReadyToIm
     setFeedback({ kind: 'status', text: 'Backup operation canceled.' });
   }
 
+  function reportVerifiedFile(manifest: BackupManifest, encrypted: boolean) {
+    recordBackupFileCheck();
+    setFeedback({ kind: 'checked', manifest, encrypted });
+  }
+
   async function readFile(event: ChangeEvent<HTMLInputElement>, action: FileAction) {
     const input = event.currentTarget;
     const file = input.files?.[0];
@@ -124,7 +130,7 @@ export function EncryptedBackupTools({ projects, preferences, ready, onReadyToIm
         const json = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
         const { manifest } = await parseBackupFile(json);
         signal.throwIfAborted();
-        setFeedback({ kind: 'checked', manifest, encrypted: false });
+        reportVerifiedFile(manifest, false);
       }
     } catch (error) {
       if (!signal.aborted) setFeedback({ kind: 'error', text: error instanceof TypeError ? 'This backup could not be read as a UTF-8 file.' : error instanceof Error ? error.message : 'This backup could not be read.' });
@@ -161,7 +167,7 @@ export function EncryptedBackupTools({ projects, preferences, ready, onReadyToIm
         signal.throwIfAborted();
         if (prompt.action === 'import') {
           if (!onReadyToImport(backup, prompt.revision)) setFeedback({ kind: 'status', text: 'A newer import is active. Choose this backup again to preview it.' });
-        } else setFeedback({ kind: 'checked', manifest: backup.manifest, encrypted: true });
+        } else reportVerifiedFile(backup.manifest, true);
       }
       closePrompt();
     } catch (error) {

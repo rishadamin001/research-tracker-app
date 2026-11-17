@@ -91,6 +91,43 @@ test('a native source link updates the selected detail without resetting source-
   await expect(page.getByRole('region', { name: 'Selected source', exact: true })).toContainText('Commuter evidence 3');
   await expect(page.getByLabel('Find in saved literature', { exact: true })).toHaveValue('Commuter evidence 1');
   await expect(sources.locator('.desk-source-list > li')).toHaveCount(1);
+  await expect(sources.getByText('Your open source is outside the current filters.', { exact: true })).toBeVisible();
+});
+
+test('source filters survive tab changes and a reload until cleared', async ({ page }) => {
+  await loadProject(page);
+  const sources = page.getByRole('complementary', { name: 'Source selection' });
+  const query = sources.getByLabel('Find in saved literature', { exact: true });
+  const decision = sources.getByRole('combobox', { name: 'Show sources', exact: true });
+  const list = sources.locator('.desk-source-list > li');
+  await query.fill('Commuter evidence 2');
+  await decision.selectOption('unreviewed');
+
+  await page.goto('/#extract?paper=source-0');
+  await expect(query).toHaveValue('Commuter evidence 2');
+  await expect(decision).toHaveValue('unreviewed');
+  await expect(list).toHaveCount(1);
+  await page.reload();
+  await expect(query).toHaveValue('Commuter evidence 2');
+  await expect(decision).toHaveValue('unreviewed');
+  await expect(list).toHaveCount(1);
+
+  await sources.getByRole('button', { name: 'Clear source filters', exact: true }).click();
+  await expect(query).toBeFocused();
+  await page.goto('/#screen?paper=source-0');
+  await expect(query).toHaveValue('');
+  await expect(decision).toHaveValue('all');
+  await expect(list).toHaveCount(2);
+});
+
+test('deleting a project removes its saved source filters', async ({ page }) => {
+  await loadProject(page);
+  await page.getByLabel('Find in saved literature', { exact: true }).fill('Commuter evidence 2');
+  await page.goto('/#projects');
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Delete project', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Traceable source journey (imported)', exact: true })).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem('research-atlas-evidence-filters-v1'))).toBeNull();
 });
 
 test('an unfinished evidence claim blocks navigation until it is saved or cancelled', async ({ page }) => {

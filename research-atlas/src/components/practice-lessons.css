@@ -20,6 +20,18 @@
   font-weight: 650;
 }
 
+.practice-examples {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.practice-examples h4,
+.practice-task h4 {
+  margin: 0;
+  color: var(--ink);
+}
+
 .practice-choices {
   display: grid;
   gap: 8px;

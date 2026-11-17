@@ -2,6 +2,14 @@
 
 ## Release checks
 
+### Version 0.11.1
+
+GitHub Pages published commit `1f4972b622174d49271045651a4c043ac11c5d61` after 116 unit tests and 328 browser cases passed. The separate live-provider run completed the first two pages of “Hypothyroidism” for Europe PMC, Crossref, and OpenAlex. [Pages release](https://github.com/rishadamin001/research-tracker-app/actions/runs/44089188842) · [Provider check](https://github.com/rishadamin001/research-tracker-app/actions/runs/44089188789)
+
+A fresh Brave desktop session opened the exact published commit and ran a live Europe PMC search for “Hypothyroidism”. The lower and upper **Load next page** buttons each replaced the visible list with 20 fresh results. **Show all retrieved papers** displayed all 60. A separate desktop and mobile-emulated check corrected a library reference, went offline, reopened the app and verified the APA 7, IEEE and Vancouver previews and a downloaded bibliography. The corrected title and the original numbered draft marker were retained.
+
+The automated beginner-to-writing flow used synthetic provider records. An observed human test is still needed. Ask first-time researchers to choose a topic, select a source, record one screening reason and located claim, insert a citation and find the export without being coached. Record where they stopped and ask them to explain the difference between a journal quartile and a useful source for their question. Use sample projects and keep participant data out of the workspace.
+
 ## Version 0.10.2
 
 The [release checks](https://github.com/rishadamin001/research-tracker-app/actions/runs/43028264637) passed **95 unit tests and all 296 browser cases** across desktop Chromium, Pixel 7 emulation, Firefox and WebKit. The suite also passed type checking, lint, build and DOCX structure validation. The [GitHub Pages deployment](https://github.com/rishadamin001/research-tracker-app/actions/runs/43029782654) published commit `13da2d482e92199432ded947f7c413189b6c222c`.

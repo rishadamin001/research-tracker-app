@@ -2,16 +2,22 @@ import { useEffect, useRef, useState } from 'react';
 import type { Project } from '@/lib/model';
 import { fetchJournalIdentity, journalSuggestions, prepareJournalQuery, suggestionCandidate, type JournalIdentity, type JournalSuggestion } from '@/lib/journal-match';
 import { runPublicationSearch } from '@/lib/search-publications';
+import type { SearchRun } from '@/lib/search-provenance';
 import { External } from './External';
 import { JournalFee, PublicationIdentity, QuartileBadge } from './RankingControls';
+import './journal-match.css';
+
+type MatchResult = { run: SearchRun; suggestions: JournalSuggestion[] };
 
 export function JournalMatch({ project, update, onProjects }: { project?: Project; update: (patch: Partial<Project>) => void; onProjects: () => void }) {
   const [draft, setDraft] = useState(project?.journalMatchDraft ?? { title: '', abstract: '', keywords: '', query: '' });
-  const [suggestions, setSuggestions] = useState<JournalSuggestion[]>([]);
+  const [result, setResult] = useState<MatchResult>();
   const [identities, setIdentities] = useState<Record<string, JournalIdentity>>({});
   const [busy, setBusy] = useState(false), [notice, setNotice] = useState('');
   const request = useRef<AbortController | null>(null);
   const identityRequests = useRef(new Map<string, AbortController>());
+  const suggestions = result?.suggestions ?? [];
+  const retrievedAt = result && (result.run.pages[0]?.retrievedAt ?? result.run.completedAt);
   useEffect(() => { const identities = identityRequests.current; return () => { request.current?.abort(); identities.forEach(controller => controller.abort()); }; }, []);
   function edit(patch: Partial<typeof draft>) { const next = { ...draft, ...patch }; setDraft(next); if (project) update({ journalMatchDraft: next }); }
   async function search() {
@@ -19,10 +25,11 @@ export function JournalMatch({ project, update, onProjects }: { project?: Projec
     identityRequests.current.forEach(request => request.abort()); identityRequests.current.clear();
     setBusy(true); setNotice('');
     try {
-      const result = await runPublicationSearch('OpenAlex', draft.query.trim(), '', false, controller.signal, { sourceType: 'journal' });
+      const { papers, run } = await runPublicationSearch('OpenAlex', draft.query.trim(), '', false, controller.signal, { sourceType: 'journal' });
       if (request.current !== controller) return;
-      setSuggestions(journalSuggestions(result.papers, result.run)); setIdentities({});
-      setNotice(`${result.papers.length} article records examined. Suggestions require a supplied ISSN or journal title and publisher; incomplete identities are omitted. This limited search does not cover all journals.`);
+      const matches = journalSuggestions(papers, run);
+      setResult({ run, suggestions: matches }); setIdentities({});
+      setNotice(`${papers.length} article records examined. ${matches.length ? '' : 'No candidate journals found for this search. '}Suggestions require a supplied ISSN or journal title and publisher. This search covers a sample of indexed records.`);
     } catch (error) { if (!controller.signal.aborted) setNotice(error instanceof Error ? error.message : 'Search unavailable. Try again.'); }
     finally { if (request.current === controller) { request.current = null; setBusy(false); } }
   }
@@ -49,12 +56,17 @@ export function JournalMatch({ project, update, onProjects }: { project?: Projec
       <button className="button" disabled={busy || draft.query.trim().length < 3} onClick={() => void search()}>{busy ? 'Finding related articles…' : 'Find candidate journals'}</button>
     </div>
     {notice && <p className="notice" role="status">{notice}</p>}
+    {result && retrievedAt && <section className="panel" aria-labelledby="journal-match-run-heading">
+      <h3 id="journal-match-run-heading">Last completed OpenAlex search</h3>
+      <p className="journal-match-query">Query sent · “{result.run.executedQuery}”</p>
+      <p>Applied filters · {result.run.filters.map(filter => filter === 'primary_location.source.type:journal' ? 'Primary journal source' : filter).join(', ') || 'None'}</p>
+      <p>Retrieved <time dateTime={retrievedAt}>{new Date(retrievedAt).toLocaleString()}</time></p>
+    </section>}
     {suggestions.length > 0 && <p>Ordered by the number and relevance positions of related articles in this search. Quartiles are a separate journal measure, not proof of fit. Showing up to six candidates.</p>}
     {suggestions.slice(0, 6).map(item => { const identity = identities[item.key]; return <article className="panel" key={item.key}>
       <PublicationIdentity title={item.title} publisher={identity?.publisher ?? item.publisher} type="journal" />
       <QuartileBadge value={item.papers[0].paper.journalQuartile} /><JournalFee fee={identity?.fee} />
       <p>{item.papers.length} related article{item.papers.length === 1 ? '' : 's'} · Matched by {item.identityBasis} · ISSN: {item.issns.join(', ') || 'not supplied'}</p>
-      <p className="muted">OpenAlex query: “{item.run.userQuery}” · Retrieved {new Date(item.run.completedAt).toLocaleString()}</p>
       <details><summary>Inspect supporting articles</summary><ol>{item.papers.map(({ paper, position }) => <li key={paper.id}><External href={paper.url}>{paper.title}</External> · {paper.year ?? 'Year unknown'} · Search position {position}</li>)}</ol></details>
       {item.issns.length > 0 && <button className="button secondary" onClick={() => void identify(item)}>Check journal identity & listed fees</button>}
       {identity && <p>OpenAlex identity checked {new Date(identity.checkedAt).toLocaleDateString()}. {identity.homepage && <External href={identity.homepage}>Journal website</External>} Provider-reported DOAJ listing: {identity.inDoaj == null ? 'unknown' : identity.inDoaj ? 'yes' : 'no'}. Verify current indexing independently.</p>}

@@ -50,8 +50,13 @@ function LessonExercise({ lesson, progress, onProgress, openSection, headingRef 
     <p>{lesson.takeaway}</p>
     <details className="planner-example">
       <summary>See a worked example</summary>
-      <p>{lesson.example.scenario}</p>
-      <p>{lesson.example.reasoning}</p>
+      <div className="practice-examples">
+        {lesson.examples.map(example => <div key={example.discipline}>
+          <h4>{example.discipline}</h4>
+          <p>{example.scenario}</p>
+          <p>{example.reasoning}</p>
+        </div>)}
+      </div>
     </details>
     <fieldset className="practice-choices">
       <legend ref={questionHeading} tabIndex={-1}>{lesson.question}</legend>
@@ -84,10 +89,14 @@ function LessonExercise({ lesson, progress, onProgress, openSection, headingRef 
       <small id={`${id}-reflection`}>{lesson.reflection}</small>
       <textarea value={progress.reflection} onChange={event => onProgress({ ...progress, reflection: event.target.value })} maxLength={1000} rows={3} aria-label="Your explanation (optional)" aria-describedby={`${id}-reflection`} />
     </label>
-    <p className="practice-task">{lesson.application.task}</p>
-    {openSection && <button className="button" type="button" onClick={() => openSection(lesson.application.target)}>
-      {lesson.application.label}<ArrowRight size={16} aria-hidden="true" />
-    </button>}
+    <section className="practice-task" aria-labelledby={`${id}-application`}>
+      <h4 id={`${id}-application`}>Practice in your project</h4>
+      <p>{lesson.application.task}</p>
+      <p><strong>Check your work</strong><br />{lesson.application.check}</p>
+      {openSection && <button className="button" type="button" onClick={() => openSection(lesson.application.target)}>
+        {lesson.application.label}<ArrowRight size={16} aria-hidden="true" />
+      </button>}
+    </section>
   </article>;
 }
 

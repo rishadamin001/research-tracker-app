@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createProject, paperSchema, projectSchema } from '../src/lib/model';
 import { createBackup, parseBackupFile } from '../src/lib/backup';
+import { exportReferences } from '../src/lib/reference-exchange';
 import { changeWritingBody, currentCitationPaper, currentWritingStudio, draftBibliography, linkWritingEvidence, manuscriptMarkdown, manuscriptReferencePapers, refreshWritingCitation, writingEvidenceState, writingReviewPrompts, writingSections, writingStudioSchema } from '../src/lib/writing-studio';
 import { manuscriptDocx } from '../src/lib/writing-docx';
 
@@ -33,6 +34,54 @@ test('located insertion retains legacy text and exports numbered bibliography pl
   const restored = await parseBackupFile(JSON.stringify(await createBackup([project])));
   assert.deepEqual(restored.projects[0].writingStudio, project.writingStudio);
   assert.equal(restored.projects[0].manuscript, project.manuscript);
+});
+
+test('cited journal type survives backup restore and the reference can export without its source', async () => {
+  let project = fixture();
+  project.papers[0] = { ...project.papers[0], source: 'OpenAlex', workType: 'article', venueType: 'journal' };
+  project = { ...project, ...linkWritingEvidence(project, 'introduction', 'paper-a', undefined, undefined, undefined, at).patch };
+  const restored = (await parseBackupFile(JSON.stringify(await createBackup([project])))).projects[0];
+  const snapshot = restored.writingStudio!.citations[0].sourceSnapshot;
+  assert.equal(snapshot.workType, 'article');
+  assert.equal(snapshot.venueType, 'journal');
+  const references = manuscriptReferencePapers({ ...restored, papers: [] });
+  assert.match(exportReferences(references, 'ris'), /^TY  - JOUR\r\n/);
+  assert.match(exportReferences(references, 'bibtex'), /^@article\{atlas-1,/);
+});
+
+test('older citations use the type from a unique source match while retaining their saved metadata', () => {
+  let project = fixture();
+  project = { ...project, ...linkWritingEvidence(project, 'introduction', 'paper-a', undefined, undefined, undefined, at).patch };
+  project.papers[0] = { ...project.papers[0], workType: 'article', venueType: 'journal' };
+  const legacy = projectSchema.parse(JSON.parse(JSON.stringify(project)));
+  const legacyCitation = legacy.writingStudio!.citations[0];
+  assert.equal(writingReviewPrompts(legacy).some(prompt => prompt.id === `${legacyCitation.id}-metadata-changed`), false);
+
+  legacy.papers[0] = { ...legacy.papers[0], title: 'Current library title' };
+  const [reference] = manuscriptReferencePapers(legacy);
+  assert.equal(reference.title, 'Commuter access');
+  assert.match(exportReferences([reference], 'ris'), /^TY  - JOUR\r\n/);
+  assert.equal(legacyCitation.sourceSnapshot.venueType, undefined);
+  assert.equal(writingReviewPrompts(legacy).some(prompt => prompt.id === `${legacyCitation.id}-metadata-changed`), true);
+
+  const duplicate = { ...legacy.papers[0], venueType: 'conference' };
+  legacy.papers.push(duplicate);
+  assert.match(exportReferences(manuscriptReferencePapers(legacy), 'ris'), /^TY  - GEN\r\n/);
+});
+
+test('partial citation types borrow missing fields only when the current source corroborates them', () => {
+  let project = fixture();
+  project.papers[0] = { ...project.papers[0], workType: 'article' };
+  project = { ...project, ...linkWritingEvidence(project, 'introduction', 'paper-a', undefined, undefined, undefined, at).patch };
+
+  project.papers[0] = { ...project.papers[0], venueType: 'journal' };
+  assert.equal(manuscriptReferencePapers(project)[0].venueType, 'journal');
+
+  project.papers[0] = { ...project.papers[0], workType: 'conference-paper', venueType: 'conference' };
+  const [reference] = manuscriptReferencePapers(project);
+  assert.equal(reference.workType, 'article');
+  assert.equal(reference.venueType, undefined);
+  assert.match(exportReferences([reference], 'ris'), /^TY  - JOUR\r\n/);
 });
 
 test('changed, removed and excluded evidence stays exportable and produces review prompts', () => {
