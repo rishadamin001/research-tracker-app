@@ -101,6 +101,7 @@ export default function Atlas() {
   const projectTitle = useRef<HTMLInputElement>(null);
   const closeDialog = useRef<HTMLButtonElement>(null);
   const submitProject = useRef<HTMLButtonElement>(null);
+  const onProjectCreated = useRef<((id: string) => void) | undefined>(undefined);
   const main = useRef<HTMLElement>(null);
   const saveQueue = useRef(Promise.resolve());
   const loadFailed = useRef(false);
@@ -246,6 +247,10 @@ export default function Atlas() {
   }
 
   function openNewProject() {
+    openNewProjectDialog();
+  }
+
+  function openNewProjectDialog(onCreated?: (id: string) => void) {
     if (evidenceEditingRef.current) { setNotice('Save or cancel your open edits before starting another project.'); return; }
     if (!ready) return;
     if (projects.length >= 100) { setNotice('Back up and remove an old project before adding another.'); return; }
@@ -253,6 +258,7 @@ export default function Atlas() {
     setNewDiscipline('');
     setNewGoal('');
     setNewExperience(view === 'primer' ? 'Beginner' : '');
+    onProjectCreated.current = onCreated;
     dialog.current?.showModal();
     projectTitle.current?.focus();
   }
@@ -272,8 +278,11 @@ export default function Atlas() {
     markDirty();
     setProjects(items => [item, ...items]);
     selectProject(item.id);
+    const onCreated = onProjectCreated.current;
+    onProjectCreated.current = undefined;
     dialog.current?.close();
-    if (view !== 'guide') go('profile');
+    if (onCreated) onCreated(item.id);
+    else if (view !== 'guide') go('profile');
   }
 
   function searchDiscipline(topic: string) {
@@ -388,7 +397,7 @@ export default function Atlas() {
           {discoverySection === 'notebook' ? <SearchNotebook project={project} onReuse={search => { setDiscoverySection('search'); go('paper-search', search.run?.userQuery ?? search.query, search.run); }} /> : ready ? <PaperSearch key={`${project?.id ?? 'standalone'}-${searchTopic ?? ''}-${reusedSearch?.id ?? ''}`} project={project} initialQuery={searchTopic} initialRun={reusedSearch} update={project ? update : undefined} notify={setNotice} onNote={openNote} openProjects={() => go('projects')} />
             : <p className="panel" role="status">Opening paper search…</p>}
         </>}
-        {view === 'library' && <AtlasLibrary projects={projects} activeProjectId={active} onChangeProjects={items => { markDirty(); setProjects(current => items.map(item => { const previous = current.find(p => p.id === item.id); return previous && previous !== item ? updateProject(previous, item) : item; })); }} onOpenProject={id => { selectProject(id); go('screen'); }} notify={setNotice} />}
+        {view === 'library' && <AtlasLibrary projects={projects} activeProjectId={active} ready={ready} onChangeProjects={items => { markDirty(); setProjects(current => items.map(item => { const previous = current.find(p => p.id === item.id); return previous && previous !== item ? updateProject(previous, item) : item; })); }} onOpenProject={id => { selectProject(id); go('screen'); }} onCreateProject={openNewProjectDialog} onFindPapers={() => setDiscoverySection('search')} notify={setNotice} />}
         {view === 'guide' && <ResearchPlanner
          
           onStart={() => go('primer')}

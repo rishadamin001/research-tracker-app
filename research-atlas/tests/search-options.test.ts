@@ -57,6 +57,7 @@ test('a browser-unreadable Crossref second page retains first-page IDs, unknown 
   await assert.rejects(continuePublicationSearch(first.run), error => {
     assert.ok(error instanceof PaperSearchError); assert.ok(error.run); failed = error.run;
     assert.equal(failed.pages[1].networkFailure, 'network-or-cors');
+    assert.equal(failed.pages[1].requestAttempts, 2);
     assert.equal(failed.pages[1].responseStatus, undefined);
     assert.equal(failed.pages[1].returnedCount, undefined);
     assert.equal(new URL(failed.pages[1].requestUrl!).searchParams.get('offset'), '20');

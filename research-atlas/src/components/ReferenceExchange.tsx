@@ -1,4 +1,4 @@
-import { useMemo, useState, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { Download, FileUp } from 'lucide-react';
 import type { Paper, Project } from '@/lib/model';
 import { exportReferences, parseReferenceFile, projectReferenceLimit, referenceFileLimit, reviewReferenceImport, type ReferenceFormat } from '@/lib/reference-exchange';
@@ -42,8 +42,10 @@ function TransferGuides({ seed }: { seed?: Paper }) {
   </details>;
 }
 
-export function ReferenceExchange({ project, onImport }: { project: Project; onImport: (papers: Paper[]) => void }) {
+export function ReferenceExchange({ project, onImport, importOnlyOpen }: { project: Project; onImport: (papers: Paper[]) => void; importOnlyOpen?: boolean }) {
   const [open, setOpen] = useState(false);
+  const importOpen = importOnlyOpen ?? open;
+  const importInput = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<Preview>();
   const [includeMatches, setIncludeMatches] = useState<Set<string>>(() => new Set());
   const [excludeNew, setExcludeNew] = useState<Set<string>>(() => new Set());
@@ -73,6 +75,10 @@ export function ReferenceExchange({ project, onImport }: { project: Project; onI
   const visibleExportPage = Math.min(exportPage, Math.max(0, exportPages - 1));
   const chosen = exportSelection === null ? project.papers : project.papers.filter(paper => exportSelection.has(paper.id));
   const seed = chosen.length === 1 ? chosen[0] : undefined;
+
+  useEffect(() => {
+    if (importOpen) importInput.current?.focus();
+  }, [importOpen]);
 
   function clearPreview() {
     setPreview(undefined);
@@ -114,8 +120,10 @@ export function ReferenceExchange({ project, onImport }: { project: Project; onI
     clearPreview();
   }
 
+  if (importOnlyOpen === false) return null;
   return <section className="panel reference-exchange" aria-label="Reference exchange">
-    <h2>Import and export references</h2>
+    <h2>{importOnlyOpen ? `Import references into ${project.title}` : 'Import and export references'}</h2>
+    {importOnlyOpen === undefined && <>
     <p>Move citation metadata between <strong>{project.title}</strong> and another research tool. Use a project backup to move notes, screening decisions and drafts.</p>
     <div className="button-row">
       <button type="button" className="button secondary" aria-expanded={open} onClick={() => setOpen(value => !value)}><FileUp size={16} aria-hidden="true" /> Import reference file</button>
@@ -147,9 +155,10 @@ export function ReferenceExchange({ project, onImport }: { project: Project; onI
       <button type="button" className="button secondary" disabled={!chosen.length} onClick={() => exportFile('bibtex')}><Download size={16} aria-hidden="true" /> Export BibTeX</button>
     </div>
     <TransferGuides seed={seed} />
-    {open && <div className="recommendation">
+    </>}
+    {importOpen && <div className="recommendation">
       <p>Choose a UTF-8 RIS or BibTeX file up to 1 MB. Atlas reads it on this device.</p>
-      <label className="field"><span>RIS or BibTeX file</span><input type="file" accept=".ris,.bib,.bibtex" disabled={reading} onChange={readFile} /></label>
+      <label className="field"><span>RIS or BibTeX file</span><input ref={importInput} type="file" accept=".ris,.bib,.bibtex" disabled={reading} onChange={readFile} /></label>
       {reading && <p role="status">Opening the reference file…</p>}
       {error && <p className="error" role="alert">{error}</p>}
       {preview && reviewed && <section aria-label="Reference import preview">

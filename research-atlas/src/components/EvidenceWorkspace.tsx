@@ -51,7 +51,7 @@ function SearchRunDetails({ run }: { run: SearchRun }) {
     <p>Executed query <code>{run.executedQuery}</code></p>
     <p>Provider filters {run.filters.length ? <code>{run.filters.join(', ')}</code> : 'None'}</p>
     <p>{run.provider} · {run.mode === 'gateway-first-page' ? 'Configured gateway' : 'Public API, no key required'} · {run.pageSize} records per page · {run.pagingMode === 'cursor' ? 'Provider cursor continuation' : 'Basic page continuation'}, bounded to {openAlexSearch.maxPages} pages</p>
-    {run.pages.map((page, index) => <div key={`${page.page}-${index}`}><p>Page {page.page} requested <time dateTime={page.requestedAt}>{new Date(page.requestedAt).toLocaleString()}</time>{page.returnedCount === undefined ? ' · no readable response' : ` · ${page.returnedCount} records returned`}{page.requestId && ` · Request ID ${page.requestId}`}{page.failure && ` · ${page.failure}`}</p>{page.requestUrl && <details><summary>Request diagnostics for page {page.page}, attempt {index + 1}</summary><p>HTTP status: {page.responseStatus ?? page.status ?? 'not exposed by the browser'}{page.networkFailure && ' · network or cross-origin access failure; Atlas cannot distinguish these from browser fetch alone.'}</p>{page.requestOrigin && <p>App origin: {page.requestOrigin}</p>}<External href={page.requestUrl}>Open recorded provider request</External></details>}</div>)}
+    {run.pages.map((page, index) => <div key={`${page.page}-${index}`}><p>Page {page.page} requested <time dateTime={page.requestedAt}>{new Date(page.requestedAt).toLocaleString()}</time>{page.returnedCount === undefined ? ' · no readable response' : ` · ${page.returnedCount} records returned`}{page.requestAttempts !== undefined && ` · ${page.requestAttempts} network requests`}{page.servedFromCache && ' · reused this run’s stored response'}{page.retrievedAt && <> · provider response <time dateTime={page.retrievedAt}>{new Date(page.retrievedAt).toLocaleString()}</time></>}{page.requestId && ` · Request ID ${page.requestId}`}{page.failure && ` · ${page.failure}`}</p>{page.requestUrl && <details><summary>Request diagnostics for page {page.page}, attempt {index + 1}</summary><p>HTTP status: {page.responseStatus ?? page.status ?? 'not exposed by the browser'}{page.networkFailure && ' · network or cross-origin access failure; Atlas cannot distinguish these from browser fetch alone.'}</p>{page.requestOrigin && <p>App origin: {page.requestOrigin}</p>}<External href={page.requestUrl}>Open recorded provider request</External></details>}</div>)}
     {run.stopReason && <p>Continuation state · {run.stopReason === 'provider-end' ? 'End of provider results reached at retrieval time' : run.stopReason === 'app-limit' ? '100-record app limit reached' : 'Stopped by you; you may resume'}</p>}
     <p>{run.error ? 'Ended' : 'Completed'} <time dateTime={run.completedAt}>{new Date(run.completedAt).toLocaleString()}</time>{run.resultCountReported !== undefined && ` · ${run.resultCountReported.toLocaleString()} matches reported by the provider`}</p>
     {run.error && <p>Outcome · {run.error.message}</p>}
@@ -151,6 +151,21 @@ function Discover({ project, update, notify, initialQuery, initialRun, openProje
     if (latestPageIds) (firstResult.current ?? resultNotice.current)?.focus();
   }, [latestPageIds]);
 
+  function cancelRequest() {
+    const controller = request.current;
+    if (!controller) return;
+    request.current = null;
+    controller.abort();
+    setRequestKind(null);
+    if (requestKind === 'page') {
+      setPageNotice('Page load canceled. You can request the same page again.');
+      resultNotice.current?.focus();
+    } else {
+      setPageNotice(results ? 'Search canceled. Your previous results are still available.' : 'Search canceled.');
+      searchInput.current?.focus();
+    }
+  }
+
   function recordRun(run: SearchRun) {
     const searches = project?.searches ?? localSearches;
     const item = { query: run.executedQuery, source: run.provider, date: run.completedAt, count: run.resultIds?.length ?? run.pages.reduce((sum, page) => sum + (page.returnedCount ?? 0), 0), filters: run.filters.join(' · '), run };
@@ -246,11 +261,12 @@ function Discover({ project, update, notify, initialQuery, initialRun, openProje
   const isSaved = (paper: Paper) => savedPapersById.has(paper.id) || (paper.doi !== null && savedDois.has(paper.doi.toLowerCase()));
   const papersInView = results?.papers.filter(paper => !latestOnly || latestPageIds?.has(paper.id)) ?? [];
   const visible = orderPapers(papersInView.filter(paper => !hideSaved || !isSaved(paper)), order);
-  const nextPageButton = results?.run.nextPage && results.run.stopReason !== 'user-stopped' ? (
+  const nextPageControls = results?.run.nextPage && results.run.stopReason !== 'user-stopped' ? <>
     <button type="button" className="button secondary" disabled={busy} onClick={() => void loadNext()}>
       {requestKind === 'page' ? 'Loading next page…' : 'Load next page'}
     </button>
-  ) : null;
+    {requestKind === 'page' && <button type="button" className="text-button" onClick={cancelRequest}>Cancel page load</button>}
+  </> : null;
   const retryRun = failedRun ?? (results?.run.error ? results.run : undefined);
   const canRetryPage = Boolean(retryRun && results && retryRun.id === results.run.id && results.papers.length && retryRun.nextPage);
   function retryFailedSearch() {
@@ -304,12 +320,14 @@ function Discover({ project, update, notify, initialQuery, initialRun, openProje
           </div>
           <details><summary>Refine document and source types</summary><div className="two-col"><label className="field"><span>Document type</span><select aria-label="Document type" value={documentType ?? ''} disabled={busy || provider === 'Crossref'} onChange={event => setDocumentType(event.target.value ? event.target.value as SearchOptions['documentType'] : undefined)}>{searchFilterChoices[provider].documents.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label className="field"><span>Source collection</span><select aria-label="Source collection" value={sourceType ?? ''} disabled={busy || provider === 'Crossref'} onChange={event => setSourceType(event.target.value ? event.target.value as SearchOptions['sourceType'] : undefined)}>{searchFilterChoices[provider].sources.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div><p className="muted">{searchFilterChoices[provider].note}</p></details>
         </form>
+        {requestKind === 'search' && <button type="button" className="text-button" onClick={cancelRequest}>Cancel search</button>}
+        {!results && pageNotice && <p role="status">{pageNotice}</p>}
         <p className="muted">The search sends your keywords and filters to {provider}. Leave out confidential project or participant details.{provider === 'Crossref' && ' Crossref does not provide a reliable reading-access filter here; check the publisher or choose another source for open copies.'}</p>
         <External href={searchWebsiteUrl(query)}>Search on Crossref</External>
         <details className="search-elsewhere"><summary>Search Google Scholar, PubMed, ResearchGate or Semantic Scholar</summary><p>Open this query on another website. These are direct search links, not imported results. Scholar and ResearchGate manage their own access and may ask you to sign in or complete a browser check. Import a downloaded RIS or BibTeX reference through Library to use it in your project.</p><div className="button-row">{scholarlySearchLinks(query).map(link => <External key={link.name} href={link.url}>{`Search ${link.name}`}</External>)}</div><a href="#library">Import references into your Library</a></details>
       </section>
 
-      {error && <section className="panel" aria-label="Search error"><p className="error" role="alert">{error}</p>{canRetryPage && <p>{results!.papers.length} earlier records are still available. This attempt did not add a page.</p>}<div className="button-row">{retryRun && <button type="button" className="button secondary" disabled={busy} onClick={retryFailedSearch}>{canRetryPage ? 'Retry this page' : 'Retry this search'}</button>}<External href={officialPublicationSearchUrl(retryRun?.provider ?? provider, retryRun?.userQuery ?? query)}>Open keywords on {retryRun?.provider ?? provider}</External></div><p className="muted">The official website may offer different filters. You can also choose another database above; Atlas will not switch providers or retry automatically.</p>{retryRun && <SearchRunDetails run={retryRun} />}</section>}
+      {error && <section className="panel" aria-label="Search error"><p className="error" role="alert">{error}</p>{canRetryPage && <p>{results!.papers.length} earlier records are still available. This attempt did not add a page.</p>}<div className="button-row">{retryRun && <button type="button" className="button secondary" disabled={busy} onClick={retryFailedSearch}>{canRetryPage ? 'Retry this page' : 'Retry this search'}</button>}<External href={officialPublicationSearchUrl(retryRun?.provider ?? provider, retryRun?.userQuery ?? query)}>Open keywords on {retryRun?.provider ?? provider}</External></div><p className="muted">The official website may offer different filters. You can also choose another database above. Atlas keeps your selected provider during a search.</p>{retryRun && <SearchRunDetails run={retryRun} />}</section>}
       {libraryFull && <p className="info-bar">Your project has reached its 2,000-source limit. You can still review and export the saved library.</p>}
       {results && (
         <section className="panel" aria-label="Search result controls">
@@ -320,7 +338,7 @@ function Discover({ project, update, notify, initialQuery, initialRun, openProje
           {latestPageIds && <button type="button" className="button secondary" onClick={() => setLatestOnly(!latestOnly)}>{latestOnly ? 'Show all retrieved papers' : latestPageIds.size ? `View ${latestPageIds.size} newly loaded papers` : 'View latest page'}</button>}
           {newIds.size > 0 && <p role="status">{newIds.size} newly discovered records compared with your previous search snapshot. These may include older publications.</p>}
           <div className="button-row">
-            {nextPageButton}
+            {nextPageControls}
             {results.run.nextPage && <button type="button" className="text-button" disabled={busy} onClick={() => { const run = { ...results.run, stopReason: results.run.stopReason === 'user-stopped' ? undefined : 'user-stopped' as const }; setResults({ ...results, run }); recordRun(run); }}>{results.run.stopReason === 'user-stopped' ? 'Resume page loading' : 'Stop here'}</button>}
             <button type="button" className="text-button" disabled={busy} onClick={() => { const fromYear = searchYear(results.run), onlyOpen = searchOpenAccess(results.run), options = searchOptionsFromRun(results.run); setQuery(results.run.userQuery); setProvider(results.run.provider); setYear(fromYear); setOpenAccess(onlyOpen); setDocumentType(options.documentType); setSourceType(options.sourceType); void search(results.run.userQuery, fromYear, onlyOpen, results.run.provider, options); }}>Refresh this search</button>
           </div>
@@ -397,7 +415,7 @@ function Discover({ project, update, notify, initialQuery, initialRun, openProje
           </article>
         );
       })}
-      {nextPageButton && <nav className="panel button-row" aria-label="Result pagination">{nextPageButton}</nav>}
+      {nextPageControls && <nav className="panel button-row" aria-label="Result pagination">{nextPageControls}</nav>}
       <SearchLog searches={project?.searches ?? localSearches} reuseSearch={search => {
         setQuery(search.run?.userQuery ?? search.query);
         if (search.run) {

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { parseBackup, projectSchema, type Project } from './model';
 import type { Preferences } from './preferences';
 
-export const appVersion = '0.10.3';
+export const appVersion = '0.10.4';
 export const backupLimitBytes = 10_000_000;
 const preferencesSchema = z.object({
   theme: z.enum(['light', 'dark', 'system']), density: z.enum(['comfortable', 'compact']),
@@ -30,7 +30,7 @@ export type ImportedBackup = { projects: Project[]; manifest: BackupManifest; pr
 
 function canonical(value: unknown, depth = 0): string {
   // Existing records use shallow, fixed schemas. Bound the work for unknown
-  // fields in an imported envelope while still verifying its original bytes.
+  // fields in an imported envelope while still checking its original values.
   if (depth > 64) throw Error('This backup contains records nested too deeply. Your projects have not changed.');
   if (Array.isArray(value)) return `[${value.map(item => canonical(item, depth + 1)).join(',')}]`;
   if (value !== null && typeof value === 'object') {

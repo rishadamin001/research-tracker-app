@@ -1,14 +1,14 @@
 import { z } from 'zod';
 import { normalizeDoi, safeUrl, type Paper } from './model';
 import { findJournalQuartile } from './quartiles';
-import { PaperSearchError, readSearchQuota, type SearchRun } from './search-provenance';
+import { PaperSearchError, type SearchRun } from './search-provenance';
 import { providerSearchFilterTokens, type SearchOptions } from './search-options';
+import { requestProviderPage } from './provider-search-request';
 
 export type AdditionalSearchProvider = 'Europe PMC' | 'Crossref';
 const pageSize = 20;
 const maxPages = 5;
 const docsDate = '2026-11-09';
-const backoff = new Map<AdditionalSearchProvider, string>();
 const optionalText = z.string().max(20000).nullish().catch(undefined);
 const optionalNumber = z.number().int().nonnegative().nullish().catch(undefined);
 const epmcRecord = z.object({
@@ -121,13 +121,6 @@ export async function runAdditionalSearch(provider: AdditionalSearchProvider, qu
   if (/\b(AND|OR|NOT)\b|[()*]/.test(query)) throw new PaperSearchError('Atlas searches keyword phrases here. Use the provider website for advanced search syntax.');
   if (year && (!/^\d{4}$/.test(year) || Number(year) < 1800 || Number(year) > new Date().getFullYear())) throw new PaperSearchError('Enter a valid starting year.');
   if (provider === 'Crossref' && oa) throw new PaperSearchError('Crossref does not provide a dependable open-access-only search here. Turn off that filter or choose OpenAlex or Europe PMC.');
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new PaperSearchError('Your project is available offline. Online literature search resumes when you reconnect.');
-  if (signal?.aborted) throw new PaperSearchError('Search cancelled.');
-  const waitUntil = [backoff.get(provider), previous?.quota?.retryAfterUntil]
-    .filter((value): value is string => Boolean(value) && Number.isFinite(Date.parse(value!)))
-    .sort((a, b) => Date.parse(a) - Date.parse(b)).at(-1);
-  if (waitUntil && Date.parse(waitUntil) > Date.now()) throw new PaperSearchError(`${provider} asks you to wait until ${new Date(waitUntil).toLocaleString()} before trying again. Earlier papers are preserved.`);
-  backoff.delete(provider);
   const filters = provider === 'Europe PMC'
     ? [...(year ? [`FIRST_PDATE:[${year}-01-01 TO 3000-12-31]`] : []), ...(oa ? ['OPEN_ACCESS:Y'] : [])]
     : ['type:journal-article', ...(year ? [`from-pub-date:${year}-01-01`] : [])];
@@ -152,47 +145,23 @@ export async function runAdditionalSearch(provider: AdditionalSearchProvider, qu
     nextCursor: previous?.nextCursor, pages: [...(previous?.pages ?? []), page], resultIds: previous?.resultIds,
     resultCountReported: previous?.resultCountReported, providerDocsDate: docsDate,
     parserVersion: provider === 'Europe PMC' ? 'atlas-europepmc-parser-1' : 'atlas-crossref-parser-1', providerSort: 'provider-default-relevance' };
-  const fail = (kind: NonNullable<SearchRun['error']>['kind'], message: string, status?: number): never => {
-    page.failure = message; page.status = status;
-    throw new PaperSearchError(message, { ...run, completedAt: new Date(Date.now()).toISOString(), error: { kind, message, status } });
-  };
-  const timeout = AbortSignal.timeout(15000);
-  const requestSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
-  try {
-    const response = await fetch(requestUrl, { signal: requestSignal, credentials: 'omit' });
-    page.responseStatus = response.status;
-    // These providers do not document OpenAlex-style daily credit headers.
-    // Crossref advertises a request-window limit; retain only its explicit retry time.
-    const retryHeaders = new Headers();
-    const retryAfter = response.headers.get('Retry-After');
-    if (retryAfter) retryHeaders.set('Retry-After', retryAfter);
-    run.quota = readSearchQuota(retryHeaders, Date.now(), response.status === 429);
-    const requestId = response.headers.get('X-Request-ID');
-    if (requestId && /^[\w:-]{1,160}$/.test(requestId)) page.requestId = requestId;
-    if (response.status === 429) {
-      const retryAt = run.quota?.retryAfterUntil;
-      if (retryAt && (!backoff.get(provider) || Date.parse(retryAt) > Date.parse(backoff.get(provider)!))) backoff.set(provider, retryAt);
-      return fail('rate-limit', `${provider} is temporarily at its free request limit.${retryAt ? ` Try again after ${new Date(retryAt).toLocaleString()}.` : ' Try again later.'} Earlier papers are preserved.`, 429);
-    }
-    if (!response.ok) return fail('http', `${provider} is unavailable (${response.status}). Earlier papers are preserved. Try again later or use its official website.`, response.status);
-    const raw: unknown = await response.json();
+  const parse = async (raw: unknown) => {
     const parsed: { papers: Paper[]; count: number; nextCursor?: string } = provider === 'Europe PMC' ? await parseEuropePmcResults(raw) : await parseCrossrefResults(raw);
-    requestSignal.throwIfAborted();
     const nextCursor = parsed.nextCursor;
     const reachedEnd = parsed.papers.length < pageSize || number * pageSize >= parsed.count;
-    if (provider === 'Europe PMC' && number < maxPages && !reachedEnd && (!nextCursor || nextCursor === (previous?.nextCursor ?? '*'))) return fail('invalid-response', 'Europe PMC did not provide a new continuation cursor. Earlier papers are preserved. Try a fresh search or its official website.');
-    page.returnedCount = parsed.papers.length;
-    const more = !reachedEnd && number < maxPages;
-    return { papers: parsed.papers, run: { ...run, completedAt: new Date(Date.now()).toISOString(), resultCountReported: parsed.count,
-      resultIds: [...new Set([...(previous?.resultIds ?? []), ...parsed.papers.map(paper => paper.id)])], nextPage: more ? number + 1 : undefined,
-      nextCursor: more && provider === 'Europe PMC' ? nextCursor : undefined,
-      stopReason: reachedEnd ? 'provider-end' : number >= maxPages ? 'app-limit' : undefined } };
-  } catch (failure) {
-    if (failure instanceof PaperSearchError) throw failure;
-    if (timeout.aborted) return fail('timeout', `${provider} search timed out. Earlier papers are preserved; retry when ready.`);
-    if (signal?.aborted) return fail('cancelled', 'Search cancelled. Earlier papers are preserved.');
-    if (typeof navigator !== 'undefined' && navigator.onLine === false) return fail('offline', 'Your project is available offline. Reconnect to continue this literature search.');
-    if (failure instanceof TypeError) { page.networkFailure = 'network-or-cors'; return fail('network', `Could not reach ${provider} or read its response. A network interruption or browser cross-origin restriction (CORS) may be responsible; the HTTP status is not exposed to Atlas. Retry or open the official source. Earlier papers are preserved.`); }
-    return fail('invalid-response', `${provider} returned records the app could not read. Earlier papers are preserved. Try again or use its official website.`);
-  }
+    if (provider === 'Europe PMC' && number < maxPages && !reachedEnd && (!nextCursor || run.pages.some(attempt => attempt.cursor === nextCursor))) {
+      const message = 'Europe PMC did not provide a new continuation cursor. Earlier papers are preserved. Try a fresh search or its official website.';
+      page.failure = message;
+      throw new PaperSearchError(message, { ...run, completedAt: new Date(Date.now()).toISOString(), error: { kind: 'invalid-response', message } });
+    }
+    return parsed;
+  };
+  const { papers, count, nextCursor } = await requestProviderPage(provider, requestUrl, parse, { signal, run, page, previousQuota: previous?.quota });
+  const reachedEnd = papers.length < pageSize || (count !== undefined && number * pageSize >= count);
+  page.returnedCount = papers.length;
+  const more = !reachedEnd && number < maxPages;
+  return { papers, run: { ...run, completedAt: new Date(Date.now()).toISOString(), resultCountReported: count,
+    resultIds: [...new Set([...(previous?.resultIds ?? []), ...papers.map(paper => paper.id)])], nextPage: more ? number + 1 : undefined,
+    nextCursor: more && provider === 'Europe PMC' ? nextCursor : undefined,
+    stopReason: reachedEnd ? 'provider-end' : number >= maxPages ? 'app-limit' : undefined } };
 }

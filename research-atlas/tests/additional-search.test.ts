@@ -105,6 +105,7 @@ test('a failed Europe PMC page preserves earlier IDs and retry cursor without co
     assert.equal(error.run?.nextCursor, 'next-page-cursor');
     assert.equal(error.run?.nextPage, 2);
     assert.equal(error.run?.pages[1].returnedCount, undefined);
+    assert.equal(error.run?.pages[1].requestAttempts, 2);
     assert.equal(error.run?.error?.kind, 'http');
     return true;
   });
@@ -113,7 +114,7 @@ test('a failed Europe PMC page preserves earlier IDs and retry cursor without co
   assert.equal(resumed.run.pages.filter(page => page.returnedCount !== undefined).length, 2);
   assert.equal(resumed.run.resultIds?.length, 40);
   assert.equal(resumed.run.error, undefined);
-  assert.equal(calls, 3);
+  assert.equal(calls, 4);
 });
 
 test('alternative provider rate limits honor Retry-After without automatic retries or paid fallback', async t => {
@@ -149,6 +150,25 @@ test('a missing continuation cursor is an explicit provider failure, not a false
     assert.equal(error.run?.error?.kind, 'invalid-response');
     return true;
   });
+});
+
+test('Europe PMC cannot continue a cursor cycle or present it as a successful page', async t => {
+  const cursors: string[] = [];
+  t.mock.method(globalThis, 'fetch', async (input: string) => {
+    const cursor = new URL(input).searchParams.get('cursorMark')!;
+    cursors.push(cursor);
+    return Response.json({ hitCount: 100, nextCursorMark: cursor === '*' ? 'second-page' : '*', resultList: { result: medicalRecords(cursor === '*' ? 1 : 21) } });
+  });
+  const first = await runAdditionalSearch('Europe PMC', 'Hypothyroidism', '', false);
+  await assert.rejects(runAdditionalSearch('Europe PMC', 'Hypothyroidism', '', false, undefined, first.run), error => {
+    assert.ok(error instanceof PaperSearchError);
+    assert.match(error.message, /continuation cursor/);
+    assert.equal(error.run?.nextCursor, 'second-page');
+    assert.equal(error.run?.resultIds?.length, 20);
+    assert.equal(error.run?.pages[1].returnedCount, undefined);
+    return true;
+  });
+  assert.deepEqual(cursors, ['*', 'second-page']);
 });
 
 test('malformed, cancelled and changed-provider searches remain explicit without corrupting saved identities', async t => {
