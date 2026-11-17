@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.1
+
+Home shows recent notebook notes. Library can correct bibliographic details in a chosen project and refresh linked Writing Studio references. Writing Studio previews and downloads APA 7, IEEE and Vancouver bibliographies using locally bundled CSL styles. Existing manuscript citation markers remain numbered. The styled bibliography is a standalone text export.
+
 ## 0.11.0
 
 My projects can download a passphrase-protected backup and verify an existing encrypted or JSON backup without importing it. Encrypted import uses the same additive project-copy preview as JSON. Supported plaintext backups remain readable, and working projects still use the existing browser database. Discover result badges wrap with spacing on narrow screens.

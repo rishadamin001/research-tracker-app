@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { collectLibrary, filterLibrary, libraryIdentity, linkLibraryEntry, parseLibraryTags, updateLibraryEntry } from '../src/lib/atlas-library';
+import { collectLibrary, correctLibraryMetadata, filterLibrary, libraryIdentity, linkLibraryEntry, parseLibraryTags, referenceMetadataFields, updateLibraryEntry } from '../src/lib/atlas-library';
 import { createProject, paperSchema, projectSchema } from '../src/lib/model';
+import { linkWritingEvidence } from '../src/lib/writing-studio';
 
 function source(id = 'https://openalex.org/W123', doi: string | null = '10.1234/test') {
   return paperSchema.parse({ id, doi, title: 'Housing evidence in urban universities', authors: 'Test Author', year: 2024, journal: 'Fixture journal', source: 'OpenAlex', url: 'https://example.org', oa: null });
@@ -68,4 +69,36 @@ test('unidentified references can be organized individually without false linkin
   assert.deepEqual(next[0].papers[0].tags, ['housing']); assert.equal(next[1].papers[0].readingStatus, undefined);
   assert.deepEqual(projectSchema.parse(next[0]).papers[0].tags, ['housing']);
   assert.throws(() => updateLibraryEntry(next, 'missing', { tags: [] }), /reference changed/);
+});
+
+test('metadata correction updates only the selected project and its linked citations', () => {
+  const a = createProject('First study'), b = createProject('Second study');
+  const at = '2026-11-17T00:00:00.000Z';
+  const original = { ...source(), decision: 'include' as const, notes: 'Local research note', publicationDate: '2024-02-15', issns: ['1111-2222'],
+    evidenceClaims: [{ id: crypto.randomUUID(), claimType: 'finding' as const, claimText: 'Library opening hours restricted access.',
+      evidenceLevel: 'full_text' as const, locator: 'Page 4', interpretation: '', uncertainty: '', reviewStatus: 'reviewed' as const,
+      createdAt: at, gapRole: 'supports' as const }] };
+  a.papers = [original];
+  b.papers = [source('other-copy')];
+  const project = { ...a, ...linkWritingEvidence(a, 'results', original.id, original.evidenceClaims[0].id).patch };
+  const [link] = collectLibrary([project, b])[0].links;
+  const draft = { ...referenceMetadataFields(original), title: 'Corrected study title', authors: 'Ada Example\nBruno Example', journal: 'Correct venue', year: '2025' };
+  const updated = correctLibraryMetadata([project, b], link, draft, true, at);
+  const next = updated[0];
+  assert.equal(updated[1], b);
+  assert.equal(next.papers[0].id, original.id);
+  assert.equal(next.papers[0].doi, original.doi);
+  assert.equal(next.papers[0].publicationDate, undefined);
+  assert.equal(next.papers[0].issns, undefined);
+  assert.equal(next.papers[0].decision, 'include');
+  assert.equal(next.papers[0].notes, original.notes);
+  assert.equal(next.papers[0].evidenceClaims, original.evidenceClaims);
+  assert.deepEqual(next.papers[0].referenceAuthors, ['Ada Example', 'Bruno Example']);
+  assert.deepEqual(next.writingStudio?.sections, project.writingStudio?.sections);
+  assert.deepEqual(next.writingStudio?.evidenceLinks, project.writingStudio?.evidenceLinks);
+  assert.equal(next.writingStudio?.citations[0].id, project.writingStudio?.citations[0].id);
+  assert.equal(next.writingStudio?.citations[0].sourceSnapshot.title, draft.title);
+  assert.equal(next.writingStudio?.citations[0].metadataRefreshedAt, at);
+  assert.equal(correctLibraryMetadata([project, b], link, draft, false)[0].writingStudio, project.writingStudio);
+  assert.throws(() => correctLibraryMetadata(updated, link, draft, true), /changed while you were editing/);
 });

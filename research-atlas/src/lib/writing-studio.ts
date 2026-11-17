@@ -80,7 +80,7 @@ function publicationIdentity(source: Pick<Paper, 'id' | 'doi'>) {
   const doi = source.doi?.trim().replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '').replace(/^doi:\s*/i, '').toLowerCase();
   return doi && /^10\.\d{4,9}\/\S+$/i.test(doi) ? `doi:${doi}` : `id:${source.id}`;
 }
-export function currentCitationPaper(project: Project, citation: WritingCitation) {
+export function currentCitationPaper(project: Pick<Project, 'papers'>, citation: WritingCitation) {
   const identity = publicationIdentity(citation.sourceSnapshot);
   const exact = project.papers.filter(paper => paper.id === citation.paperId);
   if (exact.length === 1 && (!exact[0].doi || !citation.sourceSnapshot.doi || publicationIdentity(exact[0]) === identity)) return exact[0];
@@ -92,6 +92,15 @@ export function refreshWritingCitation(project: Project, citationId: string, at 
   const paper = citation ? currentCitationPaper(project, citation) : undefined;
   if (!paper) throw Error('The original source is no longer saved. Keep its retained snapshot or restore the source before refreshing metadata.');
   return { writingStudio: { ...studio, citations: studio.citations.map(item => item.id === citationId ? { ...item, sourceSnapshot: sourceSnapshot(paper), metadataRefreshedAt: at } : item) } };
+}
+
+export function refreshWritingCitationsForPaper(project: Project, original: Paper, corrected: Paper, at: string) {
+  const studio = project.writingStudio;
+  if (!studio) return undefined;
+  const snapshot = sourceSnapshot(corrected);
+  return { ...studio, citations: studio.citations.map(citation => currentCitationPaper(project, citation) === original
+    ? { ...citation, sourceSnapshot: snapshot, metadataRefreshedAt: at }
+    : citation) };
 }
 export function linkWritingEvidence(project: Project, target: WritingTarget, paperId: string, claimId: string | undefined, start?: number, end?: number, at = new Date().toISOString()) {
   const sources = project.papers.filter(item => item.id === paperId);

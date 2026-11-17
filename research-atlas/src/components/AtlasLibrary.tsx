@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { BookOpen, Link2, Search } from 'lucide-react';
 import type { Paper, Project } from '@/lib/model';
-import { collectLibrary, filterLibrary, linkLibraryEntry, parseLibraryTags, updateLibraryEntry, type LibraryEntry } from '@/lib/atlas-library';
+import { collectLibrary, correctLibraryMetadata, filterLibrary, linkLibraryEntry, parseLibraryTags, referenceMetadataFields, updateLibraryEntry, type LibraryEntry, type LibraryLink } from '@/lib/atlas-library';
 import { paperOrderLabels } from '@/lib/ranking';
 import { External } from './External';
 import { RelatedDiscovery } from './EvidenceWorkspace';
@@ -20,10 +20,45 @@ type Props = {
   notify: (message: string) => void;
 };
 
+function ReferenceMetadataEditor({ link, projects, onSave, onCancel }: { link: LibraryLink; projects: Project[]; onSave: (projects: Project[]) => void; onCancel: () => void }) {
+  const heading = useId();
+  const titleInput = useRef<HTMLInputElement>(null);
+  const [fields, setFields] = useState(() => referenceMetadataFields(link.paper));
+  const [refreshDraft, setRefreshDraft] = useState(true);
+  const [error, setError] = useState('');
+  const field = (name: keyof typeof fields, value: string) => setFields(current => ({ ...current, [name]: value }));
+  const unsaved = JSON.stringify(fields) !== JSON.stringify(referenceMetadataFields(link.paper));
+  useEffect(() => { titleInput.current?.focus(); }, []);
+  return <form aria-labelledby={heading} onSubmit={event => {
+    event.preventDefault();
+    try { onSave(correctLibraryMetadata(projects, link, fields, refreshDraft)); }
+    catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not save the reference details.'); }
+  }}>
+    <h3 id={heading}>Edit reference in {link.projectTitle}</h3>
+    <label className="field"><span>Reference title</span><input ref={titleInput} required maxLength={20000} value={fields.title} onChange={event => field('title', event.target.value)} /></label>
+    <div className="field"><label htmlFor={`${heading}-authors`}>Authors, one name per line</label><textarea id={`${heading}-authors`} rows={3} maxLength={20000} value={fields.authors} onChange={event => field('authors', event.target.value)} /></div>
+    <div className="two-col">
+      <label className="field"><span>Publication name</span><input maxLength={20000} value={fields.journal} onChange={event => field('journal', event.target.value)} /></label>
+      <label className="field"><span>Publication year</span><input inputMode="numeric" maxLength={4} value={fields.year} onChange={event => field('year', event.target.value)} /></label>
+    </div>
+    <label className="field"><span>Publisher</span><input maxLength={500} value={fields.publisher} onChange={event => field('publisher', event.target.value)} /></label>
+    <p className="muted">Changing the publication name clears the previous venue identifiers, quartile and publishing-fee estimate.</p>
+    <label className="checkbox"><input type="checkbox" checked={refreshDraft} onChange={event => setRefreshDraft(event.target.checked)} /> Update linked Writing Studio references in this project</label>
+    {unsaved && <p className="muted">Reference details have unsaved changes.</p>}
+    {error && <p className="error" role="alert">{error}</p>}
+    <div className="button-row">
+      <button type="submit" className="button">Save reference details</button>
+      <button type="button" className="button secondary" onClick={onCancel}>Cancel editing</button>
+    </div>
+  </form>;
+}
+
 function LibraryRecord({ entry, projects, activeProjectId, onChangeProjects, onOpenProject, notify }: Props & { entry: LibraryEntry }) {
   const [target, setTarget] = useState(activeProjectId);
   const savedTags = entry.tags.join(', ');
   const [tagDraft, setTagDraft] = useState<{ value: string; base: string } | null>(null);
+  const [metadataTarget, setMetadataTarget] = useState<LibraryLink | null>(null);
+  const metadataSummary = useRef<HTMLElement>(null);
   const tags = tagDraft?.value ?? savedTags;
   const tagsChanged = tagDraft !== null && tagDraft.base !== savedTags;
   const linkedIds = new Set(entry.links.map(link => link.projectId));
@@ -35,6 +70,10 @@ function LibraryRecord({ entry, projects, activeProjectId, onChangeProjects, onO
     try { onChangeProjects(updateLibraryEntry(projects, entry.key, patch)); notify('Library organization updated across linked projects. Project notes and screening decisions stay separate.'); return true; }
     catch (error) { notify(error instanceof Error ? error.message : 'Could not update this reference.'); return false; }
   }
+  function closeMetadataEditor() {
+    setMetadataTarget(null);
+    metadataSummary.current?.focus();
+  }
   return <article className="panel library-record" aria-label={`Library reference: ${entry.paper.title}`}>
     <div className="library-record-heading"><div><span className="eyebrow">{entry.paper.publicationDate ?? entry.paper.year ?? 'DATE UNKNOWN'}</span><h2>{entry.paper.title}</h2><p>{entry.paper.authors || 'Authors unavailable'}</p></div><span className="tag">{linkedIds.size} project{linkedIds.size === 1 ? '' : 's'}</span></div>
     <PublicationIdentity title={entry.paper.journal} publisher={entry.paper.publisher} type={entry.paper.venueType} />
@@ -42,6 +81,13 @@ function LibraryRecord({ entry, projects, activeProjectId, onChangeProjects, onO
     <p className="muted">Source: {entry.sources.join(' · ')}{entry.paper.doi ? ` · DOI ${entry.paper.doi}` : ` · Record ${entry.paper.id}`}</p>
     <div className="button-row"><External href={entry.paper.url}>Open source</External>{entry.paper.oa && entry.paper.oa !== entry.paper.url && <External href={entry.paper.oa}>Read open copy</External>}</div>
     <div className="library-project-links"><strong>Used in</strong>{[...linkedIds].map(id => { const link = entry.links.find(item => item.projectId === id)!; return <button type="button" className="text-button" key={id} onClick={() => onOpenProject(id)}>Open {link.projectTitle}</button>; })}</div>
+    <details><summary ref={metadataSummary}>Edit reference details</summary>
+      {metadataTarget ? <ReferenceMetadataEditor link={metadataTarget} projects={projects} onCancel={closeMetadataEditor} onSave={items => {
+        onChangeProjects(items);
+        closeMetadataEditor();
+        notify(`Reference details updated in ${metadataTarget.projectTitle}.`);
+      }} /> : <div className="button-row">{entry.links.map((link, index) => <button type="button" className="button secondary" key={`${link.projectId}-${link.paperId}-${index}`} onClick={() => setMetadataTarget(link)}>Edit in {link.projectTitle}</button>)}</div>}
+    </details>
     <details><summary>Organize this reference</summary><p>Reading status and tags apply to all linked copies. Evidence, notes, and screening decisions remain specific to each project.</p>
       <div className="two-col"><label className="field"><span>Reading status</span><select value={readingStatus} onChange={event => apply({ readingStatus: event.target.value as Paper['readingStatus'] })}>{readingStatus === '' && <option value="">Different statuses across projects</option>}<option value="unread">Unread</option><option value="reading">Reading</option><option value="read">Read</option></select></label>
       <div><label className="field"><span>Tags, separated by commas</span><input value={tags} maxLength={1250} onChange={event => setTagDraft({ value: event.target.value, base: tagDraft?.base ?? savedTags })} placeholder="Methods, housing, Bangladesh" /></label><button type="button" className="button secondary small" disabled={tagsChanged} onClick={() => { if (apply({ tags: parseLibraryTags(tags) })) setTagDraft(null); }}>Save tags</button>{tagsChanged && <p role="status">The saved tags changed while you were editing. Keep a copy of your draft before <button type="button" className="text-button" onClick={() => setTagDraft(null)}>Load current tags</button>.</p>}</div></div>

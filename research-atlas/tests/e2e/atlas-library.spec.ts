@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { createProject, paperSchema } from '../../src/lib/model';
+import { linkWritingEvidence } from '../../src/lib/writing-studio';
 
 test('an empty Library offers paper search and resumes reference import after project creation', async ({ page }) => {
   await page.goto('/#paper-search');
@@ -83,4 +84,32 @@ test('Library links a source across projects without copying project judgments a
   await page.getByLabel('Filter by reading status').selectOption('read');
   await expect(page.getByRole('heading', { name: 'Urban housing evidence', exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test('a Library metadata correction reaches the existing Writing Studio citation', async ({ page }) => {
+  const project = createProject('Corrections fixture');
+  const paper = paperSchema.parse({ id: 'housing-reference', title: 'Deposited housing title', authors: 'Original name', year: 2024,
+    doi: '10.1234/housing-correction', journal: 'Fixture Journal', source: 'RIS', url: 'https://example.org/housing', oa: null });
+  project.papers = [paper];
+  Object.assign(project, linkWritingEvidence(project, 'results', paper.id, undefined).patch);
+  await page.goto('/#projects');
+  await page.getByLabel('Import backup', { exact: true }).setInputFiles({ name: 'correction-fixture.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ schemaVersion: 1, exportedAt: new Date().toISOString(), projects: [project] })) });
+  await page.getByRole('button', { name: 'Import as new copies', exact: true }).click();
+  await page.goto('/#library');
+  const record = page.getByRole('article', { name: 'Library reference: Deposited housing title', exact: true });
+  await record.getByText('Edit reference details', { exact: true }).click();
+  await record.getByRole('button', { name: 'Edit in Corrections fixture (imported)', exact: true }).click();
+  const editor = record.getByRole('form', { name: 'Edit reference in Corrections fixture (imported)', exact: true });
+  await expect(editor.getByRole('textbox', { name: 'Reference title', exact: true })).toBeFocused();
+  await editor.getByLabel('Reference title', { exact: true }).fill('Corrected housing title');
+  await editor.getByLabel('Authors, one name per line', { exact: true }).fill('Ada Corrected\nBruno Test');
+  await editor.getByRole('button', { name: 'Save reference details', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Corrected housing title', exact: true })).toBeVisible();
+  await page.getByText('Saved on this device', { exact: true }).waitFor({ state: 'attached' });
+  await page.goto('/#writing');
+  await expect(page.getByRole('heading', { name: 'Writing Studio', exact: true })).toBeVisible();
+  await expect(page.locator('.writing-bibliography')).toContainText('Ada Corrected, Bruno Test (2024). Corrected housing title');
+  await expect(page.getByRole('button', { name: 'Refresh reference [1] metadata', exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.locator('.writing-bibliography')).toContainText('Corrected housing title');
 });

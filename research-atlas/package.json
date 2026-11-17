@@ -1,6 +1,6 @@
 {
   "name": "research-atlas",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "private": true,
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5174 --strictPort",
@@ -12,6 +12,7 @@
     "preview": "node scripts/preview.mjs"
   },
   "dependencies": {
+    "citeproc": "2.4.63",
     "lucide-react": "^0.468.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
