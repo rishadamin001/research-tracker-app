@@ -1,5 +1,6 @@
 import { normalizeDoi, paperSchema, type Paper, type Project } from './model';
 import { orderPapers, type PaperOrder } from './ranking';
+import { refreshWritingCitationsForPaper } from './writing-studio';
 
 export type LibraryLink = { projectId: string; projectTitle: string; paperId: string; paper: Paper };
 export type LibraryEntry = { key: string; paper: Paper; links: LibraryLink[]; tags: string[]; sources: string[] };
@@ -75,4 +76,45 @@ export function updateLibraryEntry(projects: Project[], key: string, patch: Pick
 
 export function parseLibraryTags(raw: string) {
   return [...new Set(raw.split(',').map(tag => tag.trim()).filter(Boolean))];
+}
+
+export function referenceMetadataFields(paper: Paper) {
+  return {
+    title: paper.title,
+    authors: paper.referenceAuthors?.join('\n') || paper.authors,
+    year: paper.year === null ? '' : String(paper.year),
+    journal: paper.journal,
+    publisher: paper.publisher ?? '',
+  };
+}
+
+export type ReferenceMetadataFields = ReturnType<typeof referenceMetadataFields>;
+
+export function correctLibraryMetadata(projects: Project[], link: LibraryLink, fields: ReferenceMetadataFields, refreshDraft: boolean, at = new Date().toISOString()) {
+  const project = projects.find(item => item.id === link.projectId);
+  const matches = project?.papers.filter(paper => paper.id === link.paperId) ?? [];
+  const [original] = matches;
+  if (!project || !original?.id.trim() || matches.length !== 1) throw Error('This project copy needs a unique reference identifier. Review the saved records before editing it.');
+  const base = referenceMetadataFields(link.paper);
+  if (libraryIdentity(original) !== libraryIdentity(link.paper) || JSON.stringify(referenceMetadataFields(original)) !== JSON.stringify(base)) {
+    throw Error('The reference changed while you were editing. Reopen its details to see the current values.');
+  }
+  const title = fields.title.trim();
+  if (!title) throw Error('Enter a title for this reference.');
+  const yearText = fields.year.trim();
+  if (yearText !== base.year && yearText && !/^\d{4}$/.test(yearText)) throw Error('Enter a four-digit publication year or leave it blank.');
+  const year = yearText ? Number(yearText) : null;
+  const journal = fields.journal === base.journal ? original.journal : fields.journal.trim();
+  const publisher = fields.publisher.trim() || undefined;
+  const authorsChanged = fields.authors !== base.authors;
+  const authors = fields.authors.split(/\r?\n/).map(author => author.trim()).filter(Boolean);
+  const corrected = {
+    ...original, title, year, journal, publisher,
+    ...(authorsChanged && { authors: authors.join(', '), referenceAuthors: authors.length ? authors : undefined }),
+    ...(year !== original.year && { publicationDate: undefined }),
+    ...(journal !== original.journal && { issns: undefined, journalQuartile: undefined, journalFee: undefined, inDoaj: undefined }),
+  };
+  if (!paperSchema.safeParse(corrected).success) throw Error('Check the field lengths and use one author name of up to 500 characters per line.');
+  const writingStudio = refreshDraft ? refreshWritingCitationsForPaper(project, original, corrected, at) : project.writingStudio;
+  return projects.map(item => item === project ? { ...project, papers: project.papers.map(paper => paper === original ? corrected : paper), writingStudio } : item);
 }

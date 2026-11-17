@@ -30,5 +30,8 @@ export default defineConfig(({ command, mode }) => ({
   base: './',
   plugins: [react(), ...(command === 'build' ? [securityPolicyPlugin(loadEnv(mode, process.cwd(), 'VITE_').VITE_API_URL)] : [])],
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
-  build: { outDir: 'out' },
+  build: {
+    outDir: 'out',
+    rollupOptions: { output: { manualChunks: { bibliography: ['citeproc', fileURLToPath(new URL('./src/assets/csl/sources.json', import.meta.url))] } } },
+  },
 }));

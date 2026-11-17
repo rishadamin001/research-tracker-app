@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { createProject } from '../../src/lib/model';
 
 test('six destinations, project tabs, guided mode and returning home stay connected', async ({ page }) => {
   await page.goto('/');
@@ -44,4 +45,37 @@ test('Discover exposes notebook and Publish groups conferences without a project
   await expect(page.getByRole('heading', { name: 'Conference planner', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Venue finder', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Start with a project', exact: true })).toBeVisible();
+});
+
+test('Home summarizes the three most recently edited notes and opens the Notebook', async ({ page }) => {
+  const project = createProject('Commuter study notes');
+  const createdAt = '2026-11-01T10:00:00.000Z';
+  const longNote = `Review the study design. ${'A'.repeat(160)}`;
+  project.notebookNotes = [
+    { text: longNote, updatedAt: '2026-11-14T10:00:00.000Z' },
+    { text: 'First draft of data collection priorities.', updatedAt: '2026-11-03T10:00:00.000Z' },
+    { text: 'Check access to quiet study spaces.', updatedAt: '2026-11-09T10:00:00.000Z' },
+    { text: 'Compare commuting times by campus.', updatedAt: '2026-11-12T10:00:00.000Z' },
+  ].map(note => ({ ...note, id: crypto.randomUUID(), createdAt, kind: 'interpretation', sources: [] }));
+  await page.goto('/#projects');
+  await page.getByLabel('Import backup', { exact: true }).setInputFiles({
+    name: 'notebook-notes.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({ schemaVersion: 1, exportedAt: createdAt, projects: [project] })),
+  });
+  await page.getByRole('button', { name: 'Import as new copies', exact: true }).click();
+  await expect(page.getByText('Saved on this device', { exact: true })).toBeAttached();
+  await page.goto('/#overview');
+  const summary = page.getByRole('region', { name: 'Recent notebook notes', exact: true });
+  await expect(summary.getByRole('listitem').locator('p')).toHaveText([
+    `${longNote.slice(0, 160)}…`,
+    'Compare commuting times by campus.',
+    'Check access to quiet study spaces.',
+  ]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await summary.getByRole('button', { name: 'Open Notebook', exact: true }).click();
+  await expect(page).toHaveURL(/#notebook$/);
+  await expect(page.getByRole('heading', { name: 'Researcher’s Notebook', exact: true })).toBeVisible();
+  await expect(page.getByText(longNote, { exact: true })).toBeVisible();
+  await expect(page.getByText('First draft of data collection priorities.', { exact: true })).toBeVisible();
 });
