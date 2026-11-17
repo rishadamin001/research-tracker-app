@@ -53,6 +53,7 @@
 .journey-shell :is(.panel, .entry-card, .journey-dialog, .tool-card) { background: var(--surface); border-color: var(--line); color: var(--ink); }
 .journey-shell :is(.warm, .recommendation, .verification, .start-exercise dl, .notice, .info-bar) { background: var(--surface-soft); border-color: var(--line); color: var(--ink); }
 .journey-shell :is(.tag, .oa-badge) { background: var(--accent-soft); color: var(--green); }
+.paper-result-tags { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; }
 .journey-shell .danger { color: light-dark(#a32531, #ffb4bc); }
 .journey-shell .error { background: light-dark(#fff0f1, #48272f); border-color: light-dark(#f1c5ca, #73444d); color: light-dark(#8b2330, #ffd9df); }
 .journey-shell .text-button:hover { text-decoration: underline; }

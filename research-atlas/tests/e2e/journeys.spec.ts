@@ -53,7 +53,7 @@ test('beginner onboarding, research plan, backup and restore', async ({ page }) 
   await page.getByRole('button', { name: 'Export project' }).click();
   const backup = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download backup' }).click();
-  await page.locator('input[type=file]').setInputFiles((await (await backup).path())!);
+  await page.getByLabel('Import backup', { exact: true }).setInputFiles((await (await backup).path())!);
   await expect(page.getByText('Import preview: 1 projects')).toBeVisible();
   await page.getByRole('button', { name: 'Import as new copies' }).click();
   await expect(page.getByRole('heading', { name: 'Dhaka digital inclusion (imported)', exact: true })).toBeVisible();
@@ -102,7 +102,7 @@ test('invalid backup leaves saved projects intact', async ({ page }) => {
   const menu = page.getByRole('button', { name: 'Open navigation', exact: true });
   if (await menu.isVisible()) await menu.click();
   await page.getByRole('button', { name: 'My projects', exact: true }).click();
-  await page.locator('input[type=file]').setInputFiles({ name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from('{"schemaVersion":99}') });
+  await page.getByLabel('Import backup', { exact: true }).setInputFiles({ name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from('{"schemaVersion":99}') });
   await expect(page.getByRole('status').filter({ hasText: 'not a valid Research Atlas' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Dhaka digital inclusion', exact: true })).toBeVisible();
 });

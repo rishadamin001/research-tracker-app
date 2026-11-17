@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.0
+
+My projects can download a passphrase-protected backup and verify an existing encrypted or JSON backup without importing it. Encrypted import uses the same additive project-copy preview as JSON. Supported plaintext backups remain readable, and working projects still use the existing browser database. Discover result badges wrap with spacing on narrow screens.
+
 ## 0.10.4
 
 Discover can cancel an initial search or a page load. Brief provider errors can get one bounded retry while Atlas keeps previously retrieved papers and the selected source. Search details show provider retrieval times and reused pages. The empty Library offers **Find papers**, **Import references** and **Create project** with a direct path to the existing file picker.

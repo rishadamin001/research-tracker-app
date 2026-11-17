@@ -26,7 +26,7 @@ Use **My projects → Save local snapshot now** to explicitly capture the curren
 
 **Review local snapshots** lists dates, project/reference counts and capture reasons. **Preview snapshot** shows the project titles before any restore. Restoring replaces the saved project workspace with the selected prior copy and increments the revision. Before replacing anything, Atlas must retain the current workspace as a `before-restore` snapshot. If that current copy cannot fit the local budget, restoration is refused without replacing work. Download a portable backup and review storage size instead.
 
-Snapshot capture and restore use the same revision checks as normal saves. A newer write from another tab makes the requested operation fail rather than overwrite that tab's work. Browser quota or transaction failures abort the mutation. Backups, snapshots and raw recovery files can contain private notes and are not encrypted by Atlas.
+Snapshot capture and restore use the same revision checks as normal saves. A newer write from another tab makes the requested operation fail rather than overwrite that tab's work. Browser quota or transaction failures abort the mutation. Plain backups, snapshots and raw recovery files can contain unencrypted private notes. The separate [encrypted backup action](ENCRYPTED-BACKUP-DESIGN.md) protects portable files.
 
 ## Corrupt project records
 
@@ -38,7 +38,7 @@ A checked earlier snapshot can restore a usable workspace. The original raw data
 
 ## Limits and verification
 
-All of these copies remain inside the same browser origin. Clearing site data, losing a device, browser eviction, disk failure or private-browsing cleanup can remove projects and snapshots together. A local snapshot is not an off-device backup. No encryption, remote synchronization or automatic corruption repair is claimed.
+Local snapshots remain inside the same browser origin. Clearing site data, losing a device, browser eviction, disk failure or private-browsing cleanup can remove projects and snapshots together. An encrypted portable download can be kept separately. The live workspace and its snapshots use normal local storage without automatic cloud recovery.
 
 `tests/storage-reliability.test.ts` covers version 1 loading, per-project corruption isolation, duplicate identifiers and snapshot count/byte bounds. `tests/e2e/storage-reliability.spec.ts` covers updated-tab conflicts, actual competing IndexedDB saves, snapshot preview/restore and corrupt-record preservation. Test definitions are not evidence of a completed run; consult [Testing](../TESTING.md) for actual results and browser coverage.
 
