@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { ArrowRight, Download, Search } from 'lucide-react';
 import { csvCell, matrixCsv, type Paper, type Project } from '@/lib/model';
 import { decisionLabels, evidenceLevelLabels, findingSummary, screeningEventLimit, canSupportGap } from '@/lib/evidence-ledger';
@@ -8,7 +8,7 @@ import { EvidenceClaims, evidenceLedgerCsv, GapEvidence, PaperScreening, Screeni
 import { OrderSelect, PaperImpact, PaperOrderHelp, PublicationIdentity, usePaperOrder } from './RankingControls';
 import { External } from './External';
 import './evidence-desk.css';
-import { replaceDeskPaper } from '@/lib/evidence-desk';
+import { defaultDeskSourceFilters, readDeskSourceFilters, replaceDeskPaper, saveDeskSourceFilters, type DeskSourceFilters } from '@/lib/evidence-desk';
 
 export type EvidenceDeskProps = {
   project: Project;
@@ -40,8 +40,9 @@ function SourceLinks({ paper }: { paper: Paper }) {
 }
 
 export function EvidenceDesk({ project, update, mode, interfaceMode = 'guided', initialPaperId, onNote, onWrite, onEditingChange, onSelectionChange }: EvidenceDeskProps) {
-  const [query, setQuery] = useState('');
-  const [decision, setDecision] = useState<Paper['decision'] | 'all'>('all');
+  const [filters, setFilters] = useState(() => readDeskSourceFilters(project.id));
+  const sourceSearch = useRef<HTMLInputElement>(null);
+  const { query, decision } = filters;
   const [order, setOrder] = usePaperOrder();
   const [page, setPage] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState(() => Math.max(0, project.papers.findIndex(paper => paper.id === initialPaperId)));
@@ -69,6 +70,12 @@ export function EvidenceDesk({ project, update, mode, interfaceMode = 'guided', 
   const compareCount = Math.ceil(ordered.length / pageSize);
   const shownComparison = Math.min(comparisonPage, Math.max(0, compareCount - 1));
   const supported = canSupportGap(project);
+  function changeFilters(patch: Partial<DeskSourceFilters>) {
+    const next = { ...filters, ...patch };
+    setFilters(next);
+    saveDeskSourceFilters(project.id, next);
+    setPage(0);
+  }
   function patchPaper(patch: Partial<Paper>) { update({ papers: replaceDeskPaper(project, actualIndex, patch) }); }
   function record(event: NonNullable<Paper['screeningEvents']>[number]) {
     if (!selected || (selected.screeningEvents?.length ?? 0) >= screeningEventLimit) return;
@@ -83,13 +90,15 @@ export function EvidenceDesk({ project, update, mode, interfaceMode = 'guided', 
       <div className="desk-grid">
         <aside className="panel desk-sources" aria-label="Source selection">
           <h3>Your sources</h3><p>{project.papers.length} saved · {project.papers.filter(paper => paper.decision === 'unreviewed' || paper.decision === 'maybe').length} decisions to resolve</p>
-          <label className="field"><span>Find in saved literature</span><input type="search" value={query} disabled={claimEditing} onChange={event => { setQuery(event.target.value); setPage(0); }} /></label>
-          <label className="field"><span>Show sources</span><select value={decision} disabled={claimEditing} onChange={event => { setDecision(event.target.value as typeof decision); setPage(0); }}><option value="all">All saved sources</option>{Object.entries(decisionLabels).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
+          <label className="field"><span>Find in saved literature</span><input ref={sourceSearch} type="search" value={query} maxLength={300} disabled={claimEditing} onChange={event => changeFilters({ query: event.target.value })} /></label>
+          <label className="field"><span>Show sources</span><select value={decision} disabled={claimEditing} onChange={event => changeFilters({ decision: event.target.value as typeof decision })}><option value="all">All saved sources</option>{Object.entries(decisionLabels).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
           <OrderSelect label="Sort saved papers" labels={paperOrderLabels} order={order} onChange={value => { setOrder(value); setPage(0); }} />
           <p role="status">{rows.length} matching sources · showing {visible.length}</p>
+          {(query || decision !== 'all') && <button type="button" className="text-button" disabled={claimEditing} onClick={() => { changeFilters(defaultDeskSourceFilters); sourceSearch.current?.focus(); }}>Clear source filters</button>}
           {claimEditing && <p className="workspace-note" role="status">Save or cancel your evidence claim before switching sources. Changing workspace mode keeps the form.</p>}
           <ul className="desk-source-list">{visible.map(paper => { const index = indexed.get(paper)!; return <li key={`${index}:${paper.id}`}><button type="button" aria-pressed={actualIndex === index} disabled={claimEditing && actualIndex !== index} onClick={() => choose(index)}><strong>{paper.title || 'Untitled source'}</strong><small>{paper.authors || 'Authors unavailable'} · {paper.year ?? 'Year unavailable'}</small><span>{paper.journalQuartile ? `${paper.journalQuartile.source} ${paper.journalQuartile.quartile} · ${paper.journalQuartile.year}` : 'Quartile unavailable'} · {paper.citedByCount == null ? 'Citations unavailable' : `${paper.citedByCount.toLocaleString()} citations`}</span><small>{decisionLabels[paper.decision]} · {(paper.evidenceClaims?.length ?? 0)} evidence claims</small></button></li>; })}</ul>
           {!rows.length && <p>No sources match these filters. Your selected source remains open.</p>}
+          {Boolean(rows.length) && selected && !rows.includes(selected) && <p>Your open source is outside the current filters.</p>}
           {pageCount > 1 && <nav className="button-row" aria-label="Source list pages"><button type="button" className="button secondary small" disabled={shownPage === 0 || claimEditing} onClick={() => setPage(shownPage - 1)}>Previous sources</button><span>{shownPage + 1} / {pageCount}</span><button type="button" className="button secondary small" disabled={shownPage + 1 === pageCount || claimEditing} onClick={() => setPage(shownPage + 1)}>Next sources</button></nav>}
           <PaperOrderHelp />
         </aside>

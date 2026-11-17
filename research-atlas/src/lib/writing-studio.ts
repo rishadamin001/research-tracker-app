@@ -10,6 +10,7 @@ const sourceSnapshotSchema = z.object({
   id: z.string().max(500), title: z.string().max(20000), authors: z.string().max(20000), year: z.number().nullable(),
   doi: z.string().nullable(), journal: z.string().max(20000), url: z.string(), source: z.string(),
   referenceAuthors: z.array(z.string().max(500)).max(500).optional(), publisher: z.string().max(500).optional(),
+  workType: z.string().max(100).optional(), venueType: z.string().max(100).optional(),
 });
 export const writingCitationSchema = z.object({
   id: z.uuid(), number: z.number().int().min(1).max(300), paperId: z.string().max(500),
@@ -72,9 +73,10 @@ export function changeWritingBody(project: Project, sectionId: WritingTarget, bo
 }
 
 function sourceSnapshot(paper: Paper): WritingCitation['sourceSnapshot'] {
-  const { id, title, authors, year, doi, journal, url, source, referenceAuthors, publisher } = paper;
+  const { id, title, authors, year, doi, journal, url, source, referenceAuthors, publisher, workType, venueType } = paper;
   return { id, title, authors, year, doi, journal, url, source,
-    ...(referenceAuthors !== undefined ? { referenceAuthors } : {}), ...(publisher !== undefined ? { publisher } : {}) };
+    ...(referenceAuthors !== undefined ? { referenceAuthors } : {}), ...(publisher !== undefined ? { publisher } : {}),
+    ...(workType !== undefined ? { workType } : {}), ...(venueType !== undefined ? { venueType } : {}) };
 }
 function publicationIdentity(source: Pick<Paper, 'id' | 'doi'>) {
   const doi = source.doi?.trim().replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '').replace(/^doi:\s*/i, '').toLowerCase();
@@ -87,6 +89,26 @@ export function currentCitationPaper(project: Pick<Project, 'papers'>, citation:
   const matches = project.papers.filter(paper => publicationIdentity(paper) === identity);
   return matches.length === 1 ? matches[0] : undefined;
 }
+
+export function citationReferenceTypes(project: Pick<Project, 'papers'>, citation: WritingCitation): Pick<Paper, 'workType' | 'venueType'> {
+  const { workType, venueType } = citation.sourceSnapshot;
+  if (workType !== undefined && venueType !== undefined) return { workType, venueType };
+  const paper = currentCitationPaper(project, citation);
+  // A newer classification can fill gaps only when it agrees with the snapshot's recorded type.
+  if (!paper || (workType !== undefined && workType !== paper.workType) || (venueType !== undefined && venueType !== paper.venueType)) {
+    return { workType, venueType };
+  }
+  return { workType: workType ?? paper.workType, venueType: venueType ?? paper.venueType };
+}
+
+function citationMetadataChanged(paper: Paper, snapshot: WritingCitation['sourceSnapshot']) {
+  const current = sourceSnapshot(paper);
+  // Older snapshots lack type fields even when the original paper metadata stayed the same.
+  if (snapshot.workType === undefined) delete current.workType;
+  if (snapshot.venueType === undefined) delete current.venueType;
+  return JSON.stringify(current) !== JSON.stringify(snapshot);
+}
+
 export function refreshWritingCitation(project: Project, citationId: string, at = new Date().toISOString()): Partial<Project> {
   const studio = currentWritingStudio(project), citation = studio.citations.find(item => item.id === citationId);
   const paper = citation ? currentCitationPaper(project, citation) : undefined;
@@ -184,7 +206,7 @@ export function writingReviewPrompts(project: Project): WritingReviewPrompt[] {
     if (!paper && !studio.evidenceLinks.some(link => link.citationId === citation.id)) prompts.push({ id: `${citation.id}-source`, sectionId, detail: `Source [${citation.number}] is no longer saved. Its bibliography snapshot remains in exports.` });
     if (paper && !hasEvidenceLink && paper.decision === 'exclude') prompts.push({ id: `${citation.id}-excluded`, sectionId, detail: `Reference [${citation.number}] is currently excluded from the project selection.` });
     if (paper && !hasEvidenceLink && paper.isRetracted) prompts.push({ id: `${citation.id}-retracted`, sectionId, detail: `The scholarly provider marks reference [${citation.number}] as retracted. Investigate before using it.` });
-    if (paper && JSON.stringify(sourceSnapshot(paper)) !== JSON.stringify(citation.sourceSnapshot)) prompts.push({ id: `${citation.id}-metadata-changed`, sectionId, detail: `Bibliographic metadata for reference [${citation.number}] changed after insertion. Compare the original source, then refresh its bibliography snapshot if appropriate.` });
+    if (paper && citationMetadataChanged(paper, citation.sourceSnapshot)) prompts.push({ id: `${citation.id}-metadata-changed`, sectionId, detail: `Bibliographic metadata for reference [${citation.number}] changed after insertion. Compare the original source, then refresh its bibliography snapshot if appropriate.` });
     if (!allBody.includes(`[${citation.number}]`)) prompts.push({ id: `${citation.id}-unused`, sectionId, detail: `Reference [${citation.number}] is recorded but its marker is absent from the draft. Review the bibliography before submission.` });
     if (!citation.sourceSnapshot.authors.trim() || citation.sourceSnapshot.year == null || !citation.sourceSnapshot.journal.trim()) prompts.push({ id: `${citation.id}-metadata`, sectionId, detail: `Reference [${citation.number}] has incomplete author, year or venue metadata. Check the original source.` });
   }
@@ -206,7 +228,7 @@ export function draftBibliography(project: Project) {
 }
 export function manuscriptReferencePapers(project: Project): Paper[] {
   return currentWritingStudio(project).citations.slice().sort((a, b) => a.number - b.number).map(citation => ({
-    ...citation.sourceSnapshot, oa: null, notes: '', finding: '', methods: '', limitations: '', locator: '',
+    ...citation.sourceSnapshot, ...citationReferenceTypes(project, citation), oa: null, notes: '', finding: '', methods: '', limitations: '', locator: '',
     decision: 'unreviewed', reason: '', researchProblem: '', dataset: '', referenceKey: `atlas-${citation.number}`,
   }));
 }

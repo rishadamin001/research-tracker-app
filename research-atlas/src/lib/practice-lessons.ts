@@ -1,17 +1,18 @@
 import type { PlannerTarget } from './planner-guide';
 
 type PracticeOption = { answer: string; feedback: string };
+type WorkedExample = { discipline: string; scenario: string; reasoning: string };
 
 export type PracticeLesson = {
   id: string;
   title: string;
   takeaway: string;
-  example: { scenario: string; reasoning: string };
+  examples: readonly [WorkedExample, WorkedExample];
   question: string;
   options: PracticeOption[];
   correct: number;
   reflection: string;
-  application: { target: PlannerTarget; label: string; task: string };
+  application: { target: PlannerTarget; label: string; task: string; check: string };
 };
 
 export const practiceLessons: PracticeLesson[] = [
@@ -19,10 +20,15 @@ export const practiceLessons: PracticeLesson[] = [
     id: 'question',
     title: 'Frame a research question',
     takeaway: 'Name the group or setting and a question you can answer with evidence you can collect.',
-    example: {
+    examples: [{
+      discipline: 'Education',
       scenario: 'A student wants to research campus transport. They ask which barriers first-year commuters at one campus report when using the evening shuttle this term.',
       reasoning: 'The group, place, and period set the scope. Interviews can describe reported barriers within that scope.',
-    },
+    }, {
+      discipline: 'Environmental science',
+      scenario: 'A student wants to study urban heat. They ask how midday surface temperatures differ between paired shaded and unshaded pavements on three streets during one week.',
+      reasoning: 'The surfaces, time, and location define what to measure. Measuring each pair at the same time makes the comparison easier to interpret.',
+    }],
     question: 'Which question could a student investigate by interviewing library users at one campus this term?',
     options: [
       { answer: 'How can we fix education?', feedback: 'This asks for a solution across all of education. Choose a specific experience and group that the available interviews can describe.' },
@@ -31,16 +37,21 @@ export const practiceLessons: PracticeLesson[] = [
     ],
     correct: 1,
     reflection: 'Name one group and setting for your question. What evidence could you realistically collect?',
-    application: { target: 'question', label: 'Open my working question', task: 'Draft one question with a defined scope. Commit a revision when you have decided on the wording.' },
+    application: { target: 'question', label: 'Open my working question', task: 'Draft one question around a group, setting, or set of records you can study. Commit the revision when you are happy with the wording.', check: 'Point to the words that limit the scope and name the evidence that would answer the question.' },
   },
   {
     id: 'search',
     title: 'Search the literature',
     takeaway: 'Search the concepts in your question, try related terms, and record which database and filters you used.',
-    example: {
+    examples: [{
+      discipline: 'Education',
       scenario: 'For a question about commuting and attendance, start with “student commute attendance.” Try “travel time class attendance” as another search.',
       reasoning: 'Authors use different words for similar concepts. Keep the query and database together so you can revisit what each search covered.',
-    },
+    }, {
+      discipline: 'Computing',
+      scenario: 'For a question about making web forms accessible, try “screen reader web forms” and then “assistive technology form labels.”',
+      reasoning: 'Both searches cover a user need and a part of the interface. Comparing their results lets you see which terms find relevant studies you missed the first time.',
+    }],
     question: 'One search returned four papers. What should you do before proposing a research gap?',
     options: [
       { answer: 'Declare a gap because the result list is short.', feedback: 'A short list can reflect the query or the database’s coverage. Try other terms and sources before drawing a conclusion.' },
@@ -49,16 +60,21 @@ export const practiceLessons: PracticeLesson[] = [
     ],
     correct: 2,
     reflection: 'Write two ways authors might describe the same concept in your topic.',
-    application: { target: 'paper-search', label: 'Run a paper search', task: 'Search two core concepts from your question. Check the provider and query in your search history.' },
+    application: { target: 'paper-search', label: 'Run a paper search', task: 'Search two core concepts from your question. Change one term and run a second search.', check: 'Find both queries and their providers in Search history. Compare which relevant studies each search found.' },
   },
   {
     id: 'evaluate',
     title: 'Evaluate a source',
     takeaway: 'Check whether a paper’s methods and population fit the claim you want to make.',
-    example: {
+    examples: [{
+      discipline: 'Education',
       scenario: 'A highly cited paper surveys residential students. You want to understand why commuters miss early classes.',
       reasoning: 'The journal’s citation quartile and the paper’s citation count describe different things. Read the sample and measurements to judge whether the paper addresses your question.',
-    },
+    }, {
+      discipline: 'Public health',
+      scenario: 'Your review covers park access for older adults. A study estimates walking times to parks using city maps alone.',
+      reasoning: 'It can inform the map-based part of your review. If your inclusion rule requires reported experiences from older adults, record which part of the rule the paper fails.',
+    }],
     question: 'What should determine whether a study meets your screening criteria?',
     options: [
       { answer: 'Its population, design, and outcomes match the criteria I recorded.', feedback: 'Matching the study to explicit criteria makes the decision relevant and traceable.' },
@@ -67,16 +83,21 @@ export const practiceLessons: PracticeLesson[] = [
     ],
     correct: 0,
     reflection: 'Write one inclusion criterion and explain how you would check it in a paper.',
-    application: { target: 'screen', label: 'Open screening criteria', task: 'Record what makes a source eligible, then apply those criteria to a saved paper.' },
+    application: { target: 'screen', label: 'Open screening criteria', task: 'Write one rule in Screening criteria. Apply it to a saved source and record Include, Maybe, or Exclude with a reason.', check: 'Your reason names a study characteristic that explains the decision against your rule.' },
   },
   {
     id: 'interpret',
     title: 'Separate findings from interpretation',
     takeaway: 'Record what the source reports and where you found it. Keep your explanation and doubts visible as your own.',
-    example: {
+    examples: [{
+      discipline: 'Education',
       scenario: 'In this practice example, a paper’s abstract reports that 12 of 20 interviewees mentioned unreliable bus schedules.',
       reasoning: 'Record the count and mark the abstract as your basis. “Unreliable schedules may deter students from attending class” is an interpretation that needs separate evidence.',
-    },
+    }, {
+      discipline: 'History',
+      scenario: 'City council minutes record a vote to move a market. Your research question asks what traders thought about the move.',
+      reasoning: 'Record the vote with the date and page of the minutes. A view about the traders’ reaction belongs in your interpretation until you find evidence of what they said.',
+    }],
     question: 'What could you record as a source finding when you have read only that abstract?',
     options: [
       { answer: 'Unreliable buses cause absence across all universities.', feedback: 'The example reports what a small group said. It does not measure causation or support a conclusion about all universities.' },
@@ -85,16 +106,21 @@ export const practiceLessons: PracticeLesson[] = [
     ],
     correct: 1,
     reflection: 'Write one sentence reporting the finding and another giving your interpretation. What evidence would connect the two?',
-    application: { target: 'extract', label: 'Record a located finding', task: 'Choose a saved source. Record a finding with a locator, reading basis, and a separate interpretation if you have one.' },
+    application: { target: 'extract', label: 'Record a located finding', task: 'Record a saved source’s finding and where you read it. Put your own explanation in the interpretation field.', check: 'A reader can locate the result and tell which wording reports the finding and which wording is yours.' },
   },
   {
     id: 'methods',
     title: 'Choose feasible methods',
     takeaway: 'Match the method to the question, access to participants or data, and the ethical requirements.',
-    example: {
+    examples: [{
+      discipline: 'Education',
       scenario: 'To understand how commuters choose study spaces, a student plans a small interview study with an approved recruitment and consent process.',
       reasoning: 'Interviews can show how participants explain their choices. Estimating how widespread those choices are would require a sampling and measurement plan.',
-    },
+    }, {
+      discipline: 'Engineering',
+      scenario: 'A student compares two insulation samples using the same temperature sensors and enclosure over repeated trials.',
+      reasoning: 'Keeping the setup constant helps compare the samples. Record sensor accuracy and the number of trials. Identify which full-building conditions remain untested.',
+    }],
     question: 'Which plan fits a question about how students explain their choice of study space?',
     options: [
       { answer: 'Use attendance counts alone to infer why each student chose a space.', feedback: 'Counts describe use. They do not capture students’ explanations. Choose a method that can ask about reasons.' },
@@ -103,16 +129,21 @@ export const practiceLessons: PracticeLesson[] = [
     ],
     correct: 2,
     reflection: 'What is one practical or ethical constraint on your study, and how would you adapt the method?',
-    application: { target: 'methods', label: 'Draft my methods plan', task: 'Write how you will collect and analyze evidence, including one practical limit and one ethics check.' },
+    application: { target: 'methods', label: 'Draft my methods plan', task: 'Write how you will select, collect, and analyze evidence. Add one practical constraint and one check for permissions or ethics.', check: 'Someone else can tell what you would measure or record and how you would use it to answer the question.' },
   },
   {
     id: 'writing',
     title: 'Write with evidence',
     takeaway: 'Link the sentence to the source that supports it and keep the wording within what the study can show.',
-    example: {
+    examples: [{
+      discipline: 'Education',
       scenario: 'A paragraph says, “Study space always improves grades.” Its source reports that interviewed students valued quiet rooms.',
       reasoning: 'Write “Interviewed students reported valuing quiet rooms” and cite the located finding. A claim about grades would need evidence that measures grades.',
-    },
+    }, {
+      discipline: 'Ecology',
+      scenario: 'A field study records more pollinator visits to planted strips than to nearby mown strips during one summer.',
+      reasoning: 'Write “In the sampled strips, the study recorded more pollinator visits to planted areas that summer” and cite its results table. A claim about year-round change would need more observations.',
+    }],
     question: 'Which revision accurately uses a survey that found an association between long commutes and missed classes?',
     options: [
       { answer: 'In this survey, longer commutes were associated with more missed classes. Cite the survey result.', feedback: 'This attributes the result and uses wording that fits an association observed in the survey.' },
@@ -121,6 +152,6 @@ export const practiceLessons: PracticeLesson[] = [
     ],
     correct: 0,
     reflection: 'Write a supported sentence for your topic. Which part of its source can a reader check?',
-    application: { target: 'draft', label: 'Open Writing Studio', task: 'Add a sentence linked to one of your recorded findings. Check that the wording fits the evidence and keep any caveat visible.' },
+    application: { target: 'draft', label: 'Open Writing Studio', task: 'Add a sentence using one recorded finding. Link its citation and locator, then read the sentence beside the finding.', check: 'The sentence names the scope and any relevant caveat, and its citation leads to the recorded evidence.' },
   },
 ];

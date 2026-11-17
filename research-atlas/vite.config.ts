@@ -19,7 +19,12 @@ function securityPolicyPlugin(gateway: string | undefined): Plugin {
         ...(commit ? [{ tag: 'meta', attrs: { name: 'atlas-build-commit', content: commit }, injectTo: 'head-prepend' as const }] : []),
       ],
     },
-    generateBundle() {
+    generateBundle(_options, bundle) {
+      for (const entry of Object.values(bundle)) {
+        if (entry.type === 'chunk' && Object.keys(entry.modules).some(id => /(?:^|\/)node_modules\/picomatch\//.test(id.replace(/\\/g, '/')))) {
+          this.error('picomatch is allowed only in development tooling and must stay outside the browser build.');
+        }
+      }
       const headers = Object.entries(policy.headers).map(([name, value]) => `  ${name}: ${value}`);
       this.emitFile({ type: 'asset', fileName: '_headers', source: ['/*', ...headers, ''].join('\n') });
     },

@@ -2,7 +2,7 @@ import { ArrowRight, BookOpen, Clock3, FolderOpen, Search } from 'lucide-react';
 import type { Project } from '@/lib/model';
 import { nextUsefulAction, projectTab, projectTabs, type ProjectDestination } from '@/lib/workspace-navigation';
 import { taskStatus } from '@/lib/workflow';
-import { BackupStatus } from './PrivacyData';
+import { BackupFileCheckStatus, BackupStatus } from './PrivacyData';
 import './coherent-workspace.css';
 
 type Navigate = (view: ProjectDestination) => void;
@@ -46,7 +46,7 @@ export function ResearchDashboard({ project, onNavigate, onOpenSource, backupDat
       <button type="button" className="text-button" onClick={() => onNavigate('notebook')}>Open Notebook <ArrowRight size={15} aria-hidden="true" /></button>
     </section>
     <section className="panel"><h2>One connected project</h2><nav className="dashboard-stages" aria-label="Research stage status">{projectTabs.map(([id, title]) => <button className="task-link" key={id} onClick={() => onNavigate(id)}><strong>{title}</strong><small>{id === 'roadmap' ? 'Plan & history' : id === 'notebook' ? 'Findings & notes' : taskStatus(project, id).replace('Complete', 'Ready for now').replace('In progress', 'Draft')}</small></button>)}</nav><p className="muted">These statuses describe recorded work. They do not measure scientific quality or approval.</p></section>
-    <div className="two-col"><section className="panel"><h2><Clock3 size={18} /> Recent decisions</h2>{latest.length ? <ol className="decision-log">{latest.map((entry, index) => <li key={`${entry.at}-${index}`}><time>{new Date(entry.at).toLocaleString()}</time><p>{entry.note}</p></li>)}</ol> : <p>Your research trail will grow as you record searches, decisions, and revisions.</p>}<button className="text-button" onClick={() => onNavigate('history')}>Open project history <ArrowRight size={15} /></button></section><section className="panel"><h2>Your work and backups</h2><p>{saveState}</p><BackupStatus date={backupDate} /><button className="text-button" onClick={() => onNavigate('projects')}>Back up or switch project <ArrowRight size={15} /></button></section></div>
+    <div className="two-col"><section className="panel"><h2><Clock3 size={18} /> Recent decisions</h2>{latest.length ? <ol className="decision-log">{latest.map((entry, index) => <li key={`${entry.at}-${index}`}><time>{new Date(entry.at).toLocaleString()}</time><p>{entry.note}</p></li>)}</ol> : <p>Your research trail will grow as you record searches, decisions, and revisions.</p>}<button className="text-button" onClick={() => onNavigate('history')}>Open project history <ArrowRight size={15} /></button></section><section className="panel"><h2>Your work and backups</h2><p>{saveState}</p><BackupStatus date={backupDate} /><BackupFileCheckStatus /><button className="text-button" onClick={() => onNavigate('projects')}>Back up or switch project <ArrowRight size={15} /></button></section></div>
   </>;
 }
 

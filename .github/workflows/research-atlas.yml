@@ -35,8 +35,14 @@ jobs:
           actual_sha="$(git rev-parse HEAD)"
           test "$actual_sha" = "$GITHUB_SHA"
           printf 'Checked source revision: `%s`\n' "$actual_sha" >> "$GITHUB_STEP_SUMMARY"
-      - name: Audit locked npm dependencies
-        run: npm audit --include=dev --audit-level=high
+      - name: Audit locked production dependencies
+        run: npm audit --omit=dev --audit-level=high
+      - name: Audit locked development dependencies
+        run: |
+          status=0
+          npm audit --include=dev --audit-level=high --json > "$RUNNER_TEMP/atlas-npm-audit.json" || status=$?
+          test "$status" -le 1
+          node scripts/check-development-audit.mjs "$RUNNER_TEMP/atlas-npm-audit.json"
       - run: npm ci --no-audit
       - run: npm run typecheck
       - run: npm run lint

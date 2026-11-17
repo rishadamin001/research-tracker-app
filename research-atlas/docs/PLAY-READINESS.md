@@ -1,6 +1,18 @@
 # Research Atlas Google Play preparation
 
-Reviewed 16 November 2026 against Google’s published requirements. The baseline is Research Atlas 0.10.2, a browser-local PWA. Its manifest and service worker support an Android wrapper as a candidate architecture. Evidence of a signed Android build, verified Digital Asset Links, Play Console setup and physical-device tests is still pending. This checklist records what to prepare and what the owner must confirm.
+Reviewed 17 November 2026 against Google’s published requirements. Research Atlas runs as a browser-local PWA. Its manifest and service worker support an Android wrapper as a candidate architecture. Evidence of a signed Android build, verified Digital Asset Links, Play Console setup and physical-device tests is still pending.
+
+## Run the public web preflight
+
+Run this read-only check from the repository with Node.js. It needs no Play Console access or credentials.
+
+```sh
+node scripts/check-android-web-prerequisites.mjs https://rishadamin001.github.io/research-tracker-app/
+```
+
+The command checks the served manifest, start URL, app scope, 192 × 192 and 512 × 512 PNG headers, service-worker file and allowed scope, and the origin's Digital Asset Links response. Once the application ID and public SHA-256 signing certificate fingerprint are confirmed, pass them together with `--package APPLICATION_ID --fingerprint COLON_SEPARATED_SHA256` to check the exact association. The exit status is `0` when all checks pass, `1` for any failed or pending check, and `2` for invalid arguments. Browser registration, offline reopen, and Android fullscreen need separate tests on the corresponding browser or device.
+
+On 17 November 2026, the public GitHub Pages site passed the manifest, start URL, scope, icon, and service-worker file checks. The origin-root `/.well-known/assetlinks.json` returned HTTP 404. The Android package and signing certificate are pending. Google's Bubblewrap 1.27.0 template targets API 36 and is a candidate for a pinned build once Android tooling is available. [Bubblewrap release](https://github.com/GoogleChromeLabs/bubblewrap/releases/tag/v1.27.0) · [Pinned Android build template](https://github.com/GoogleChromeLabs/bubblewrap/blob/v1.27.0/packages/core/template_project/app/build.gradle)
 
 ## Submission requirements
 

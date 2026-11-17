@@ -7,12 +7,13 @@ import { download, loadWorkspace, saveWorkspace, subscribeWorkspace, WorkspaceCo
 import { disciplines } from '@/lib/content';
 import { nextTask, roadmap, taskStatus, updateProject, type TaskStatus } from '@/lib/workflow';
 import { readPreferences, writePreferences, type Preferences } from '@/lib/preferences';
+import { defaultDeskSourceFilters, retainDeskSourceFilters, saveDeskSourceFilters } from '@/lib/evidence-desk';
 import { PlanningWorkspace } from './PlanningWorkspace';
 import { EvidenceWorkspace, PaperSearch, SearchNotebook } from './EvidenceWorkspace';
 import { ExecutionWorkspace } from './ExecutionWorkspace';
 import { ResearchPlanner } from './ResearchPlanner';
 import { PlannerWorkbench } from './PlannerWorkbench';
-import { BackupStatus, PrivacyData, backupDateKey, lastBackupDate } from './PrivacyData';
+import { BackupFileCheckStatus, BackupStatus, PrivacyData, backupDateKey, lastBackupDate } from './PrivacyData';
 import { EncryptedBackupTools } from './EncryptedBackupTools';
 import { ConferencePlanner } from './ConferencePlanner';
 import { ContextGuide } from './ContextGuide';
@@ -351,6 +352,7 @@ export default function Atlas() {
   function removeProject(item: Project) {
     if (!window.confirm(`Delete ${item.title}? Download a backup first if you want to retain a copy.`)) return;
     markDirty();
+    saveDeskSourceFilters(item.id, defaultDeskSourceFilters);
     const remaining = projects.filter(record => record.id !== item.id);
     setProjects(remaining);
     if (active === item.id) selectProject(remaining[0]?.id ?? '');
@@ -407,6 +409,7 @@ export default function Atlas() {
             <button className="entry-card" onClick={() => go('paper-search')}><Search /><strong>I need to find papers</strong><span>Search first. Create a project when you want to save evidence.</span><span className="intent-action">Search for papers <ArrowRight size={17} /></span></button>
           </section>
           <nav className="secondary-paths" aria-label="More ways to explore"><button className="text-button" onClick={() => go('explore')}>Explore disciplines</button><button className="text-button" onClick={() => go('conferences')}>Find a conference</button><button className="text-button" onClick={() => go('projects')}>Open saved projects</button><button className="text-button" onClick={() => go('guide')}>Research planner</button></nav>
+          <BackupFileCheckStatus showEmpty={false} />
           <p className="muted">Your projects stay in this browser. Search sends only the terms you enter to the scholarly provider.</p>
         </>}
 
@@ -521,7 +524,19 @@ export default function Atlas() {
           </article>)}</div>
         </>}
         </div>
-        {view === 'projects' && <StorageRecovery revision={diskRevision.current} disabled={saveRevision.current !== savedLocalRevision.current || saveState === 'Saving…' || loadFailed.current || storageConflict} onBusyChange={setStorageOperation} onRestored={workspace => { diskRevision.current = workspace.revision; loadFailed.current = false; writeBlocked.current = false; setStorageConflict(false); setRecoveryRaw(''); savedLocalRevision.current = saveRevision.current; setProjects(workspace.projects); selectProject(workspace.projects[0]?.id ?? ''); setSaveState('Saved on this device'); requestAnimationFrame(() => main.current?.focus({ preventScroll: true })); }} notify={setNotice} />}
+        {view === 'projects' && <StorageRecovery revision={diskRevision.current} disabled={saveRevision.current !== savedLocalRevision.current || saveState === 'Saving…' || loadFailed.current || storageConflict} onBusyChange={setStorageOperation} onRestored={workspace => {
+          diskRevision.current = workspace.revision;
+          loadFailed.current = false;
+          writeBlocked.current = false;
+          setStorageConflict(false);
+          setRecoveryRaw('');
+          savedLocalRevision.current = saveRevision.current;
+          retainDeskSourceFilters(new Set(workspace.projects.map(item => item.id)));
+          setProjects(workspace.projects);
+          selectProject(workspace.projects[0]?.id ?? '');
+          setSaveState('Saved on this device');
+          requestAnimationFrame(() => main.current?.focus({ preventScroll: true }));
+        }} notify={setNotice} />}
         <footer inert={storageOperation} className="public-footer" aria-label="Research Atlas information"><a href="#privacy" onClick={event => { event.preventDefault(); go('privacy'); }}>Privacy & data</a><a href="#terms" onClick={event => { event.preventDefault(); go('terms'); }}>Terms</a><a href="#support" onClick={event => { event.preventDefault(); go('support'); }}>Support</a><span className="muted">Research Atlas {appVersion} beta · Free · Stored on your device</span></footer>
       </main>
     </div>

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.2
+
+Evidence Desk remembers the source search and screening filter for each project. Clear source filters restores the full source list. All six practice lessons add a worked example from another discipline, a project task, and a self-check. Journal Match shows the submitted query, applied filters and retrieval time, including when no journals match. Writing Studio preserves the reference type in RIS and BibTeX exports when source metadata supplies it. Home shows the last successful backup file check separately from the last download started.
+
 ## 0.11.1
 
 Home shows recent notebook notes. Library can correct bibliographic details in a chosen project and refresh linked Writing Studio references. Writing Studio previews and downloads APA 7, IEEE and Vancouver bibliographies using locally bundled CSL styles. Existing manuscript citation markers remain numbered. The styled bibliography is a standalone text export.

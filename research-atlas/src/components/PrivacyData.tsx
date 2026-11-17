@@ -1,14 +1,38 @@
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { Database, Download, LockKeyhole } from 'lucide-react';
 import { External } from './External';
 
 export const backupDateKey = 'atlas-last-backup';
+const backupCheckDateKey = 'atlas-last-backup-check';
 
-export function lastBackupDate() {
+function readBackupDate(key: string) {
   try {
-    const value = localStorage.getItem(backupDateKey);
+    const value = localStorage.getItem(key);
     return value && Number.isFinite(Date.parse(value)) ? value : '';
   } catch { return ''; }
+}
+
+export function lastBackupDate() {
+  return readBackupDate(backupDateKey);
+}
+
+export function recordBackupFileCheck() {
+  try { localStorage.setItem(backupCheckDateKey, new Date().toISOString()); }
+  catch { /* Checking a file does not require browser storage. */ }
+}
+
+function subscribeToBackupFileCheck(update: () => void) {
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === backupCheckDateKey || event.key === null) update();
+  };
+  window.addEventListener('storage', onStorage);
+  return () => window.removeEventListener('storage', onStorage);
+}
+
+export function BackupFileCheckStatus({ showEmpty = true }: { showEmpty?: boolean } = {}) {
+  const date = useSyncExternalStore(subscribeToBackupFileCheck, () => readBackupDate(backupCheckDateKey), () => '');
+  if (!date && !showEmpty) return null;
+  return <p className="muted">{date ? <>Last successful backup file check <time dateTime={date}>{new Date(date).toLocaleDateString()}</time>.</> : 'No backup file check is recorded in this browser.'}</p>;
 }
 
 export function BackupStatus({ date }: { date: string }) {
@@ -41,6 +65,8 @@ export function PrivacyData({ backupDate, onBackup }: { backupDate: string; onBa
     <section className="panel"><h2><LockKeyhole size={18} aria-hidden="true" /> Stored on this device</h2>
       <p>Projects, screening decisions, evidence notes, drafts, budgets, and preferences are stored in this browser. Atlas has no required sign-in or app analytics. Opening the published site contacts its host, GitHub Pages.</p>
       <p>Paper search without a project keeps the last 50 search records in this browser, including entered terms, filters, and provider response details. Use Clear search history in Paper search to remove them. Project search logs stay with the project and its backup.</p>
+      <p>Evidence Desk remembers each project's last source search and screening filter in this browser. Clear source filters or delete the project to remove those settings.</p>
+      <p>Home stores only the time of the last successful backup file check in this browser. The date applies to the copy you selected.</p>
       <p>Beginner starter choices are saved for this browser tab, without fetched paper records. Use Clear starter choices to reset them. Journal Match drafts stay in the selected project; only your explicitly submitted query and requested ISSN lookups go to OpenAlex.</p>
       <p>Question drafts, committed revisions, and bounded project history stay on this device. Atlas Library groups project references locally. Recovery snapshots retain up to eight earlier workspaces within a shared 10 MB limit; they can contain deleted projects and earlier private notes until rotated out or cleared. Review or clear snapshots under My projects. Clearing this site’s browser data also removes them. They are not off-device backups.</p>
       <h3>Sent when you use a lookup</h3>

@@ -32,3 +32,37 @@ test('a beginner can retry a practice question, revisit a saved explanation, and
   await expect(page).toHaveURL(/#paper-search$/);
   await expect(page.getByRole('heading', { name: 'Paper search', exact: true })).toBeVisible();
 });
+
+test('each lesson offers a second discipline and a direct project practice with a self-check', async ({ page }) => {
+  await page.goto('/#guide');
+  await page.getByRole('button', { name: 'New project', exact: true }).click();
+  await page.getByLabel('Working title').fill('Research practice fixture');
+  await page.getByRole('button', { name: 'Create project', exact: true }).click();
+  await expect(page.getByRole('list', { name: 'Practice lessons' })).toBeVisible();
+
+  const lessons = [
+    ['Frame a research question', 'Environmental science', 'Open my working question', 'question'],
+    ['Search the literature', 'Computing', 'Run a paper search', 'paper-search'],
+    ['Evaluate a source', 'Public health', 'Open screening criteria', 'screen'],
+    ['Separate findings from interpretation', 'History', 'Record a located finding', 'extract'],
+    ['Choose feasible methods', 'Engineering', 'Draft my methods plan', 'methods'],
+    ['Write with evidence', 'Ecology', 'Open Writing Studio', 'writing'],
+  ];
+  for (const [title, discipline, label, target] of lessons) {
+    if (!page.url().endsWith('#guide')) await page.goto('/#guide');
+    await page.getByRole('list', { name: 'Practice lessons' }).getByRole('button', { name: title, exact: true }).click();
+    const exercise = page.getByRole('article', { name: title, exact: true });
+    await exercise.getByText('See a worked example', { exact: true }).click();
+    await expect(exercise.getByRole('heading', { name: discipline, exact: true })).toBeVisible();
+    const application = exercise.getByRole('region', { name: 'Practice in your project', exact: true });
+    await expect(application.getByText('Check your work', { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await application.getByRole('button', { name: label, exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`#${target}$`));
+    if (target === 'paper-search') {
+      await expect(page.getByRole('heading', { name: 'Paper search', exact: true })).toBeVisible();
+    } else {
+      await expect(page.getByRole('navigation', { name: 'Project workspace', exact: true })).toBeVisible();
+    }
+  }
+});
