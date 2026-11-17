@@ -74,7 +74,7 @@ export function AtlasLibrary(props: Props) {
       <h2 id="library-start-title">Your Library starts with a source</h2>
       <p>{activeProject ? <>Find papers to save or import a RIS or BibTeX file into <strong>{activeProject.title}</strong>.</> : 'You can search for papers now. Create a project to save papers or import a RIS or BibTeX file.'}</p>
       <div className="button-row">
-        <a className="button" href="#paper-search" onClick={onFindPapers}>Find papers</a>
+        <a className="button secondary" href="#paper-search" onClick={onFindPapers}>Find papers</a>
         <button type="button" className="button secondary" aria-expanded={activeProject ? importing : undefined} aria-haspopup={activeProject ? undefined : 'dialog'} onClick={() => {
           if (activeProject) setImportProjectId(importing ? undefined : activeProject.id);
           else onCreateProject(setImportProjectId);
