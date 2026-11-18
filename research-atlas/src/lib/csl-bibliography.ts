@@ -1,5 +1,7 @@
 import CSL from 'citeproc';
 import sourceData from '../assets/csl/sources.json';
+import { normalizeDoi, type Paper, type Project } from './model';
+import { citationReferenceTypes, citationSourceUrl, type WritingCitation } from './writing-studio';
 
 export const cslBibliographyStyles = {
   apa: 'APA 7',
@@ -30,6 +32,51 @@ export type CslReference = {
 };
 
 export type CslBibliographyEntry = { id: string; text: string };
+
+function itemType(paper: Pick<Paper, 'workType' | 'venueType'>): CslReference['type'] {
+  switch (paper.workType) {
+    case 'book': return 'book';
+    case 'book-chapter': case 'chapter': return 'chapter';
+    case 'proceedings-article': case 'conference-paper': return 'paper-conference';
+    case 'dissertation': case 'thesis': return 'thesis';
+    case 'report': return 'report';
+    case 'journal-article': return 'article-journal';
+    default: return paper.venueType === 'journal' ? 'article-journal' : 'article';
+  }
+}
+
+function citedDate(snapshot: WritingCitation['sourceSnapshot']): CslDate | undefined {
+  const { year, publicationDate, bibliographyMetadata } = snapshot;
+  if (publicationDate) {
+    const [dateYear, month, day] = publicationDate.split('-').map(Number);
+    if (year === null || year === dateYear) return [dateYear, month, day];
+  }
+  if (year == null || !Number.isInteger(year) || year <= 0) return undefined;
+  return bibliographyMetadata?.publicationMonth ? [year, bibliographyMetadata.publicationMonth] : [year];
+}
+
+export function citationCslReference(project: Pick<Project, 'papers'>, citation: WritingCitation): CslReference {
+  const snapshot = citation.sourceSnapshot;
+  const metadata = snapshot.bibliographyMetadata;
+  const authorNames = snapshot.referenceAuthors?.length ? snapshot.referenceAuthors : [snapshot.authors];
+  let doi: string | undefined;
+  try { if (snapshot.doi) doi = normalizeDoi(snapshot.doi); } catch { /* The source link is the fallback. */ }
+  const venue = snapshot.journal.trim();
+  return {
+    id: citation.id,
+    type: itemType(citationReferenceTypes(project, citation)),
+    title: snapshot.title,
+    authors: metadata?.authors ?? authorNames.filter(author => author.trim()).map(literal => ({ literal })),
+    issued: citedDate(snapshot),
+    containerTitle: venue && venue !== 'Source not supplied' ? venue : undefined,
+    containerTitleShort: metadata?.journalAbbreviation,
+    volume: metadata?.volume,
+    issue: metadata?.issue,
+    pages: metadata?.pages,
+    publisher: snapshot.publisher,
+    ...(doi ? { doi } : { url: citationSourceUrl(citation) }),
+  };
+}
 
 const locale = sourceData.locale.join('\n');
 

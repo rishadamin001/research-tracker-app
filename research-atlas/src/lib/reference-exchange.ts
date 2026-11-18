@@ -1,5 +1,6 @@
 import { normalizeDoi, paperSchema, safeUrl, type Paper } from './model';
 import { normalizeIssn } from './ranking';
+import { bibliographyMetadata, pageRange } from './bibliography-metadata';
 
 export const referenceFileLimit = 1_000_000;
 export const projectReferenceLimit = 2_000;
@@ -16,6 +17,10 @@ type Citation = {
   date?: string;
   year?: string;
   venue?: string;
+  venueAbbreviation?: string;
+  volume?: string;
+  issue?: string;
+  pages?: string;
   publisher?: string;
   serials?: string[];
   isbn?: string;
@@ -77,7 +82,8 @@ function dateParts(value = '', fallback = '') {
   const iso = match?.[2] && match?.[3] ? `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}` : undefined;
   const time = iso && Date.parse(iso);
   const publicationDate = typeof time === 'number' && Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === iso ? iso : undefined;
-  return { year, publicationDate };
+  const month = Number(/^\d{4}[-/](\d{1,2})\/?$/.exec(value.trim())?.[1]);
+  return { year, publicationDate, publicationMonth: month >= 1 && month <= 12 ? month : undefined };
 }
 
 function serials(values: string[]) {
@@ -100,6 +106,7 @@ function paperFromCitation(citation: Citation, format: ReferenceFormat): Paper |
   const workType = citation.kind;
   const database = clean(citation.database, 150);
   const importLabel = format === 'ris' ? 'RIS import' : 'BibTeX import';
+  const { year, publicationDate, publicationMonth } = dateParts(citation.date || citation.year, citation.year);
   return paperSchema.parse({
     id: record ?? `reference:${crypto.randomUUID()}`,
     title,
@@ -107,7 +114,14 @@ function paperFromCitation(citation: Citation, format: ReferenceFormat): Paper |
     referenceAuthors,
     referenceKey: clean(citation.key, 500) || undefined,
     isbn: clean(citation.isbn, 40) || undefined,
-    ...dateParts(citation.date || citation.year, citation.year),
+    year, publicationDate,
+    bibliographyMetadata: bibliographyMetadata({
+      publicationMonth,
+      journalAbbreviation: clean(citation.venueAbbreviation, 500) || undefined,
+      volume: clean(citation.volume, 500) || undefined,
+      issue: clean(citation.issue, 500) || undefined,
+      pages: clean(citation.pages, 500) || undefined,
+    }),
     doi,
     journal: clean(citation.venue),
     publisher: clean(citation.publisher, 500) || undefined,
@@ -147,7 +161,9 @@ function parseRis(text: string) {
       const sn = all('SN');
       entries.push({ title: one('TI', 'T1', 'CT', 'BT') ?? '', authors: (fields.get('AU') ?? fields.get('A1') ?? []).map(displayAuthor),
         doi: one('DO'), url: one('UR'), key: one('ID', 'AN'), accession: one('AN'), database: one('DB'), date: one('DA', 'Y1', 'PY'), year: one('PY', 'Y1'),
-        venue: one('JF', 'JO', 'T2', 'JA'), publisher: one('PB'), serials: sn, isbn: sn.find(value => /^(?:\d[ -]?){9,12}[\dX]$/i.test(value.trim())), kind });
+        venue: one('JF', 'JO', 'T2', 'JA'), venueAbbreviation: one('JA', 'J2'), volume: one('VL'), issue: one('IS'),
+        pages: pageRange(one('SP')?.trim(), one('EP')?.trim()),
+        publisher: one('PB'), serials: sn, isbn: sn.find(value => /^(?:\d[ -]?){9,12}[\dX]$/i.test(value.trim())), kind });
       if (entries.length > projectReferenceLimit) throw Error(`Import up to ${projectReferenceLimit.toLocaleString()} references at a time.`);
       fields = undefined;
     } else if (name && tag) {
@@ -302,6 +318,7 @@ function parseBibtex(text: string) {
     entries.push({ title: get('title'), authors: bibAuthors(fields.get('author')), key, doi: get('doi'), url: get('url'),
       openalex: get('openalex'), accession: get('accession'), database: get('database'),
       venue: get('journaltitle') || get('journal') || get('booktitle'), publisher: get('publisher'),
+      venueAbbreviation: get('shortjournal'), volume: get('volume'), issue: get('number'), pages: get('pages'),
       date: get('date'), year: get('year'), serials: [get('issn')], isbn: get('isbn'), kind: bibTypes.get(type) });
     if (entries.length > projectReferenceLimit) throw Error(`Import up to ${projectReferenceLimit.toLocaleString()} references at a time.`);
   }
@@ -381,10 +398,18 @@ function referenceDatabase(source: string) {
   return reported ?? (['OpenAlex', 'Europe PMC', 'Crossref'].includes(source) ? source : undefined);
 }
 
+function referenceDate(paper: Paper) {
+  const month = paper.bibliographyMetadata?.publicationMonth;
+  return paper.publicationDate ?? (month && paper.year ? `${paper.year}-${String(month).padStart(2, '0')}` : undefined);
+}
+
 function risRecord(paper: Paper) {
   const record = scholarlyRecordId(paper.id, paper.url);
+  const { journalAbbreviation, volume, issue, pages } = paper.bibliographyMetadata ?? {};
+  const pageParts = /^([a-z]*\d+[a-z]*)\s*[-–—]{1,2}\s*([a-z]*\d+[a-z]*)$/i.exec(pages ?? '');
   const fields = [['TY', exportType(paper)[0]], ['TI', paper.title], ...creators(paper).map(author => ['AU', author]),
-    ['PY', paper.publicationDate?.replaceAll('-', '/') ?? paper.year], ['T2', paper.journal === 'Source not supplied' ? '' : paper.journal], ['PB', paper.publisher],
+    ['PY', referenceDate(paper)?.replaceAll('-', '/') ?? paper.year], ['T2', paper.journal === 'Source not supplied' ? '' : paper.journal], ['PB', paper.publisher],
+    ['JA', journalAbbreviation], ['VL', volume], ['IS', issue], ['SP', pageParts?.[1] ?? pages], ['EP', pageParts?.[2]],
     ['DO', paper.doi], ['UR', referenceUrl(paper.url) ?? record], ['ID', paper.referenceKey ?? record],
     ['AN', paper.referenceKey && paper.referenceKey !== record ? record : undefined], ['DB', referenceDatabase(paper.source)],
     ...[...(paper.issns ?? []), paper.isbn].map(identifier => ['SN', identifier])];
@@ -397,8 +422,10 @@ function bibRecord(paper: Paper, key: string) {
   const author = creators(paper).map(name => /\s+and\s+|,/i.test(name) ? `{${escape(name)}}` : escape(name)).join(' and ');
   const record = scholarlyRecordId(paper.id, paper.url);
   const openAlex = openAlexId(record);
+  const { journalAbbreviation, volume, issue, pages } = paper.bibliographyMetadata ?? {};
   const fields = [['title', paper.title], [type === 'inproceedings' || type === 'incollection' ? 'booktitle' : 'journal', paper.journal === 'Source not supplied' ? '' : paper.journal],
-    ['publisher', paper.publisher], ['year', paper.year], ['date', paper.publicationDate], ['doi', paper.doi],
+    ['publisher', paper.publisher], ['year', paper.year], ['date', referenceDate(paper)], ['doi', paper.doi],
+    ['shortjournal', journalAbbreviation], ['volume', volume], ['number', issue], ['pages', pages],
     ['url', referenceUrl(paper.url) ?? record], ['openalex', openAlex], ['accession', openAlex ? undefined : record], ['issn', paper.issns?.join(', ')],
     ['isbn', paper.isbn], ['database', referenceDatabase(paper.source)]];
   const lines = fields.filter(([, value]) => value != null && value !== '').map(([field, value]) => `  ${field} = {${escape(String(value))}}`);

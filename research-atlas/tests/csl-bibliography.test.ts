@@ -2,7 +2,12 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
 import sourceData from '../src/assets/csl/sources.json';
-import { formatCslBibliography, type CslReference } from '../src/lib/csl-bibliography';
+import { citationCslReference, formatCslBibliography, type CslReference } from '../src/lib/csl-bibliography';
+import { parseCrossrefResults, parseEuropePmcResults } from '../src/lib/additional-search';
+import { createBackup, parseBackupFile } from '../src/lib/backup';
+import { createProject } from '../src/lib/model';
+import { parseWorks } from '../src/lib/providers';
+import { currentWritingStudio, linkWritingEvidence } from '../src/lib/writing-studio';
 
 const article: CslReference = {
   id: 'airflow', type: 'article-journal', title: 'Measured airflow in small laboratories',
@@ -36,6 +41,61 @@ test('Vancouver matches the NLM standard journal example with a numbered prefix 
   assert.deepEqual(entries.map(entry => entry.id), [nlmExample.id, article.id]);
   assert.equal(entries[0].text, '1. Halpern SD, Ubel PA, Caplan AL. Solid-organ transplantation in HIV-infected patients. N Engl J Med. 2002 Jul 25;347(4):284–7.');
   assert.match(entries[1].text, /^2\. Karim MA, Chen L\./);
+});
+
+test('the cited Crossref record retains NLM journal formatting through a portable backup', async () => {
+  // NLM's standard journal example supplies names, date, issue and pages:
+  // https://www.nlm.nih.gov/bsd/uniform_requirements.html
+  const { papers: [paper] } = await parseCrossrefResults({ message: { 'total-results': 1, items: [{
+    DOI: '10.1000/nlm-fixture', title: [nlmExample.title], type: 'journal-article',
+    author: [{ given: 'Scott D.', family: 'Halpern' }, { given: 'Peter A.', family: 'Ubel' }, { given: 'Arthur L.', family: 'Caplan' }],
+    published: { 'date-parts': [[2002, 7, 25]] }, 'container-title': [nlmExample.containerTitle],
+    'short-container-title': [nlmExample.containerTitleShort], volume: '347', issue: '4', page: '284-287',
+  }] } });
+  const project = { ...createProject('Production bibliography fixture'), papers: [paper] };
+  const linked = { ...project, ...linkWritingEvidence(project, 'introduction', paper.id, undefined).patch };
+  const [restored] = (await parseBackupFile(JSON.stringify(await createBackup([linked])))).projects;
+  const [citation] = currentWritingStudio(restored).citations;
+  const withoutSavedPaper = { ...restored, papers: [] };
+  const reference = citationCslReference(withoutSavedPaper, citation);
+  assert.deepEqual(reference.authors, nlmExample.authors);
+  assert.deepEqual(reference.issued, nlmExample.issued);
+  assert.equal(reference.volume, nlmExample.volume);
+  assert.equal(reference.issue, nlmExample.issue);
+  assert.equal(reference.pages, nlmExample.pages);
+  assert.equal(reference.containerTitleShort, nlmExample.containerTitleShort);
+  const [entry] = formatCslBibliography('vancouver', [reference]);
+  assert.ok(entry.text.startsWith('1. Halpern SD, Ubel PA, Caplan AL. Solid-organ transplantation in HIV-infected patients. N Engl J Med. 2002 Jul 25;347(4):284–7.'));
+});
+
+test('OpenAlex keeps separate display names in citation order without inferring name components', () => {
+  const [paper] = parseWorks({ results: [{
+    id: 'https://openalex.org/W1234', display_name: 'A fixture article', doi: null, publication_year: 2024,
+    publication_date: '2024-05-08', biblio: { volume: '2', issue: '1', first_page: '4', last_page: '12' },
+    authorships: [{ author: { display_name: 'Nguyễn Văn An' } }, { author: { display_name: 'University Data Group' } }],
+  }] });
+  const project = { ...createProject('OpenAlex bibliography fixture'), papers: [paper] };
+  const linked = { ...project, ...linkWritingEvidence(project, 'introduction', paper.id, undefined).patch };
+  const reference = citationCslReference(linked, currentWritingStudio(linked).citations[0]);
+  assert.deepEqual(reference.authors, [{ literal: 'Nguyễn Văn An' }, { literal: 'University Data Group' }]);
+  assert.deepEqual(reference.issued, [2024, 5, 8]);
+  assert.deepEqual([reference.volume, reference.issue, reference.pages], ['2', '1', '4-12']);
+});
+
+test('Europe PMC keeps all explicitly supplied compact initials and group authors', async () => {
+  const { papers: [paper] } = await parseEuropePmcResults({ hitCount: 1, resultList: { result: [{
+    id: '4321', source: 'MED', title: 'A metadata formatting example', pubYear: '2025',
+    journalInfo: { journal: { title: 'Example Research Journal' } },
+    authorList: { author: [
+      { firstName: 'MA', initials: 'MA', lastName: 'Karim', fullName: 'Karim MA' },
+      { collectiveName: 'Campus Data Group' },
+    ] },
+  }] } });
+  const project = { ...createProject('Europe PMC bibliography fixture'), papers: [paper] };
+  const linked = { ...project, ...linkWritingEvidence(project, 'introduction', paper.id, undefined).patch };
+  const reference = citationCslReference(linked, currentWritingStudio(linked).citations[0]);
+  assert.deepEqual(reference.authors, [{ family: 'Karim', given: 'M. A.' }, { literal: 'Campus Data Group' }]);
+  assert.match(formatCslBibliography('vancouver', [reference])[0].text, /^1\. Karim MA, Campus Data Group\./);
 });
 
 test('preserves literal author strings and missing dates in plain-text output', () => {

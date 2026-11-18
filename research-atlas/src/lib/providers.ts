@@ -5,6 +5,7 @@ import { findJournalQuartile } from './quartiles';
 import { openAlexSearch, PaperSearchError, type SearchRun } from './search-provenance';
 import { providerSearchFilterTokens, searchOptionsFromRun, type SearchOptions } from './search-options';
 import { requestProviderPage } from './provider-search-request';
+import { bibliographyMetadata, bibliographyText, pageRange } from './bibliography-metadata';
 export { PaperSearchError } from './search-provenance';
 
 const venue = z.object({
@@ -20,6 +21,7 @@ const venue = z.object({
 const priceCurrency = z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/).nullish().catch(null);
 const priceAmount = z.number().nonnegative().nullish().catch(null);
 const apcList = z.object({ value: priceAmount, currency: priceCurrency, value_usd: priceAmount }).nullish().catch(null);
+const optionalBibliographyText = bibliographyText.nullish().catch(undefined);
 
 const work = z.object({
   id: z.string(),
@@ -28,6 +30,7 @@ const work = z.object({
   publication_date: z.iso.date().nullish().catch(null),
   doi: z.string().nullable(),
   authorships: z.array(z.object({ author: z.object({ display_name: z.string() }) })).default([]),
+  biblio: z.object({ volume: optionalBibliographyText, issue: optionalBibliographyText, first_page: optionalBibliographyText, last_page: optionalBibliographyText }).nullish().catch(undefined),
   primary_location: z.object({ source: venue.nullish(), landing_page_url: z.string().nullish() }).nullish(),
   best_oa_location: z.object({ landing_page_url: z.string().nullish(), pdf_url: z.string().nullish() }).nullish(),
   open_access: z.object({ is_oa: z.boolean().nullish(), oa_url: z.string().nullish() }).nullish().catch(null),
@@ -86,10 +89,16 @@ export function parseWorks(raw: unknown): Paper[] {
     const openCopy = safeUrl(item.best_oa_location?.landing_page_url) || safeUrl(item.best_oa_location?.pdf_url) || safeUrl(item.open_access?.oa_url);
     const readingIsFree = item.open_access?.is_oa ?? Boolean(openCopy);
     const workRecord = openAlexRecord(item.id, 'works');
+    const authors = item.authorships.map(authorship => authorship.author.display_name.trim().slice(0, 500)).filter(Boolean).slice(0, 500);
     return {
       id: item.id,
       title: item.display_name || 'Untitled work',
-      authors: item.authorships.map(authorship => authorship.author.display_name).join(', '),
+      authors: authors.join(', ').slice(0, 20000),
+      referenceAuthors: authors.length ? authors : undefined,
+      bibliographyMetadata: bibliographyMetadata({
+        volume: item.biblio?.volume ?? undefined, issue: item.biblio?.issue ?? undefined,
+        pages: pageRange(item.biblio?.first_page, item.biblio?.last_page),
+      }),
       year: item.publication_year,
       publicationDate: item.publication_date ?? undefined,
       doi: item.doi ? normalizeDoi(item.doi) : null,
