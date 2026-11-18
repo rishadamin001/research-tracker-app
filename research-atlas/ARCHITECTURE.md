@@ -1,5 +1,12 @@
 # Architecture
 
+## Source layout
+
+- `src/main.tsx` starts the React client. `src/components/workspace/Atlas.tsx` coordinates navigation, project selection, and saves.
+- `src/components/` groups client components by feature. Each named React component has its own `.tsx` file. Related stylesheet and type files live with the feature. Shared controls live under `src/components/shared/`.
+- `src/lib/` contains research models, browser storage, scholarly provider clients, and import and export logic.
+- `gateway/worker.ts` is the optional Cloudflare Worker entry. `gateway/src/handler.ts` routes requests, `gateway/src/providers/` owns provider-specific validation and URLs, and `gateway/src/http/` handles response policies and upstream forwarding. The static GitHub Pages app can run directly with the scholarly providers.
+
 Vite serves a React and TypeScript application. `Atlas` owns browser navigation, selected project and queued autosave. Planning, evidence and execution components update the same project. Home offers three intent-based entry points; the short beginner journey leads into project creation. `ContextGuide` retains optional Understand / See / Do / Review help while task groups provide inline guidance. `workflow.ts` derives task statuses and downstream review flags. Statuses record activity; they do not certify research quality.
 
 `workspace-navigation.ts` maps legacy routes into six primary destinations and a common seven-tab project shell. Returning Home uses `ResearchDashboard`; contextual `NextAction` derives one action from current project state. Step-by-step guidance and Focus workspace retain the stored `guided`/`expert` preference values. `TaskSteps` shows one task group or all groups using the same fields, preserving drafts across mode changes. `research-pathway.ts` supplies reversible optional pathway examples. Project Overview contains the plan workbench and completeness review.
