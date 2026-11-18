@@ -9,6 +9,11 @@ AU  - Ahmed, Rupa
 AU  - John Lee
 PY  - 2024/09/18/
 JF  - Journal of Housing Research
+JA  - J Hous Res
+VL  - 8
+IS  - 2
+SP  - 10
+EP  - 19
 SN  - 0272-4944
 DO  - https://doi.org/10.1234/HOUSE_1
 UR  - https://example.test/papers/housing
@@ -24,6 +29,7 @@ test('RIS and BibTeX exchange preserve bibliographic metadata and exact identifi
   assert.equal(paper.doi, '10.1234/house_1');
   assert.equal(paper.publicationDate, '2024-09-18');
   assert.deepEqual(paper.issns, ['0272-4944']);
+  assert.equal(paper.bibliographyMetadata?.pages, '10-19');
   assert.equal(paper.id, 'https://openalex.org/W12345');
   for (const format of ['ris', 'bibtex'] as const) {
     const [returned] = parseReferenceFile(exportReferences([paper], format), format).papers;
@@ -34,6 +40,7 @@ test('RIS and BibTeX exchange preserve bibliographic metadata and exact identifi
     assert.equal(returned.publicationDate, paper.publicationDate);
     assert.equal(returned.journal, paper.journal);
     assert.equal(returned.year, paper.year);
+    assert.deepEqual(returned.bibliographyMetadata, paper.bibliographyMetadata);
   }
 });
 

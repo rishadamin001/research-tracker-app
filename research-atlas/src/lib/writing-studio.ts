@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { Paper, Project } from './model';
+import { bibliographyMetadata as normalizeBibliographyMetadata, bibliographyMetadataSchema } from './bibliography-metadata';
 
 export const writingSectionIds = ['abstract', 'introduction', 'methods', 'results', 'discussion', 'conclusion'] as const;
 export type WritingSectionId = typeof writingSectionIds[number];
@@ -10,6 +11,7 @@ const sourceSnapshotSchema = z.object({
   id: z.string().max(500), title: z.string().max(20000), authors: z.string().max(20000), year: z.number().nullable(),
   doi: z.string().nullable(), journal: z.string().max(20000), url: z.string(), source: z.string(),
   referenceAuthors: z.array(z.string().max(500)).max(500).optional(), publisher: z.string().max(500).optional(),
+  publicationDate: z.iso.date().optional(), bibliographyMetadata: bibliographyMetadataSchema.optional(),
   workType: z.string().max(100).optional(), venueType: z.string().max(100).optional(),
 });
 export const writingCitationSchema = z.object({
@@ -72,10 +74,12 @@ export function changeWritingBody(project: Project, sectionId: WritingTarget, bo
   return { writingStudio: { ...studio, sections } };
 }
 
-function sourceSnapshot(paper: Paper): WritingCitation['sourceSnapshot'] {
-  const { id, title, authors, year, doi, journal, url, source, referenceAuthors, publisher, workType, venueType } = paper;
+function sourceSnapshot(paper: WritingCitation['sourceSnapshot']): WritingCitation['sourceSnapshot'] {
+  const { id, title, authors, year, doi, journal, url, source, referenceAuthors, publisher, publicationDate, workType, venueType } = paper;
+  const bibliographyMetadata = paper.bibliographyMetadata && normalizeBibliographyMetadata(paper.bibliographyMetadata);
   return { id, title, authors, year, doi, journal, url, source,
     ...(referenceAuthors !== undefined ? { referenceAuthors } : {}), ...(publisher !== undefined ? { publisher } : {}),
+    ...(publicationDate !== undefined ? { publicationDate } : {}), ...(bibliographyMetadata !== undefined ? { bibliographyMetadata } : {}),
     ...(workType !== undefined ? { workType } : {}), ...(venueType !== undefined ? { venueType } : {}) };
 }
 function publicationIdentity(source: Pick<Paper, 'id' | 'doi'>) {
@@ -103,10 +107,12 @@ export function citationReferenceTypes(project: Pick<Project, 'papers'>, citatio
 
 function citationMetadataChanged(paper: Paper, snapshot: WritingCitation['sourceSnapshot']) {
   const current = sourceSnapshot(paper);
-  // Older snapshots lack type fields even when the original paper metadata stayed the same.
+  // Older snapshots omit the additive fields even when the underlying reference stayed the same.
   if (snapshot.workType === undefined) delete current.workType;
   if (snapshot.venueType === undefined) delete current.venueType;
-  return JSON.stringify(current) !== JSON.stringify(snapshot);
+  if (snapshot.publicationDate === undefined) delete current.publicationDate;
+  if (snapshot.bibliographyMetadata === undefined) delete current.bibliographyMetadata;
+  return JSON.stringify(current) !== JSON.stringify(sourceSnapshot(snapshot));
 }
 
 export function refreshWritingCitation(project: Project, citationId: string, at = new Date().toISOString()): Partial<Project> {

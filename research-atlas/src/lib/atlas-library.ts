@@ -1,6 +1,7 @@
 import { normalizeDoi, paperSchema, type Paper, type Project } from './model';
 import { orderPapers, type PaperOrder } from './ranking';
 import { refreshWritingCitationsForPaper } from './writing-studio';
+import { bibliographyMetadata } from './bibliography-metadata';
 
 export type LibraryLink = { projectId: string; projectTitle: string; paperId: string; paper: Paper };
 export type LibraryEntry = { key: string; paper: Paper; links: LibraryLink[]; tags: string[]; sources: string[] };
@@ -108,8 +109,15 @@ export function correctLibraryMetadata(projects: Project[], link: LibraryLink, f
   const publisher = fields.publisher.trim() || undefined;
   const authorsChanged = fields.authors !== base.authors;
   const authors = fields.authors.split(/\r?\n/).map(author => author.trim()).filter(Boolean);
+  const metadata = original.bibliographyMetadata;
   const corrected = {
     ...original, title, year, journal, publisher,
+    bibliographyMetadata: metadata && bibliographyMetadata({
+      ...metadata,
+      authors: authorsChanged ? undefined : metadata.authors,
+      publicationMonth: year !== original.year ? undefined : metadata.publicationMonth,
+      journalAbbreviation: journal !== original.journal ? undefined : metadata.journalAbbreviation,
+    }),
     ...(authorsChanged && { authors: authors.join(', '), referenceAuthors: authors.length ? authors : undefined }),
     ...(year !== original.year && { publicationDate: undefined }),
     ...(journal !== original.journal && { issns: undefined, journalQuartile: undefined, journalFee: undefined, inDoaj: undefined }),

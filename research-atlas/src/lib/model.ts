@@ -6,6 +6,7 @@ import { dmpMarkdown, methodContextSchema, structuredDmpSchema } from './study-p
 import { projectEventLimit, projectEventSchema, questionVersionLimit, questionVersionSchema } from './research-trail';
 import { writingStudioSchema } from './writing-studio';
 import { notebookNoteLimit, notebookNoteSchema } from './research-notebook';
+import { bibliographyMetadataSchema } from './bibliography-metadata';
 const text = z.string().max(20000);
 const journalQuartile = z.object({
   quartile: z.enum(['Q1', 'Q2', 'Q3', 'Q4']),
@@ -32,6 +33,7 @@ export const paperSchema = z.object({
   tags: z.array(z.string().trim().min(1).max(60)).max(20).optional(),
   libraryLinkProvenance: z.object({ fromProjectId: z.string().max(500), fromProjectTitle: z.string().max(20000), linkedAt: z.iso.datetime() }).optional(),
   referenceAuthors: z.array(z.string().max(500)).max(500).optional(),
+  bibliographyMetadata: bibliographyMetadataSchema.optional(),
   isbn: z.string().max(40).optional(),
   screeningEvents: z.array(screeningEventSchema).max(screeningEventLimit).optional(),
   screeningDraft: screeningDraftSchema.optional(),

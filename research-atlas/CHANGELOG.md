@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.3
+
+Writing Studio uses author names, publication dates, journal abbreviations, volume, issue, and page ranges supplied by scholarly providers or reference files. Supported RIS and BibTeX fields survive export and re-import. Earlier backups still open, and citation snapshots retain the details saved when the citation was added.
+
 ## 0.11.2
 
 Evidence Desk remembers the source search and screening filter for each project. Clear source filters restores the full source list. All six practice lessons add a worked example from another discipline, a project task, and a self-check. Journal Match shows the submitted query, applied filters and retrieval time, including when no journals match. Writing Studio preserves the reference type in RIS and BibTeX exports when source metadata supplies it. Home shows the last successful backup file check separately from the last download started.

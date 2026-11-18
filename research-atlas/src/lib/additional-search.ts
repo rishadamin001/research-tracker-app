@@ -4,6 +4,7 @@ import { findJournalQuartile } from './quartiles';
 import { PaperSearchError, type SearchRun } from './search-provenance';
 import { providerSearchFilterTokens, type SearchOptions } from './search-options';
 import { requestProviderPage } from './provider-search-request';
+import { bibliographyMetadata } from './bibliography-metadata';
 
 export type AdditionalSearchProvider = 'Europe PMC' | 'Crossref';
 const pageSize = 20;
@@ -17,7 +18,13 @@ const epmcRecord = z.object({
   pmcid: z.string().max(40).nullish().catch(undefined), pubYear: z.string().max(4).nullish().catch(undefined),
   firstPublicationDate: z.string().max(30).nullish().catch(undefined), abstractText: optionalText,
   citedByCount: optionalNumber, isOpenAccess: z.string().max(10).nullish().catch(undefined),
-  journalInfo: z.object({ journal: z.object({ title: optionalText, issn: z.string().max(20).nullish().catch(undefined), essn: z.string().max(20).nullish().catch(undefined) }).nullish().catch(undefined) }).nullish().catch(undefined),
+  authorList: z.object({ author: z.array(z.object({
+    firstName: optionalText, lastName: optionalText, initials: optionalText, fullName: optionalText, collectiveName: optionalText,
+  })).max(500) }).nullish().catch(undefined),
+  pageInfo: optionalText,
+  journalInfo: z.object({ volume: optionalText, issue: optionalText, journal: z.object({
+    title: optionalText, medlineAbbreviation: optionalText, issn: z.string().max(20).nullish().catch(undefined), essn: z.string().max(20).nullish().catch(undefined),
+  }).nullish().catch(undefined) }).nullish().catch(undefined),
   fullTextUrlList: z.object({ fullTextUrl: z.array(z.object({ availabilityCode: z.string().max(20).nullish().catch(undefined), url: z.string().max(2000).nullish().catch(undefined) })).max(100) }).nullish().catch(undefined),
   pubTypeList: z.object({ pubType: z.array(z.string().max(100)).max(50) }).nullish().catch(undefined),
 });
@@ -26,6 +33,8 @@ const crossrefRecord = z.object({
   DOI: z.string().min(1).max(500), title: z.array(z.string().max(20000)).max(20).nullish().catch(undefined),
   author: z.array(z.object({ given: z.string().max(1000).nullish().catch(undefined), family: z.string().max(1000).nullish().catch(undefined), name: z.string().max(1000).nullish().catch(undefined) })).max(500).nullish().catch(undefined),
   'container-title': z.array(z.string().max(20000)).max(20).nullish().catch(undefined),
+  'short-container-title': z.array(z.string().max(500)).max(20).nullish().catch(undefined),
+  volume: optionalText, issue: optionalText, page: optionalText,
   ISSN: z.array(z.string().max(20)).max(12).nullish().catch(undefined),
   publisher: z.string().max(500).nullish().catch(undefined), type: z.string().max(100).nullish().catch(undefined),
   'is-referenced-by-count': optionalNumber, abstract: optionalText,
@@ -44,6 +53,24 @@ function plainText(value: string | null | undefined): string {
       return Number.isInteger(number) && number > 0 && number <= 0x10ffff && !(number >= 0xd800 && number <= 0xdfff) ? String.fromCodePoint(number) : match;
     }).replace(/\s+/g, ' ').trim();
 }
+function suppliedAuthor(givenValue: string | null | undefined, familyValue: string | null | undefined, displayValue: string | null | undefined) {
+  const given = plainText(givenValue).slice(0, 500);
+  const family = plainText(familyValue).slice(0, 500);
+  const display = (plainText(displayValue) || [given, family].filter(Boolean).join(' ')).slice(0, 500);
+  return display ? [{ display, name: family ? { family, given: given || undefined } : { literal: display } }] : [];
+}
+
+function europePmcAuthor(author: NonNullable<z.infer<typeof epmcRecord>['authorList']>['author'][number]) {
+  const collective = plainText(author.collectiveName);
+  if (collective) return suppliedAuthor(undefined, undefined, collective);
+  const firstName = plainText(author.firstName);
+  const initials = plainText(author.initials);
+  const given = (!firstName || firstName === initials) && /^\p{Lu}{2,12}$/u.test(initials)
+    ? Array.from(initials, initial => `${initial}.`).join(' ')
+    : firstName || initials;
+  return suppliedAuthor(given, author.lastName, author.fullName);
+}
+
 function doiValue(value: string | null | undefined): string | null {
   if (!value) return null;
   try { return normalizeDoi(value); } catch { return null; }
@@ -57,7 +84,8 @@ function publicationDate(parts: number[] | undefined) {
   const year = parts[0];
   // A year-only record remains a year; do not invent January 1 as its publication date.
   const date = parts.length === 3 ? dateValue(`${year}-${String(parts[1]).padStart(2, '0')}-${String(parts[2]).padStart(2, '0')}`) : undefined;
-  return { year, publicationDate: date };
+  const month = parts[1];
+  return { year, publicationDate: date, publicationMonth: !date && month >= 1 && month <= 12 ? month : undefined };
 }
 function blankPaper(): Pick<Paper, 'notes' | 'researchProblem' | 'dataset' | 'finding' | 'methods' | 'limitations' | 'locator' | 'decision' | 'reason'> {
   return { notes: '', researchProblem: '', dataset: '', finding: '', methods: '', limitations: '', locator: '', decision: 'unreviewed', reason: '' };
@@ -83,8 +111,18 @@ export async function parseEuropePmcResults(raw: unknown): Promise<{ papers: Pap
     const oa = safeUrl(oaLocation) ?? null;
     const year = record.pubYear && /^(18|19|20|21)\d{2}$/.test(record.pubYear) ? Number(record.pubYear) : null;
     const abstract = plainText(record.abstractText);
-    return withQuartile({ ...blankPaper(), id: url, title: plainText(record.title) || 'Untitled work', authors: plainText(record.authorString), year,
+    const authors = (record.authorList?.author ?? []).flatMap(europePmcAuthor);
+    return withQuartile({ ...blankPaper(), id: url, title: plainText(record.title) || 'Untitled work',
+      authors: plainText(record.authorString) || authors.map(author => author.display).join(', ').slice(0, 20000), year,
       publicationDate: dateValue(record.firstPublicationDate), doi, journal: plainText(journal?.title) || 'Source not supplied', url, oa,
+      referenceAuthors: authors.length ? authors.map(author => author.display) : undefined,
+      bibliographyMetadata: bibliographyMetadata({
+        authors: authors.length ? authors.map(author => author.name) : undefined,
+        journalAbbreviation: plainText(journal?.medlineAbbreviation).slice(0, 500) || undefined,
+        volume: plainText(record.journalInfo?.volume).slice(0, 500) || undefined,
+        issue: plainText(record.journalInfo?.issue).slice(0, 500) || undefined,
+        pages: plainText(record.pageInfo).slice(0, 500) || undefined,
+      }),
       source: 'Europe PMC', citedByCount: record.citedByCount ?? undefined, metricsRetrievedAt: checkedAt,
       abstract: abstract || undefined, issns: issns.length ? issns : undefined, venueType: journal ? 'journal' : undefined,
       workType: record.pubTypeList?.pubType.join('; ').slice(0, 100),
@@ -102,10 +140,18 @@ export async function parseCrossrefResults(raw: unknown): Promise<{ papers: Pape
     if (!doi) throw new Error('Crossref returned an invalid DOI identity.');
     const url = `https://doi.org/${encodeURIComponent(doi)}`;
     const dates = publicationDate((record.published ?? record['published-online'] ?? record['published-print'] ?? record.issued)?.['date-parts'][0]);
-    const authors = record.author?.map(author => plainText(author.name ?? [author.given, author.family].filter(Boolean).join(' '))).filter(Boolean) ?? [];
+    const authors = (record.author ?? []).flatMap(author => suppliedAuthor(author.given, author.family, author.name));
     const abstract = plainText(record.abstract);
-    return withQuartile({ ...blankPaper(), id: url, title: plainText(record.title?.[0]) || 'Untitled work', authors: authors.join(', ').slice(0, 20000),
-      referenceAuthors: authors.length ? authors.map(author => author.slice(0, 500)) : undefined, year: dates.year ?? null, publicationDate: dates.publicationDate,
+    return withQuartile({ ...blankPaper(), id: url, title: plainText(record.title?.[0]) || 'Untitled work', authors: authors.map(author => author.display).join(', ').slice(0, 20000),
+      referenceAuthors: authors.length ? authors.map(author => author.display) : undefined, year: dates.year ?? null, publicationDate: dates.publicationDate,
+      bibliographyMetadata: bibliographyMetadata({
+        authors: authors.length ? authors.map(author => author.name) : undefined,
+        publicationMonth: dates.publicationMonth,
+        journalAbbreviation: plainText(record['short-container-title']?.[0]) || undefined,
+        volume: plainText(record.volume).slice(0, 500) || undefined,
+        issue: plainText(record.issue).slice(0, 500) || undefined,
+        pages: plainText(record.page).slice(0, 500) || undefined,
+      }),
       doi, journal: plainText(record['container-title']?.[0]) || 'Source not supplied', url, oa: null, source: 'Crossref',
       publisher: record.publisher ?? undefined, venueType: record.type === 'journal-article' ? 'journal' : record.type ?? undefined,
       workType: record.type ?? undefined, issns: record.ISSN?.length ? record.ISSN : undefined, citedByCount: record['is-referenced-by-count'] ?? undefined,

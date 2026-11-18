@@ -2,7 +2,7 @@
 
 Research Atlas formats standalone, plain-text bibliography entries offline using Citeproc JS and the Citation Style Language (CSL). The formatter takes separate family and given names when the source supplies them. A name supplied as a literal stays a literal. For numeric styles, supply records in citation order. Each result retains its input ID, including when APA sorts the bibliography separately.
 
-The preview covers text and punctuation. It omits typography such as italics and hanging indents. It does not rewrite manuscript markers or resolve journal-specific formatting requirements. Supply verified journal abbreviations where a style requires them and review bibliographic metadata before submission.
+The preview covers text and punctuation. It omits typography such as italics and hanging indents. It does not rewrite manuscript markers or resolve journal-specific formatting requirements. Author name parts, dates, journal abbreviations, volume, issue, and page ranges are retained where the source supplies them. Older citations can use Refresh reference metadata to use details already present in their saved source. Review missing details against the publisher's record before submission.
 
 ## Citeproc JS
 
@@ -26,3 +26,5 @@ The pinned files include their individual CSL contributor credits and rights not
 ## Fixture references
 
 The unit tests compare the APA 7 and IEEE journal-article patterns on synthetic records with known metadata. The Vancouver test uses NLM's standard journal example and checks the pinned style's numeric prefix and typographic page-range dash. The fixtures cover representative journal entries, order, missing data, and literal names. [APA reference examples](https://apastyle.apa.org/style-grammar-guidelines/references/examples/journal-article-references) · [IEEE Reference Guide](https://journals.ieeeauthorcenter.ieee.org/create-your-ieee-journal-article/create-the-text-of-your-article/ieee-editorial-style-manual/) · [NLM sample references](https://www.nlm.nih.gov/bsd/uniform_requirements.html)
+
+The NLM journal example also travels through the app's Crossref parser, a saved citation, a restored portable backup, and the same data conversion used by the bibliography preview. This fixture checks that those steps preserve the author initials, journal abbreviation, date, volume, issue, and pagination. [NLM journal guidance](https://www.ncbi.nlm.nih.gov/books/NBK7282/)

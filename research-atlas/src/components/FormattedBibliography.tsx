@@ -1,44 +1,14 @@
 import { useMemo, useState } from 'react';
-import { cslBibliographyStyles, formatCslBibliography, type CslBibliographyStyle, type CslReference } from '@/lib/csl-bibliography';
-import { normalizeDoi, type Paper, type Project } from '@/lib/model';
+import { citationCslReference, cslBibliographyStyles, formatCslBibliography, type CslBibliographyStyle } from '@/lib/csl-bibliography';
+import type { Project } from '@/lib/model';
 import { download } from '@/lib/storage';
-import { citationReferenceTypes, citationSourceUrl, type WritingCitation } from '@/lib/writing-studio';
-
-function itemType(paper: Pick<Paper, 'workType' | 'venueType'>): CslReference['type'] {
-  switch (paper.workType) {
-    case 'book': return 'book';
-    case 'book-chapter': case 'chapter': return 'chapter';
-    case 'proceedings-article': case 'conference-paper': return 'paper-conference';
-    case 'dissertation': case 'thesis': return 'thesis';
-    case 'report': return 'report';
-    case 'journal-article': return 'article-journal';
-    default: return paper.venueType === 'journal' ? 'article-journal' : 'article';
-  }
-}
-
-function reference(project: Pick<Project, 'papers'>, citation: WritingCitation): CslReference {
-  const snapshot = citation.sourceSnapshot;
-  const authors = snapshot.referenceAuthors?.length ? snapshot.referenceAuthors : [snapshot.authors];
-  let doi: string | undefined;
-  try { if (snapshot.doi) doi = normalizeDoi(snapshot.doi); } catch { /* The source link is the fallback. */ }
-  const venue = snapshot.journal.trim();
-  return {
-    id: citation.id,
-    type: itemType(citationReferenceTypes(project, citation)),
-    title: snapshot.title,
-    authors: authors.filter(author => author.trim()).map(literal => ({ literal })),
-    issued: snapshot.year != null && Number.isInteger(snapshot.year) && snapshot.year > 0 ? [snapshot.year] : undefined,
-    containerTitle: venue && venue !== 'Source not supplied' ? venue : undefined,
-    publisher: snapshot.publisher,
-    ...(doi ? { doi } : { url: citationSourceUrl(citation) }),
-  };
-}
+import type { WritingCitation } from '@/lib/writing-studio';
 
 function StylePreview({ papers, citations }: { papers: Project['papers']; citations: WritingCitation[] }) {
   const [style, setStyle] = useState<CslBibliographyStyle>('apa');
   const result = useMemo(() => {
     try {
-      const sources = citations.slice().sort((left, right) => left.number - right.number).map(citation => reference({ papers }, citation));
+      const sources = citations.slice().sort((left, right) => left.number - right.number).map(citation => citationCslReference({ papers }, citation));
       return { text: formatCslBibliography(style, sources).map(entry => entry.text).join('\n\n'), error: false };
     } catch { return { text: '', error: true }; }
   }, [papers, citations, style]);

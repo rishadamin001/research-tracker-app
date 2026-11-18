@@ -2,13 +2,32 @@
 
 ## Release checks
 
+### Version 0.11.2
+
+GitHub Pages published commit `b3abd56d7d1eb38c0df15d4ae004d4cb0e6764b5` after 126 unit tests and 348 browser cases passed. The separate provider check passed on that revision. [Pages release](https://github.com/rishadamin001/research-tracker-app/actions/runs/44156727146) · [Provider check](https://github.com/rishadamin001/research-tracker-app/actions/runs/44156727099)
+
+On the same live commit, Brave and Europe PMC returned 20 initial “Hypothyroidism” results and 20 fresh papers with each upper and lower pagination control. The full synthetic beginner flow carried a paper into the Evidence Desk, preserved its screening reason and exact finding location, and brought the finding into Writing Studio. The downloaded manuscript opened in Microsoft Word with its numbered reference, source location and uncertainty present. RIS identified the article as a journal article. All three bibliography styles rendered offline; offline encrypted export, wrong-passphrase rejection, verification and fresh-browser restore passed on desktop and mobile emulation. Real Android and observed novice sessions remain pending.
+
 ### Version 0.11.1
 
 GitHub Pages published commit `1f4972b622174d49271045651a4c043ac11c5d61` after 116 unit tests and 328 browser cases passed. The separate live-provider run completed the first two pages of “Hypothyroidism” for Europe PMC, Crossref, and OpenAlex. [Pages release](https://github.com/rishadamin001/research-tracker-app/actions/runs/44089188842) · [Provider check](https://github.com/rishadamin001/research-tracker-app/actions/runs/44089188789)
 
 A fresh Brave desktop session opened the exact published commit and ran a live Europe PMC search for “Hypothyroidism”. The lower and upper **Load next page** buttons each replaced the visible list with 20 fresh results. **Show all retrieved papers** displayed all 60. A separate desktop and mobile-emulated check corrected a library reference, went offline, reopened the app and verified the APA 7, IEEE and Vancouver previews and a downloaded bibliography. The corrected title and the original numbered draft marker were retained.
 
-The automated beginner-to-writing flow used synthetic provider records. An observed human test is still needed. Ask first-time researchers to choose a topic, select a source, record one screening reason and located claim, insert a citation and find the export without being coached. Record where they stopped and ask them to explain the difference between a journal quartile and a useful source for their question. Use sample projects and keep participant data out of the workspace.
+The automated beginner-to-writing flow used synthetic provider records.
+
+### Observe a first-time researcher
+
+Start with a fresh browser profile and a sample topic chosen by the participant. Give them these outcomes one at a time. Observe the first attempt without pointing to controls or correcting terminology.
+
+| Task for the participant | Record what happened |
+| --- | --- |
+| Find a paper that might help answer your question, then save it to a project. | Could they move from the beginner guide or Discover into a saved project? Ask what made the paper relevant and what its journal quartile tells them. |
+| Decide whether to keep the paper and record one finding. | Did they enter a screening reason and cite an exact location? Ask them to distinguish the source's finding from their interpretation. A public abstract is enough for this exercise if the participant labels it as such. |
+| Use the finding in your writing and export the draft. | Did the citation refer to the intended paper? Open the export alongside the participant and check the citation and finding location. |
+| Return to the project after a reload and verify a downloaded backup file. | Did their work reopen? Ask the participant to explain the difference between checking the backup and restoring it. |
+
+Record app version, platform, task, result (independent, after help, or incomplete), what the participant did, and what they expected. Keep names and personal research data out of notes. Record Android, keyboard and TalkBack observations as separate device runs. Label checks this protocol has not yet been used for as pending.
 
 ## Version 0.10.2
 
