@@ -11,7 +11,7 @@ const STATUSES = [
   { value: 'read', label: 'Read', caption: 'Ideas explored & understood', icon: CheckCheck },
   { value: 'published', label: 'Published', caption: 'Research out in the world', icon: GraduationCap },
 ];
-const EMPTY_METRICS = { total: 0, reading: 0, read: 0, published: 0 };
+const EMPTY_METRICS = { total: 0, reading: 0, read: 0, published: 0 }; // from alvee
 
 async function apiRequest(path, options = {}) {
   const response = await fetch(`/api${path}`, {
