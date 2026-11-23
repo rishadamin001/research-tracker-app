@@ -1,5 +1,7 @@
 # Research Atlas Google Play preparation
 
+**24 November device build.** The [Android project](../android/README.md) produced a debug APK and an unsigned bundle using JDK 17, Gradle 8.11.1 and AGP 8.10.1. Android's signature checker verified the APK v2 signature. The packaged manifest identifies `com.researchatlas.devicecheck`, minimum API 24, target API 36 and the app-specific non-exported receiver permission. Archive inspection found no native libraries in either artifact. No physical phone was connected. The API 37 emulator failed to reach an online ADB session under the available Windows memory and graphics configuration, so installation, Android file handling, navigation, offline operation and lifecycle still need a device check. The project origin's Digital Asset Links endpoint returned 404. The permanent Play package and signing certificate remain owner decisions.
+
 Reviewed 17 November 2026 against Google’s published requirements. Research Atlas runs as a browser-local PWA. Its manifest and service worker support an Android wrapper as a candidate architecture. Evidence of a signed Android build, verified Digital Asset Links, Play Console setup and physical-device tests is still pending.
 
 ## Run the public web preflight

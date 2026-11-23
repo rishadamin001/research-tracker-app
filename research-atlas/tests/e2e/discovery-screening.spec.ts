@@ -39,7 +39,7 @@ test('search controls are available before searching and a saved result opens th
     await expect(selected.getByRole('heading', { name: 'Test paper 2', exact: true })).toBeFocused();
   }
   await page.getByRole('button', { name: 'Continue to screen this source' }).click();
-  const actions = page.getByRole('group', { name: 'Quick screening decisions' });
+  const actions = page.getByRole('group', { name: 'Quick source review actions' });
   await expect(actions.getByRole('button', { name: 'Include', exact: true })).toBeDisabled();
   await page.getByLabel('Decision reason').fill('Test reason for selecting the second record.');
   await actions.getByRole('button', { name: 'Include', exact: true }).click();
