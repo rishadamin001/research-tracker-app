@@ -1,6 +1,6 @@
 import { Bookmark, CalendarDays, Check, Clock3, MapPin } from 'lucide-react';
 import { External } from '@/components/shared/External';
-import { nextDeadline, shiftDate, showDate, type Conference } from '@/lib/conferences';
+import { conferenceCheckKeys, conferenceChecks, nextDeadline, shiftDate, showDate, type Conference } from '@/lib/conferences';
 import { ConferenceCalendarActions } from './ConferenceCalendarActions';
 
 export function ConferenceCard({ event, today, isSaved, inTracker, onSave, onEdit }: {
@@ -27,6 +27,11 @@ export function ConferenceCard({ event, today, isSaved, inTracker, onSave, onEdi
         : <div>No future deadline in this listing. Check the event page.</div>}
     </div>
     {event.notes && <p className="conference-notes">{event.notes}</p>}
+    {inTracker && <details>
+      <summary>Your conference checks</summary>
+      <p>Use “Edit tracker entry” to record sources and follow up on open questions. These notes reflect your own review.</p>
+      <dl>{conferenceCheckKeys.map(key => <div key={key}><dt>{conferenceChecks[key]}</dt><dd>{event.reviewNotes?.[key] || 'Still to check'}</dd></div>)}</dl>
+    </details>}
     <div className="conference-source">
       {event.url && <External href={event.url}>{event.checked ? 'Organizer’s event page' : 'Saved event source'}</External>}
       <small>{event.checked ? `Source checked ${showDate(event.checked)}${stale ? ' · Recheck dates' : ''}` : 'Personal tracker entry · details not checked by Atlas'}</small>

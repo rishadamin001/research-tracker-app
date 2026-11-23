@@ -19,9 +19,10 @@ const views: { value: View; label: string }[] = [
 
 function readTracker() {
   try {
-    const result = savedConferencesSchema.safeParse(JSON.parse(localStorage.getItem(storageKey) ?? '[]'));
-    return result.success ? result.data : [];
-  } catch { return []; }
+    const original = localStorage.getItem(storageKey);
+    const items = savedConferencesSchema.parse(JSON.parse(original ?? '[]'));
+    return { items, original, readable: true };
+  } catch { return { items: [], original: null, readable: false }; }
 }
 
 export function ConferencePlanner() {
@@ -29,7 +30,8 @@ export function ConferencePlanner() {
   const [discoveryRegion, setDiscoveryRegion] = useState<Region>('bangladesh');
   const [view, setView] = useState<View>('bangladesh');
   const [today, setToday] = useState(localDateKey);
-  const [saved, setSaved] = useState(readTracker);
+  const [tracker, setTracker] = useState(readTracker);
+  const saved = tracker.items;
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState('event');
   const [showPast, setShowPast] = useState(false);
@@ -46,8 +48,13 @@ export function ConferencePlanner() {
   function saveTracker(items: Conference[], status: string) {
     if (items.length > 100) { setMessage('The tracker can hold up to 100 conferences. Remove an entry first.'); return false; }
     try {
-      localStorage.setItem(storageKey, JSON.stringify(items));
-      setSaved(items);
+      if (!tracker.readable || localStorage.getItem(storageKey) !== tracker.original) {
+        setMessage('The tracker could not be read or changed in another tab. Copy your edits and reload before saving.');
+        return false;
+      }
+      const original = JSON.stringify(items);
+      localStorage.setItem(storageKey, original);
+      setTracker({ items, original, readable: true });
       setMessage(status);
       return true;
     } catch { setMessage('This browser could not save the tracker. You can still download calendar entries.'); return false; }
@@ -80,6 +87,7 @@ export function ConferencePlanner() {
       {view === 'saved' && <button type="button" className="button" onClick={() => setEditor('new')}><Plus size={17} aria-hidden="true" /> Add my event</button>}
     </div>
     {message && <p role="status" className="conference-status">{message}</p>}
+    {view === 'saved' && !tracker.readable && <p role="alert">This browser could not read your saved tracker. Saving is disabled to protect its contents.</p>}
     {view === 'saved' && editor && <ConferenceEventEditor key={editor === 'new' ? 'new' : editor.id} event={editor === 'new' ? undefined : editor} today={today}
       onCancel={() => setEditor(null)} onRemove={() => { if (editor !== 'new' && saveTracker(saved.filter(item => item.id !== editor.id), 'Event removed from your tracker.')) setEditor(null); }}
       onSave={entry => { if (saveTracker([...saved.filter(item => item.id !== entry.id), entry], 'Event saved on this device.')) setEditor(null); }} />}

@@ -19,10 +19,10 @@ export const practiceLessons: PracticeLesson[] = [
   {
     id: 'question',
     title: 'Frame a research question',
-    takeaway: 'Name the group or setting and a question you can answer with evidence you can collect.',
+    takeaway: 'Choose a group or place, then ask something you can actually investigate.',
     examples: [{
       discipline: 'Education',
-      scenario: 'A student wants to research campus transport. They ask which barriers first-year commuters at one campus report when using the evening shuttle this term.',
+      scenario: 'What makes it difficult for first-year commuters at this campus to use the evening shuttle this term?',
       reasoning: 'The group, place, and period set the scope. Interviews can describe reported barriers within that scope.',
     }, {
       discipline: 'Environmental science',
@@ -42,10 +42,10 @@ export const practiceLessons: PracticeLesson[] = [
   {
     id: 'search',
     title: 'Search the literature',
-    takeaway: 'Search the concepts in your question, try related terms, and record which database and filters you used.',
+    takeaway: 'Search the main ideas in your question. Save your search words, database and filters.',
     examples: [{
       discipline: 'Education',
-      scenario: 'For a question about commuting and attendance, start with “student commute attendance.” Try “travel time class attendance” as another search.',
+      scenario: 'Try “student commute attendance”, then “travel time class attendance”. Compare the papers you find.',
       reasoning: 'Authors use different words for similar concepts. Keep the query and database together so you can revisit what each search covered.',
     }, {
       discipline: 'Computing',
@@ -65,7 +65,7 @@ export const practiceLessons: PracticeLesson[] = [
   {
     id: 'evaluate',
     title: 'Evaluate a source',
-    takeaway: 'Check whether a paper’s methods and population fit the claim you want to make.',
+    takeaway: 'Check who was studied and how. Can that evidence answer your question?',
     examples: [{
       discipline: 'Education',
       scenario: 'A highly cited paper surveys residential students. You want to understand why commuters miss early classes.',
@@ -88,10 +88,10 @@ export const practiceLessons: PracticeLesson[] = [
   {
     id: 'interpret',
     title: 'Separate findings from interpretation',
-    takeaway: 'Record what the source reports and where you found it. Keep your explanation and doubts visible as your own.',
+    takeaway: 'Save what the authors found and its page or section. Write your own explanation separately.',
     examples: [{
       discipline: 'Education',
-      scenario: 'In this practice example, a paper’s abstract reports that 12 of 20 interviewees mentioned unreliable bus schedules.',
+      scenario: 'A fictional abstract says 12 of 20 students interviewed mentioned unreliable bus schedules.',
       reasoning: 'Record the count and mark the abstract as your basis. “Unreliable schedules may deter students from attending class” is an interpretation that needs separate evidence.',
     }, {
       discipline: 'History',
@@ -111,10 +111,10 @@ export const practiceLessons: PracticeLesson[] = [
   {
     id: 'methods',
     title: 'Choose feasible methods',
-    takeaway: 'Match the method to the question, access to participants or data, and the ethical requirements.',
+    takeaway: 'Choose a method you can carry out with the people, data and permissions available.',
     examples: [{
       discipline: 'Education',
-      scenario: 'To understand how commuters choose study spaces, a student plans a small interview study with an approved recruitment and consent process.',
+      scenario: 'To learn why commuters choose certain study spaces, a student plans interviews and arranges consent.',
       reasoning: 'Interviews can show how participants explain their choices. Estimating how widespread those choices are would require a sampling and measurement plan.',
     }, {
       discipline: 'Engineering',
@@ -134,7 +134,7 @@ export const practiceLessons: PracticeLesson[] = [
   {
     id: 'writing',
     title: 'Write with evidence',
-    takeaway: 'Link the sentence to the source that supports it and keep the wording within what the study can show.',
+    takeaway: 'Write only what the study supports, and give the reader a citation they can follow.',
     examples: [{
       discipline: 'Education',
       scenario: 'A paragraph says, “Study space always improves grades.” Its source reports that interviewed students valued quiet rooms.',

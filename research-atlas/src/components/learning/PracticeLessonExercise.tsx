@@ -29,12 +29,13 @@ export function PracticeLessonExercise({ lesson, progress, onProgress, openSecti
   return <article className="planner-step-detail practice-exercise" aria-labelledby={`${id}-title`}>
     <h3 id={`${id}-title`} ref={headingRef} tabIndex={-1}>{lesson.title}</h3>
     <p>{lesson.takeaway}</p>
+    <p className="practice-scenario"><strong>Example</strong> {lesson.examples[0].scenario}</p>
     <details className="planner-example">
       <summary>See a worked example</summary>
       <div className="practice-examples">
-        {lesson.examples.map(example => <div key={example.discipline}>
+        {lesson.examples.map((example, index) => <div key={example.discipline}>
           <h4>{example.discipline}</h4>
-          <p>{example.scenario}</p>
+          {index > 0 && <p>{example.scenario}</p>}
           <p>{example.reasoning}</p>
         </div>)}
       </div>
@@ -73,7 +74,7 @@ export function PracticeLessonExercise({ lesson, progress, onProgress, openSecti
     <section className="practice-task" aria-labelledby={`${id}-application`}>
       <h4 id={`${id}-application`}>Practice in your project</h4>
       <p>{lesson.application.task}</p>
-      <p><strong>Check your work</strong><br />{lesson.application.check}</p>
+      <details className="practice-self-check"><summary>Check your work</summary><p>{lesson.application.check}</p></details>
       {openSection && <button className="button" type="button" onClick={() => openSection(lesson.application.target)}>
         {lesson.application.label}<ArrowRight size={16} aria-hidden="true" />
       </button>}

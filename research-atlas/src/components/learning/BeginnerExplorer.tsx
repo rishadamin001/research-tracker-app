@@ -23,7 +23,6 @@ export function BeginnerExplorer({ ready, onCreateProject, onOpenSearch, onLearn
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const request = useRef<AbortController | null>(null);
-  const ownInterest = useRef<HTMLInputElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const examples = beginnerExamples(groups);
   const visiblePapers = examples.flatMap(group => group.examples);
@@ -73,7 +72,7 @@ export function BeginnerExplorer({ ready, onCreateProject, onOpenSearch, onLearn
   }
   function toggle(key: string) { setSelected(previous => previous.includes(key) ? previous.filter(item => item !== key) : [...previous, key]); }
   return <div className="beginner-explorer">
-    <header className="starter-heading"><span className="eyebrow">START WITH CURIOSITY</span><h1>Find your first research direction</h1><p>You can explore real papers before choosing a title, writing a formal question or deciding on a study design.</p></header>
+    <header className="starter-heading"><h1>Find your first research direction</h1><p>Pick an interest. Read a real paper. Keep the ones you want to explore.</p></header>
     <ol className="starter-progress" aria-label="Your first research steps">{[['Interest', Compass], ['Choose a starting approach', Search], ['Meet the evidence', BookOpen]].map(([label, Icon], index) => {
       const StepIcon = Icon as typeof Compass;
       return <li key={String(label)} aria-current={starter.step === index + 1 ? 'step' : undefined}><StepIcon size={19} aria-hidden="true" /><span><small>Step {index + 1}</small>{String(label)}</span>{starter.step > index + 1 && <Check size={16} aria-hidden="true" />}</li>;
@@ -82,16 +81,18 @@ export function BeginnerExplorer({ ready, onCreateProject, onOpenSearch, onLearn
     <section className="panel starter-step" aria-labelledby="starter-active-heading">
       <h2 id="starter-active-heading" ref={heading} tabIndex={-1}>{starter.step === 1 ? 'What are you curious about?' : starter.step === 2 ? 'How would you like to start?' : 'Meet a few real papers'}</h2>
       {starter.step === 1 && <>
-        <p>Choose a field for examples, tap a topic, or use your own words. A broad interest is enough.</p>
-        <fieldset className="starter-fields"><legend>Choose a field (optional)</legend><div className="starter-field-grid">{disciplines.map(item => <button type="button" className="starter-field" key={item.name} aria-pressed={starter.discipline === item.name} onClick={() => change({ discipline: item.name }, true)}>{item.name}</button>)}</div></fieldset>
-        {field && <div className="starter-topics" role="group" aria-label={`Try a topic in ${field.name}`}>{field.domains.map(topic => <button type="button" className="button secondary small" key={topic} aria-pressed={starter.interest === topic} onClick={() => change({ interest: topic }, true)}>{topic}</button>)}</div>}
-        <button type="button" className="text-button" onClick={() => ownInterest.current?.focus()}>I have my own idea <ArrowRight size={15} aria-hidden="true" /></button>
-        <label className="field"><span>Your interest</span><input ref={ownInterest} aria-label="Your interest" maxLength={180} value={starter.interest} onChange={event => change({ interest: event.target.value }, true)} placeholder="For example, student housing or digital payments" /></label>
-        <p className="muted">Use a few keywords. No formal research question is needed. Keep personal or confidential details out of this search.</p>
-        <button type="button" className="button" disabled={!canExplore} onClick={() => go(2)}>Choose how to explore <ArrowRight size={16} aria-hidden="true" /></button>
+        <p>Try a topic below or write your own keywords.</p>
+        <div className="starter-topics" role="group" aria-label="Example topics">{['Student housing', 'Digital payments', 'Water quality'].map(topic => <button type="button" className="button secondary small" key={topic} aria-pressed={starter.interest === topic} onClick={() => change({ interest: topic, discipline: '' }, true)}>{topic}</button>)}</div>
+        <details><summary>Browse topics by field</summary>
+          <fieldset className="starter-fields"><legend>Choose a field</legend><div className="starter-field-grid">{disciplines.map(item => <button type="button" className="starter-field" key={item.name} aria-pressed={starter.discipline === item.name} onClick={() => change({ discipline: item.name }, true)}>{item.name}</button>)}</div></fieldset>
+          {field && <div className="starter-topics" role="group" aria-label={`Try a topic in ${field.name}`}>{field.domains.map(topic => <button type="button" className="button secondary small" key={topic} aria-pressed={starter.interest === topic} onClick={() => change({ interest: topic }, true)}>{topic}</button>)}</div>}
+        </details>
+        <label className="field"><span>Your interest</span><input aria-label="Your interest" maxLength={180} value={starter.interest} onChange={event => change({ interest: event.target.value }, true)} placeholder="For example, student housing" /></label>
+        <p className="muted">Keep names and confidential details out of search terms.</p>
+        <div className="button-row"><button type="button" className="button" disabled={!canExplore} onClick={() => go(2)}>Choose how to explore <ArrowRight size={16} aria-hidden="true" /></button><button type="button" className="text-button" onClick={() => onOpenSearch(starter.interest.trim())}>Skip for now · Open Discover</button></div>
       </>}
       {starter.step === 2 && <>
-        <p>Your interest: <strong>{starter.interest}</strong>. These choices change the search angle; they do not choose your research design.</p>
+        <p>Choose how to find papers about <strong>{starter.interest}</strong>. You can change this later.</p>
         <fieldset className="starter-approaches"><legend>Choose a starting approach</legend>{beginnerApproaches.map(approach => <label className="starter-choice" data-selected={starter.approach === approach.id} key={approach.id}><input type="radio" name="starter-approach" aria-label={approach.title} value={approach.id} checked={starter.approach === approach.id} onChange={() => change({ approach: approach.id }, true)} /><span><strong>{approach.title}</strong><small>{approach.detail}</small></span></label>)}</fieldset>
         {starter.approach === 'topics' && <fieldset className="starter-directions"><legend>Pick a direction to investigate</legend><p>These are editable question prompts, not findings or claims that a research gap exists.</p>{beginnerDirections(starter.interest).map(direction => <label className="starter-choice" data-selected={starter.direction === direction.id} key={direction.id}><input type="radio" name="starter-direction" aria-label={direction.title} checked={starter.direction === direction.id} onChange={() => change({ direction: direction.id }, true)} /><span><strong>{direction.title}</strong><small>{direction.prompt}</small></span></label>)}</fieldset>}
         {starter.approach === 'idea' && <label className="field"><span>A group, place or process to explore (optional)</span><input aria-label="A group, place or process to explore (optional)" maxLength={80} value={starter.context} onChange={event => change({ context: event.target.value }, true)} placeholder="For example, commuter students or local shops" /></label>}
@@ -99,7 +100,7 @@ export function BeginnerExplorer({ ready, onCreateProject, onOpenSearch, onLearn
         <div className="button-row"><button type="button" className="button secondary" onClick={() => go(1)}><ArrowLeft size={16} aria-hidden="true" />Change interest</button><button type="button" className="button" disabled={!canExplore || busy} onClick={() => void explore()}><Search size={16} aria-hidden="true" />Show real papers</button></div>
       </>}
       {starter.step === 3 && <>
-        <p>Start by opening one paper and asking: “What did its authors investigate, and would it help me understand my interest?”</p>
+        <p>Open one paper. What did the authors investigate? Keep it if it helps with your question.</p>
         <div className="button-row"><button type="button" className="button secondary" onClick={() => go(2)}><ArrowLeft size={16} aria-hidden="true" />Change approach</button><button type="button" className="button secondary" disabled={busy} onClick={() => void explore()}>{busy ? 'Looking for papers…' : groups.length ? 'Search these angles again' : 'Find example papers'}</button><button type="button" className="text-button" onClick={() => onOpenSearch(starter.interest)}>Open full paper search <ArrowRight size={15} aria-hidden="true" /></button></div>
         {busy && <p role="status">Retrieving real records from OpenAlex. Each successful search appears here as it arrives.</p>}
         {!groups.length && <p>Your starter choices are available for this tab. Run the search to retrieve current papers; result cards are not kept in tab storage.</p>}
@@ -119,6 +120,6 @@ export function BeginnerExplorer({ ready, onCreateProject, onOpenSearch, onLearn
         {visiblePapers.length > 0 && <section className="starter-project" aria-label="Turn exploration into a project"><h3><Sparkles size={19} aria-hidden="true" />Make this an editable project</h3><p>You have seen real source records. Keep exploring, or save this starting point. A design and final research question can come later.</p><label className="field"><span>Working project title (optional)</span><input aria-label="Working project title (optional)" maxLength={200} value={starter.title} onChange={event => change({ title: event.target.value })} placeholder={`Exploring ${starter.interest}`} /></label><label className="field"><span>A question to explore (optional draft)</span><textarea aria-label="A question to explore (optional draft)" rows={3} maxLength={2000} value={starter.questionDraft} onChange={event => change({ questionDraft: event.target.value })} placeholder="Write a question only when you are ready. You can revise it later." /></label>{starter.approach === 'topics' && <button type="button" className="text-button" onClick={() => change({ questionDraft: beginnerDirections(starter.interest).find(item => item.id === starter.direction)!.prompt })}>Use the selected question prompt as a draft</button>}<p>{selected.length} reference{selected.length === 1 ? '' : 's'} selected. Actual search records are kept with the project. Optional question wording remains an uncommitted draft.</p><button type="button" className="button" disabled={!ready || busy} onClick={() => onCreateProject(beginnerProjectSeed(starter, groups, selected, searches))}>Create project from this exploration <ArrowRight size={16} aria-hidden="true" /></button></section>}
       </>}
     </section>
-    <footer className="starter-support"><button type="button" className="text-button" onClick={onLearn}><BookOpen size={16} aria-hidden="true" />See the research journey and lessons</button><button type="button" className="text-button" onClick={clear}>Clear starter choices</button><p className="muted">Your starter choices and optional wording use this tab’s session storage. Clear them here when finished. Retrieved papers are kept only when you explicitly create a project. No AI service writes findings or declares a research gap.</p></footer>
+    <footer className="starter-support"><button type="button" className="text-button" onClick={onLearn}><BookOpen size={16} aria-hidden="true" />See the research journey and lessons</button><button type="button" className="text-button" onClick={clear}>Clear starter choices</button><details><summary>How your choices are saved</summary><p className="muted">This tab remembers your starter choices and draft wording. Creating a project saves your selected papers and search history to this device.</p></details></footer>
   </div>;
 }

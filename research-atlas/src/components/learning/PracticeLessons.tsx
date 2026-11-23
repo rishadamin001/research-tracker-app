@@ -45,7 +45,7 @@ export function PracticeLessons({ openSection }: { openSection?: (target: Planne
 
   return <section className="planner-view" aria-labelledby="practice-title">
     <h2 id="practice-title">Practice research skills</h2>
-    <p className="planner-intro">Try a short question, explain your reasoning, and apply the skill to your own work. Your answers and explanations stay in this browser.</p>
+    <p className="planner-intro">Choose a skill and try one question. This browser remembers your practice.</p>
     <div className="practice-layout">
       <ul className="planner-step-list practice-list" aria-label="Practice lessons">
         {practiceLessons.map(lesson => {

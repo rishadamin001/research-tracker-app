@@ -7,6 +7,18 @@ export function isCalendarDate(value: string) {
 }
 
 const dateField = z.string().refine(isCalendarDate);
+export const conferenceChecks = {
+  organizer: 'Organizer, official domain and contact details',
+  history: 'Earlier editions and published proceedings',
+  committee: 'Program committee and institutional affiliations',
+  review: 'Submission rules and peer-review process',
+  fees: 'Fees and refund policy',
+  schedule: 'Agreement between dates, venue and announcements',
+  concerns: 'Warnings, conflicting information and their sources',
+} as const;
+export type ConferenceCheck = keyof typeof conferenceChecks;
+export const conferenceCheckKeys = Object.keys(conferenceChecks) as ConferenceCheck[];
+const reviewNotes = z.partialRecord(z.enum(conferenceCheckKeys), z.string().trim().min(1).max(600));
 const deadlineSchema = z.object({
   date: dateField,
   label: z.string().min(1).max(100),
@@ -25,6 +37,7 @@ export const conferenceSchema = z.object({
   deadlines: z.array(deadlineSchema).max(8),
   checked: dateField.optional(),
   notes: z.string().max(2000).optional(),
+  reviewNotes: reviewNotes.optional(),
 }).refine(event => event.end >= event.start, 'The end date must be on or after the start date.');
 
 export type Conference = z.infer<typeof conferenceSchema>;
@@ -33,6 +46,18 @@ const checked = '2026-11-06';
 
 // Dates are from the linked organizers. Directory results are never promoted here automatically.
 export const conferences: Conference[] = [
+  {
+    id: 'aera-2027', title: 'AERA Annual Meeting',
+    organizer: 'American Educational Research Association', field: 'Education research', location: 'Toronto, Canada', region: 'international',
+    start: '2027-04-14', end: '2027-04-18', url: 'https://www.aera.net/Events-Meetings/AERA-2027-Annual-Meeting/FAQ-and-Key-Dates', checked: '2026-11-24',
+    deadlines: [{ date: '2027-03-05', label: 'Presenting author registration and final paper upload' }],
+  },
+  {
+    id: 'aaas-2027', title: 'AAAS Annual Meeting',
+    organizer: 'American Association for the Advancement of Science', field: 'Science, policy and public engagement', location: 'Chicago, United States', region: 'international',
+    start: '2027-02-18', end: '2027-02-20', url: 'https://meetings.aaas.org/program/about-the-meeting/', checked: '2026-11-24',
+    deadlines: [],
+  },
   {
     id: 'iccdrm-2026', title: 'International Conference on Climate and Disaster Risk Management',
     organizer: 'University of Dhaka', field: 'Climate and disaster risk', location: 'Dhaka, Bangladesh', region: 'bangladesh',
