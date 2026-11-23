@@ -5,7 +5,7 @@ export type Props = {
   activeProjectId: string;
   ready: boolean;
   onChangeProjects: (projects: Project[]) => void;
-  onOpenProject: (id: string) => void;
+  onOpenProject: (projectId: string, paperId: string) => void;
   onCreateProject: (onCreated?: (id: string) => void) => void;
   onFindPapers: () => void;
   notify: (message: string) => void;

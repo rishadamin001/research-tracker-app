@@ -1,6 +1,8 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { Plus } from 'lucide-react';
-import { conferenceSchema, type Conference } from '@/lib/conferences';
+import { conferenceCheckKeys, conferenceSchema, type Conference } from '@/lib/conferences';
+import { ConferenceReviewFields } from './ConferenceReviewFields';
+import { RemoveConferenceDialog } from './RemoveConferenceDialog';
 import { safeUrl } from '@/lib/model';
 
 export function ConferenceEventEditor({ event, today, onSave, onCancel, onRemove }: {
@@ -8,6 +10,8 @@ export function ConferenceEventEditor({ event, today, onSave, onCancel, onRemove
 }) {
   const [deadlines, setDeadlines] = useState<Conference['deadlines']>(event?.deadlines ?? []);
   const [error, setError] = useState('');
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const removeButton = useRef<HTMLButtonElement>(null);
   function submit(formEvent: FormEvent<HTMLFormElement>) {
     formEvent.preventDefault();
     const fields = new FormData(formEvent.currentTarget);
@@ -18,6 +22,7 @@ export function ConferenceEventEditor({ event, today, onSave, onCancel, onRemove
       id: event?.id ?? crypto.randomUUID(), title: read('title'), organizer: read('organizer'),
       field: read('field'), location: read('location'), region: read('region'), start: read('start'), end: read('end'),
       url, deadlines: deadlines.map(item => ({ ...item, label: item.label.trim(), cutoff: item.cutoff?.trim() })), notes: read('notes'),
+      reviewNotes: Object.fromEntries(conferenceCheckKeys.map(key => [key, read(`check-${key}`)]).filter(([, note]) => note)),
     });
     if (!parsed.success) { setError('Check that the end date follows the start date and every deadline has a date and label.'); return; }
     onSave(parsed.data);
@@ -45,11 +50,13 @@ export function ConferenceEventEditor({ event, today, onSave, onCancel, onRemove
     </fieldset>)}
     {deadlines.length < 8 && <button type="button" className="button secondary" onClick={() => setDeadlines(items => [...items, { label: '', date: today }])}><Plus size={16} aria-hidden="true" /> Add deadline</button>}
     <label>Private tracker notes<textarea aria-label="Private tracker notes" name="notes" rows={3} maxLength={2000} defaultValue={event?.notes} /></label>
+    <ConferenceReviewFields event={event} />
     {error && <p role="alert" className="error">{error}</p>}
     <div className="conference-actions">
       <button type="submit" className="button">Save event</button>
       <button type="button" className="button secondary" onClick={onCancel}>Cancel</button>
-      {event && <button type="button" className="text-button danger" onClick={onRemove}>Remove from tracker</button>}
+      {event && <button ref={removeButton} type="button" className="text-button danger" onClick={() => { removeButton.current?.focus(); setConfirmRemove(true); }}>Remove from tracker</button>}
     </div>
+    {confirmRemove && event && <RemoveConferenceDialog title={event.title} onCancel={() => setConfirmRemove(false)} onRemove={() => { setConfirmRemove(false); onRemove(); }} />}
   </form>;
 }

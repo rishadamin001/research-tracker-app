@@ -35,7 +35,7 @@ test('an empty curated search clearly leads to official directory discovery with
   await page.clock.setFixedTime(new Date('2026-11-09T06:00:00Z'));
   await page.goto('/#conferences');
   await page.getByRole('button', { name: 'International', exact: true }).click();
-  await expect(page.getByRole('status').filter({ hasText: '5 curated international events in this release' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: '7 curated international events in this release' })).toBeVisible();
   await page.getByLabel('Search curated conferences', { exact: true }).fill('public health');
   await expect(page.getByText(/No matches in our curated list with these filters/)).toBeVisible();
   await expect(page.getByText(/This does not mean no conferences exist/)).toBeVisible();
@@ -84,4 +84,43 @@ test('a directory lead is explicitly personal and remains editable after reload'
   await expect(page.getByText('Personal tracker entry · details not checked by Atlas', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Edit tracker entry', exact: true }).click();
   await expect(page.getByLabel('Private tracker notes', { exact: true })).toHaveValue('Verify the organizer before using this lead.');
+});
+
+test('a conference review keeps evidence and open checks, and confirms removal', async ({ page }) => {
+  await page.goto('/#conferences');
+  await page.getByRole('button', { name: 'My tracker (0)' }).click();
+  await page.getByRole('button', { name: 'Add my event' }).click();
+  await page.getByLabel('Conference name', { exact: true }).fill('Synthetic review practice');
+  await page.getByText('Check this conference before submitting').click();
+  await page.getByLabel('Fees and refund policy').fill('Test note: refunded until March, according to the organizer’s policy.');
+  await page.getByRole('button', { name: 'Save event' }).click();
+  await page.reload();
+  await page.getByRole('button', { name: 'My tracker (1)' }).click();
+  await page.getByText('Your conference checks').click();
+  await expect(page.getByText('Test note: refunded until March', { exact: false })).toBeVisible();
+  await expect(page.getByText('Still to check', { exact: true })).toHaveCount(6);
+  await page.getByRole('button', { name: 'Edit tracker entry' }).click();
+  const remove = page.getByRole('button', { name: 'Remove from tracker' });
+  await remove.click();
+  await expect(page.getByRole('button', { name: 'Keep event' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(remove).toBeFocused();
+  await remove.click();
+  await page.getByRole('button', { name: 'Remove event', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'My tracker (0)' })).toBeVisible();
+});
+
+test('an edit in another tab or damaged data cannot be replaced with a stale tracker', async ({ page }) => {
+  const key = 'research-atlas-conference-tracker-v1';
+  await page.goto('/#conferences');
+  await page.getByRole('button', { name: 'My tracker (0)' }).click();
+  await page.getByRole('button', { name: 'Add my event' }).click();
+  await page.getByLabel('Conference name', { exact: true }).fill('Synthetic unsaved entry');
+  await page.evaluate(key => localStorage.setItem(key, 'unreadable sample'), key);
+  await page.getByRole('button', { name: 'Save event' }).click();
+  await expect(page.getByText(/Copy your edits and reload/)).toBeVisible();
+  await page.reload();
+  await page.getByRole('button', { name: 'My tracker (0)' }).click();
+  await expect(page.getByRole('alert')).toContainText('could not read your saved tracker');
+  expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe('unreadable sample');
 });

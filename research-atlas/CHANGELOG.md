@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.12.0
+
+Beginners can pick an example, explore papers immediately, or take a nine-stop tour that remembers their place on this device. All six practice lessons keep their existing progress and offer more detail on demand.
+
+Discover puts search and sorting before the result list. A saved paper can go directly into screening with its source selected. The conference tracker adds evidence notes for seven checks, preserves unresolved questions and asks before removing an event. The international list adds AERA and AAAS meetings from organizer sources.
+
 ## 0.11.3
 
 Writing Studio uses author names, publication dates, journal abbreviations, volume, issue, and page ranges supplied by scholarly providers or reference files. Supported RIS and BibTeX fields survive export and re-import. Earlier backups still open, and citation snapshots retain the details saved when the citation was added.

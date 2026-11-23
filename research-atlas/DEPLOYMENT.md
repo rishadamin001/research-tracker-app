@@ -1,5 +1,7 @@
 # Deploy Research Atlas
 
+The [Android build instructions](android/README.md) cover the debug wrapper and unsigned bundle. The [hosting and accounts proposal](docs/HOSTING-AND-ACCOUNTS.md) compares optional future services and describes safe origin migration.
+
 The default release is a static Vite site for the public GitHub repository. Its build output is `research-atlas/out`, and relative asset URLs and hash navigation support the repository URL prefix. Hosting requires no credentials in the browser build. See the [GitHub Pages workflow documentation](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages).
 
 1. In [repository Pages settings](https://github.com/rishadamin001/research-tracker-app/settings/pages), set the publishing source to **GitHub Actions**.

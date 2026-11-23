@@ -7,6 +7,7 @@ export interface EvidenceWorkspaceProps {
   notify: (message: string) => void;
   mode: 'discover' | 'screen' | 'extract';
   onNote?: (paperId: string) => void;
+  onScreen?: (paperId: string) => void;
   initialQuery?: string;
 }
 
@@ -18,4 +19,5 @@ export interface PaperSearchProps {
   initialRun?: SearchRun;
   openProjects: () => void;
   onNote?: (paperId: string) => void;
+  onScreen?: (paperId: string) => void;
 }

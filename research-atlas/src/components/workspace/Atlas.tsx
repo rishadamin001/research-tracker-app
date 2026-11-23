@@ -37,6 +37,7 @@ import { ProjectHistory } from './ProjectHistory';
 import { StorageRecovery } from '@/components/settings/StorageRecovery';
 import { EvidenceDesk } from '@/components/evidence/EvidenceDesk';
 import { BeginnerExplorer } from '@/components/learning/BeginnerExplorer';
+import { WorkspaceTour } from '@/components/learning/WorkspaceTour';
 import type { BeginnerProjectSeed } from '@/lib/beginner-exploration';
 import { JournalMatch } from '@/components/publishing/JournalMatch';
 import { ResearchReadiness } from '@/components/planning/ResearchReadiness';
@@ -224,6 +225,19 @@ export default function Atlas() {
     currentRoute.current = window.location.hash;
     setSourceSelection(selection);
     setLiteratureLayout('desk');
+  }
+
+  function screenSavedPaper(projectId: string, paperId: string) {
+    if (evidenceEditingRef.current) { setNotice('Save or cancel your open edits before switching sources.'); return; }
+    const destination = projects.find(item => item.id === projectId);
+    if (!destination) return;
+    selectProject(projectId);
+    if (paperId && destination.papers.filter(item => item.id === paperId).length === 1) {
+      openSource('screen', paperId);
+    } else {
+      go('screen');
+      setNotice('Select the saved copy to screen. This reference has a missing or shared identifier.');
+    }
   }
 
   function selectProject(id: string) {
@@ -416,13 +430,14 @@ export default function Atlas() {
           <p className="muted">Your projects stay in this browser. Search sends only the terms you enter to the scholarly provider.</p>
         </>}
 
+        {view === 'overview' && ready && preferences.interfaceMode !== 'expert' && <WorkspaceTour onDismiss={() => main.current?.focus()} />}
         {view === 'paper-search' && <>
           <div className="page-heading"><div><span className="eyebrow">LITERATURE</span><h1>Paper search</h1><p>Look up papers by topic or title. Start with relevance, or sort retrieved papers by journal quartile, date, citations or available prices.</p></div></div>
           <nav className="discover-tools" aria-label="Discovery tools"><button className="button secondary" aria-pressed={discoverySection === 'search'} onClick={() => setDiscoverySection('search')}>Search</button><button className="button secondary" onClick={() => go('library')}>Explore connections</button><button className="button secondary" aria-pressed={discoverySection === 'notebook'} onClick={() => setDiscoverySection('notebook')}>Search history</button><button className="text-button" onClick={() => go('explore')}>Explore disciplines</button></nav>
-          {discoverySection === 'notebook' ? <SearchNotebook project={project} onReuse={search => { setDiscoverySection('search'); go('paper-search', search.run?.userQuery ?? search.query, search.run); }} /> : ready ? <PaperSearch key={`${project?.id ?? 'standalone'}-${searchTopic ?? ''}-${reusedSearch?.id ?? ''}`} project={project} initialQuery={searchTopic} initialRun={reusedSearch} update={project ? update : undefined} notify={setNotice} onNote={openNote} openProjects={() => go('projects')} />
+          {discoverySection === 'notebook' ? <SearchNotebook project={project} onReuse={search => { setDiscoverySection('search'); go('paper-search', search.run?.userQuery ?? search.query, search.run); }} /> : ready ? <PaperSearch key={`${project?.id ?? 'standalone'}-${searchTopic ?? ''}-${reusedSearch?.id ?? ''}`} project={project} initialQuery={searchTopic} initialRun={reusedSearch} update={project ? update : undefined} notify={setNotice} onNote={openNote} onScreen={paperId => screenSavedPaper(active, paperId)} openProjects={() => go('projects')} />
             : <p className="panel" role="status">Opening paper search…</p>}
         </>}
-        {view === 'library' && <AtlasLibrary projects={projects} activeProjectId={active} ready={ready} onChangeProjects={items => { markDirty(); setProjects(current => items.map(item => { const previous = current.find(p => p.id === item.id); return previous && previous !== item ? updateProject(previous, item) : item; })); }} onOpenProject={id => { selectProject(id); go('screen'); }} onCreateProject={openNewProjectDialog} onFindPapers={() => setDiscoverySection('search')} notify={setNotice} />}
+        {view === 'library' && <AtlasLibrary projects={projects} activeProjectId={active} ready={ready} onChangeProjects={items => { markDirty(); setProjects(current => items.map(item => { const previous = current.find(p => p.id === item.id); return previous && previous !== item ? updateProject(previous, item) : item; })); }} onOpenProject={screenSavedPaper} onCreateProject={openNewProjectDialog} onFindPapers={() => setDiscoverySection('search')} notify={setNotice} />}
         {view === 'guide' && <ResearchPlanner
          
           onStart={() => go('primer')}
@@ -432,7 +447,7 @@ export default function Atlas() {
         />}
         {view === 'publish-hub' && <><div className="page-heading"><div><span className="eyebrow">SHARE YOUR RESEARCH</span><h1>Publish your research</h1><p>Keep venue checks, conference dates, submission preparations, and reviewer replies together.</p></div></div><nav className="publish-tools" aria-label="Publishing tools">{([['match', 'Journal Match'], ['venues', 'Venue finder'], ['conferences', 'Conference finder'], ['submission', 'Submission & reviewer replies']] as const).map(([id,title]) => <button className="button secondary" key={id} aria-pressed={publishSection === id} onClick={() => setPublishSection(id)}>{title}</button>)}</nav>{publishSection === 'match' ? <JournalMatch key={project?.id ?? 'standalone'} project={project} update={update} onProjects={() => go('projects')} /> : publishSection === 'conferences' ? <ConferencePlanner /> : project ? publishSection === 'venues' ? <ExecutionWorkspace project={project} mode="publication" update={update} /> : <PlannerWorkbench project={project} update={update} onStart={openNewProject} onProjects={() => go('projects')} ready={ready} /> : <section className="panel"><h2>Start with a project</h2><p>Venue checks and submission notes belong to a particular study. You can browse conferences without creating a project.</p><button className="button" onClick={openNewProject}>Start a project</button></section>}</>}
         {view === 'conferences' && <ConferencePlanner />}
-        {view === 'preferences' && <><WorkspacePreferences value={preferences} onChange={changePreferences} /><InstallApp /></>}
+        {view === 'preferences' && <><WorkspacePreferences value={preferences} onChange={changePreferences} /><WorkspaceTour preferences onDismiss={() => main.current?.focus()} /><InstallApp /></>}
         {view === 'privacy' && <PrivacyData backupDate={backupDate} onBackup={backup} />}
         {(view === 'terms' || view === 'support') && <PublicInformation page={view} />}
 
@@ -456,7 +471,7 @@ export default function Atlas() {
             : <button className="button" onClick={openNewProject} disabled={!ready}><Plus size={17} />Start a project</button>}
         </section>}
 
-        {(view === 'roadmap' || view === 'history' || view === 'notebook' || current) && project && <ProjectShell project={project} view={view} onNavigate={go} />}
+        {(view === 'roadmap' || view === 'history' || view === 'notebook' || current) && view !== 'discover' && project && <ProjectShell project={project} view={view} onNavigate={go} />}
         {view === 'notebook' && project && <ResearchNotebook
           key={`${project.id}:${sourceSelection?.paperId ?? ''}`}
           project={project}
@@ -488,12 +503,13 @@ export default function Atlas() {
         {project && current && <>
           <div className="page-heading"><div><span className="eyebrow">{current.group.toUpperCase()} · {project.title}</span><h1>{current.title}</h1><p>{current.detail}</p></div>{status && <TaskStatusBadge status={status} />}</div>
           {status === 'Needs review' && <div className="review-banner" role="status"><p>Your question changed. Check this work against the revised question before proceeding.</p><button className="button secondary" onClick={() => update({ needsReview: project.needsReview.filter(id => id !== current.id) })}><Check size={16} />Mark reviewed</button></div>}
-          <ContextGuide stage={current.id} expanded={preferences.interfaceMode !== 'expert' && !['question', 'methods', 'data', 'screen', 'extract', 'writing'].includes(current.id)} />
+          {view !== 'discover' && <ContextGuide stage={current.id} expanded={preferences.interfaceMode !== 'expert' && !['question', 'methods', 'data', 'screen', 'extract', 'writing'].includes(current.id)} />}
           {view === 'screen' && <DuplicateReview project={project} update={update} disabled={evidenceEditing} />}
           {view === 'profile' || view === 'topic' || view === 'question' || view === 'methods' ? <PlanningWorkspace key={`${project.id}-${view}`} project={project} mode={view} interfaceMode={preferences.interfaceMode} saveState={saveState} update={update} next={advance} /> : null}
           {(view === 'screen' || view === 'extract') && <nav className="button-row" aria-label="Literature workspace layout"><button type="button" className="button secondary" aria-pressed={literatureLayout === 'desk'} onClick={() => setLiteratureLayout('desk')}>Evidence Desk</button><button type="button" className="button secondary" aria-pressed={literatureLayout === 'cards'} disabled={evidenceEditing} onClick={() => setLiteratureLayout('cards')}>Cards & matrix</button></nav>}
           {(view === 'screen' || view === 'extract') && literatureLayout === 'desk' && <EvidenceDesk key={`${project.id}-${view}`} project={project} mode={view} interfaceMode={preferences.interfaceMode} initialPaperId={sourceSelection?.paperId} update={update} onWrite={(paperId, claimId) => openSource('writing', paperId, claimId)} onNote={openNote} onEditingChange={setOpenEdits} onSelectionChange={paperId => { if (!paperId || project.papers.filter(paper => paper.id === paperId).length !== 1) return; setSourceSelection({ paperId }); window.history.replaceState(null, '', `#${view}?${new URLSearchParams({ paper: paperId })}`); currentRoute.current = window.location.hash; }} />}
-          {view === 'discover' || (view === 'screen' || view === 'extract') && literatureLayout === 'cards' ? <EvidenceWorkspace key={`${project.id}-${view}-${searchTopic ?? ''}`} project={project} mode={view} update={update} notify={setNotice} onNote={openNote} initialQuery={view === 'discover' ? searchTopic : undefined} /> : null}
+          {view === 'discover' || (view === 'screen' || view === 'extract') && literatureLayout === 'cards' ? <EvidenceWorkspace key={`${project.id}-${view}-${searchTopic ?? ''}`} project={project} mode={view} update={update} notify={setNotice} onNote={openNote} onScreen={paperId => screenSavedPaper(active, paperId)} initialQuery={view === 'discover' ? searchTopic : undefined} /> : null}
+          {view === 'discover' && <><ContextGuide stage="discover" expanded={false} /><ProjectShell project={project} view={view} onNavigate={go} /></>}
           {view === 'data' || view === 'writing' || view === 'publication' ? <ExecutionWorkspace key={`${project.id}-${view}-${view === 'writing' ? `${sourceSelection?.paperId ?? ''}-${sourceSelection?.claimId ?? ''}` : ''}`} project={project} mode={view} interfaceMode={preferences.interfaceMode} initialSelection={view === 'writing' ? sourceSelection : undefined} onNote={openNote} update={update} /> : null}
           <NextAction project={project} onNavigate={go} />
           <div className="journey-actions"><button className="button secondary" onClick={() => go('roadmap')}>Back to roadmap</button>{view !== 'profile' && view !== 'topic' && view !== 'question' && view !== 'methods' && <button className="button" onClick={advance}>{view === 'publication' ? 'Return to roadmap' : 'Continue to next task'}<ArrowRight size={17} /></button>}</div>

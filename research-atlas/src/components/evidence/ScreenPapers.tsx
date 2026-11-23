@@ -75,7 +75,7 @@ export function ScreenPapers({ project, update, onNote }: Pick<EvidenceWorkspace
             <PaperImpact paper={paper} />
             <DiscoverySourceLinks paper={paper} />
             {onNote && <button type="button" className="button secondary small" onClick={() => onNote(paper.id)}>Add my note</button>}
-          <PaperScreening paper={paper} criteria={criteria} onDraft={screeningDraft => update({ papers: project.papers.map(item => item.id === paper.id ? { ...item, screeningDraft } : item) })} onRecord={event => recordDecision(paper, event)} />
+          <PaperScreening quickActions paper={paper} criteria={criteria} onDraft={screeningDraft => update({ papers: project.papers.map(item => item.id === paper.id ? { ...item, screeningDraft } : item) })} onRecord={event => recordDecision(paper, event)} />
             <button type="button" className="text-button danger" onClick={() => {
               if (window.confirm('Remove this paper, its screening history, and its saved evidence notes?')) {
                 update({ papers: project.papers.filter(item => item.id !== paper.id) });

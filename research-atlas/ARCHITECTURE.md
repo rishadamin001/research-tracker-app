@@ -2,6 +2,8 @@
 
 ## Source layout
 
+The active web application, optional gateway and Android wrapper all live in the repository's `research-atlas/` directory. The root `client/` and `server/` directories contain the earlier app. The [Android wrapper](android/README.md) launches the existing website using the device's browser. Study data belongs to the browser profile and origin. The [hosting and accounts proposal](docs/HOSTING-AND-ACCOUNTS.md) describes future options.
+
 - `src/main.tsx` starts the React client. `src/components/workspace/Atlas.tsx` coordinates navigation, project selection, and saves.
 - `src/components/` groups client components by feature. Each named React component has its own `.tsx` file. Related stylesheet and type files live with the feature. Shared controls live under `src/components/shared/`.
 - `src/lib/` contains research models, browser storage, scholarly provider clients, and import and export logic.

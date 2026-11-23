@@ -35,7 +35,7 @@ export function LibraryRecord({ entry, projects, activeProjectId, onChangeProjec
     <PaperImpact paper={entry.paper} />
     <p className="muted">Source: {entry.sources.join(' · ')}{entry.paper.doi ? ` · DOI ${entry.paper.doi}` : ` · Record ${entry.paper.id}`}</p>
     <div className="button-row"><External href={entry.paper.url}>Open source</External>{entry.paper.oa && entry.paper.oa !== entry.paper.url && <External href={entry.paper.oa}>Read open copy</External>}</div>
-    <div className="library-project-links"><strong>Used in</strong>{[...linkedIds].map(id => { const link = entry.links.find(item => item.projectId === id)!; return <button type="button" className="text-button" key={id} onClick={() => onOpenProject(id)}>Open {link.projectTitle}</button>; })}</div>
+    <div className="library-project-links"><strong>Screen this source in</strong>{[...linkedIds].map(id => { const link = entry.links.find(item => item.projectId === id)!; return <button type="button" className="text-button" key={id} onClick={() => onOpenProject(id, link.paperId)}>Open {link.projectTitle}</button>; })}</div>
     <details><summary ref={metadataSummary}>Edit reference details</summary>
       {metadataTarget ? <ReferenceMetadataEditor link={metadataTarget} projects={projects} onCancel={closeMetadataEditor} onSave={items => {
         onChangeProjects(items);

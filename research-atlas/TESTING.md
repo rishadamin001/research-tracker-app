@@ -2,6 +2,12 @@
 
 ## Release checks
 
+### 0.12.0 desktop candidate
+
+A fresh Brave profile started a synthetic commuter-student project through the beginner path, using a deterministic OpenAlex example. It screened the paper with a reason, saved an explicitly fictional finding, locator, interpretation and uncertainty, then inserted the linked finding in Writing Studio. The test inspected the exported DOCX XML and RIS, rendered APA 7, IEEE and Vancouver bibliographies, and committed a revised question. Live Europe PMC returned two disjoint pages of 20 records. A selected live source was saved and screened. Crossref returned real titles for a related query. An encrypted export opened for read-only verification in a fresh isolated profile. After import, all project fields matched apart from the expected copy ID and title suffix.
+
+The production dependency audit reported zero vulnerabilities. The full audit reported no high or critical advisories. The previous published revision served HSTS and HTML meta policies for CSP and referrers. Pages did not return HTTP headers for CSP, referrers, framing, content-type sniffing or browser permissions. The browser workspace and its snapshots remain separate from passphrase-protected portable backups.
+
 ### Version 0.11.2
 
 GitHub Pages published commit `b3abd56d7d1eb38c0df15d4ae004d4cb0e6764b5` after 126 unit tests and 348 browser cases passed. The separate provider check passed on that revision. [Pages release](https://github.com/rishadamin001/research-tracker-app/actions/runs/44156727146) · [Provider check](https://github.com/rishadamin001/research-tracker-app/actions/runs/44156727099)
