@@ -26,3 +26,15 @@ for (const [view, heading] of views) {
     expect(violations.map(({ id, nodes }) => ({ id, targets: nodes.map(node => node.target) })), `#${view}`).toEqual([]);
   });
 }
+
+test('dark filter drawer keeps its field labels readable', async ({ page }) => {
+  await page.goto('/#preferences');
+  await page.getByLabel('Color theme').selectOption('dark');
+  await page.goto('/#paper-search');
+  await page.getByRole('button', { name: /^Filters/ }).click();
+  const panel = page.getByRole('dialog', { name: 'Filters', exact: true });
+  await expect(panel.getByLabel('Document type')).toBeVisible();
+  const { violations } = await new AxeBuilder({ page }).include('dialog[open]')
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
+  expect(violations.map(({ id }) => id)).toEqual([]);
+});

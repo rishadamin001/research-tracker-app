@@ -32,6 +32,7 @@ body:has(dialog[open]){overflow:hidden}
 .atlas-dialog>header,.tour-coach>header{display:flex;align-items:center;justify-content:space-between;gap:var(--space)}
 .atlas-dialog>header{padding-bottom:var(--space);border-bottom:1px solid var(--line)}
 .atlas-dialog .icon-button,.tour-coach .icon-button{min-width:40px;min-height:40px}
+.journey-shell .field > span { color: var(--ink); }
 .atlas-dialog .field{margin-block:var(--space)}
 .welcome-path,.search-tools,.applied-filters,.orientation-invite{display:flex;align-items:center;gap:var(--space);flex-wrap:wrap}
 .welcome-path{background:var(--surface-soft);border-radius:.5rem;padding:1rem;margin:1rem 0;font-size:.85rem;font-weight:650;color:var(--brand)}

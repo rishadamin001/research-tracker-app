@@ -1,0 +1,24 @@
+{
+  "model": "HD1901",
+  "android": "12",
+  "scope": "USB-hosted production web candidate in Android Chrome",
+  "checks": [
+    "Physical Back dismissed the spotlight",
+    "Filter drawer retained the year",
+    "Downloaded an actual Android file and imported a separate project copy"
+  ],
+  "version": "0.13.0",
+  "portrait": {
+    "width": 384,
+    "height": 752,
+    "fit": true
+  },
+  "landscape": {
+    "width": 829,
+    "height": 283,
+    "fit": true
+  },
+  "keyboard": true,
+  "offline": true,
+  "passed": true
+}
