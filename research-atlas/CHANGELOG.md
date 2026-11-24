@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.13.0
+
+The optional welcome and seven-stop spotlight highlight real workspace controls. Discover has visible filters and chips, search tips, paper previews, external database links and a search activity panel. Beginner exploration explains paper metadata. The six learning exercises retain their saved progress. The dashboard connects six stages of research, and project deletion and backup imports use explicit confirmation.
+
 ## 0.12.0
 
 Beginners can pick an example, explore papers immediately, or take a nine-stop tour that remembers their place on this device. All six practice lessons keep their existing progress and offer more detail on demand.

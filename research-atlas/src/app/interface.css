@@ -79,4 +79,13 @@ body:has(dialog[open]){overflow:hidden}
 .search-tool-anchor{position:relative}
 .help-popover{position:absolute;z-index:12;background:var(--surface);color:var(--ink);border:1px solid var(--line);box-shadow:var(--overlay-shadow);padding:1rem;border-radius:.65rem;width:min(100%,28rem);max-height:50dvh;overflow-y:auto}
 .help-popover header{display:flex;align-items:center;justify-content:space-between}
+.loading-paper{display:grid;gap:.5rem;margin:1rem 0;background:var(--surface-soft);padding:1rem;border-radius:.5rem;font-size:.85rem}
+.loading-paper i{height:.4rem;width:80%;background:var(--line);border-radius:.25rem}
+.loading-paper i:last-child{width:55%}
+.lesson-contrast{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,12rem),1fr));gap:.75rem}
+.lesson-contrast div{padding:.8rem;background:var(--surface-soft);border-inline-start:3px solid var(--evaluate)}
+.lesson-contrast div+div{border-color:var(--learn)}
+.lesson-contrast dt,.venue-facts dt{font-weight:700}.lesson-contrast dd,.venue-facts dd{margin:.25rem 0 .65rem;color:var(--muted)}
+.journey-shell .desk-source-list button[aria-pressed=true]{border-inline-start:4px solid var(--evaluate)}
+@media(max-width:650px){.journey-shell .search-panel .search-settings{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.journey-shell .search-settings select{padding-inline:.35rem}}
 @media(max-width:500px){.help-popover{position:relative}}

@@ -15,7 +15,21 @@ The working branch starts at b0e1cef, including the Android launcher fix. The pu
 ## Implementation checklist
 
 - [x] Capture the public baseline and measure the original bundle.
-- [ ] Implement and exercise visual foundations and onboarding.
-- [ ] Redesign Discover, beginner exploration, Learn and connected workspaces.
+- [x] Implement and exercise visual foundations and onboarding.
+- [x] Redesign Discover, beginner exploration, Learn and connected workspaces.
 - [ ] Complete responsive, accessibility, recovery, user-journey and device checks.
 - [ ] Record the release checks, comparison screenshots and deployment identity.
+
+## Results
+
+A synthetic undergraduate project investigated sleep quality and academic performance. A scripted Brave session took 61 seconds on this laptop. It used a fictional OpenAlex record to check reproducible source screening, locators, interpretation, citations and DOCX contents. Europe PMC returned two pages of 20 distinct real results. The user flow saved a real source and recorded a decision. Crossref also returned real titles. An encrypted backup opened for verification and restored the complete project in a fresh profile. Starting a project from beginner exploration retains its sources. Discover also offers a direct path to create a project from a paper.
+
+The [desktop and mobile baseline](before/) and [redesigned interface](after/) show the implemented application. [Desktop spotlight](after/spotlight-1440.png) · [Mobile spotlight](after/spotlight-390.png) · [Mobile filters](after/filters-390.png) · [New project](after/new-project-1440.png)
+
+Local production measurements used the same Brave executable, a loopback server, five fresh profiles per build and blocked service workers. The [raw results](performance-and-layout.json) include cold Discover readiness and compressed asset sizes. The measurements describe this laptop. They do not predict load times on a mobile connection.
+
+All seven spotlight targets and the filter drawer were exercised at 320, 360, 390, 768, 1280 and 1440 CSS pixels. These checks detected no horizontal overflow or browser errors. No participants were recruited. The [short usability script](USABILITY.md) records assistance, time and navigation errors for future sessions.
+
+The website delivers this interface to the existing Android wrapper. ADB listed no physical phone during the 0.13.0 check. The verified OnePlus installation and native download/restore results belong to 0.12.0. Android signing and origin association are separate owner decisions. Scholarly providers can still rate-limit or time out; existing retry and recovery behavior is preserved.
+
+The authoritative check and deployment records are linked from [the release pull request](https://github.com/rishadamin001/research-tracker-app/pull/12). After publication, the public page exposes its full Git commit in the `atlas-build-commit` metadata.

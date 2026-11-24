@@ -93,6 +93,7 @@ export default function Atlas() {
   const [active, setActive] = useState('');
   const [ready, setReady] = useState(false);
   const [saveState, setSaveState] = useState('Opening local workspace…');
+  const [reviewReload, setReviewReload] = useState(false);
   const [storageConflict, setStorageConflict] = useState(false);
   const [storageOperation, setStorageOperation] = useState(false);
   const [recoveryRaw, setRecoveryRaw] = useState('');
@@ -376,6 +377,10 @@ export default function Atlas() {
 
   function removeProject(item: Project) {
     setProjectAction(undefined);
+    if (writeBlocked.current || storageOperation) {
+      setNotice('Resolve the workspace conflict before deleting a project.');
+      return;
+    }
     markDirty();
     saveDeskSourceFilters(item.id, defaultDeskSourceFilters);
     const remaining = projects.filter(record => record.id !== item.id);
@@ -415,11 +420,15 @@ export default function Atlas() {
         <button className="button small" data-tour="new-project" onClick={openNewProject} disabled={!ready}><Plus size={16} />New project</button>
       </header>
       <main id="main" ref={main} tabIndex={-1} aria-busy={storageOperation} data-layout={['guide', 'primer', 'terms', 'privacy', 'support'].includes(view) ? 'reading' : ['paper-search', 'library', 'screen', 'extract', 'writing', 'discover'].includes(view) ? 'research' : 'working'} data-interface={preferences.interfaceMode ?? 'guided'}>
-        {(storageConflict || recoveryRaw) && <section className="error" role="alert"><h2>{storageConflict ? 'Another tab saved changes' : 'Some stored records need recovery'}</h2><p>Saving is paused so this tab cannot overwrite stored work. Download the copy in this tab before loading the latest saved workspace.</p><div className="button-row"><button className="button secondary" onClick={backup}>Download this tab’s backup</button>{recoveryRaw && <button className="button secondary" onClick={() => download('research-atlas-recovery-raw.json', recoveryRaw, 'application/json')}>Download original stored data</button>}<button className="button secondary" disabled={storageOperation} onClick={() => window.location.reload()}>Reload latest saved workspace</button></div></section>}
+        {(storageConflict || recoveryRaw) && <section className="error" role="alert"><h2>{storageConflict ? 'Another tab saved changes' : 'Some stored records need recovery'}</h2><p>Saving is paused so this tab cannot overwrite stored work. Download the copy in this tab before loading the latest saved workspace.</p><div className="button-row"><button className="button secondary" onClick={backup}>Download this tab’s backup</button>{recoveryRaw && <button className="button secondary" onClick={() => download('research-atlas-recovery-raw.json', recoveryRaw, 'application/json')}>Download original stored data</button>}<button className="button secondary" disabled={storageOperation} onClick={() => setReviewReload(true)}>Reload latest saved workspace</button></div></section>}
         {ready && projects.length > 0 && (saveState === 'Local storage unavailable' || saveState.startsWith('Could not save')) && <section className="error" role="alert"><p>Changes are still available in this tab. Download a recovery copy before reloading.</p><button type="button" className="button secondary" onClick={backup}>Download recovery backup</button></section>}
         {ready && preferences.interfaceMode !== 'expert' && <ContextualGuidance key={view} openLibrary={()=>go('library')}/>}
         {notice && <div className="notice" role="status">{notice}<button className="icon-button" onClick={() => setNotice('')} aria-label="Dismiss notice"><X size={16} /></button></div>}
         {ready && !storageOperation && !storageConflict && !recoveryRaw && <WorkspaceOrientation key={preferences.interfaceMode} view={view} guided={preferences.interfaceMode !== 'expert'} existing={projects.length > 0 || loadFailed.current} openMenu={setMobile} startProject={openNewProject} explore={()=>go('primer')} papers={()=>go('paper-search')} />}
+        {reviewReload && (storageConflict || recoveryRaw) && <AtlasDialog title="Reload the saved workspace?" onClose={()=>setReviewReload(false)}>
+          <p>Reloading opens the most recently saved projects. Download a backup first to keep any edits visible only in this tab.</p>
+          <div className="button-row"><button data-initial-focus className="button secondary" onClick={()=>setReviewReload(false)}>Keep this tab open</button><button className="button secondary" onClick={backup}>Download a backup</button><button className="button" onClick={()=>window.location.reload()}>Reload saved projects</button></div>
+        </AtlasDialog>}
         {projectAction && <AtlasDialog title={projectAction.kind==='remove' ? 'Delete project?' : 'Export project'} onClose={()=>setProjectAction(undefined)}>
           <h3>{projectAction.project.title}</h3>{projectAction.kind==='remove' ? <><p>Deleting removes this project from this browser. Keep a backup first if you need a copy.</p><div className="button-row"><button data-initial-focus className="button secondary" onClick={()=>setProjectAction(undefined)}>Keep project</button><button className="button danger" onClick={()=>removeProject(projectAction.project)}>Delete project</button></div></> : <><p>Choose the planning document or source evidence table to download.</p><div className="button-row"><button className="button secondary" onClick={()=>download('research-protocol.md',protocolMarkdown(projectAction.project),'text/markdown')}>Export protocol</button><button className="button secondary" onClick={()=>download('evidence-matrix.csv',matrixCsv(projectAction.project),'text/csv')}>Export evidence</button></div></>}
         </AtlasDialog>}

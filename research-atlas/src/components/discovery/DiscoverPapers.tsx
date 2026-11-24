@@ -237,6 +237,7 @@ export function DiscoverPapers({ project, update, notify, initialQuery, initialR
 
 
         {requestKind === 'search' && <button type="button" className="text-button" onClick={cancelRequest}>Cancel search</button>}
+        {busy && !results && <div className="loading-paper" role="status"><strong>Retrieving papers from {provider}…</strong><i aria-hidden="true"/><i aria-hidden="true"/></div>}
         {!results && pageNotice && <p role="status">{pageNotice}</p>}
         <p className="muted">The search sends your keywords and filters to {provider}. Leave out confidential project or participant details.{provider === 'Crossref' && ' Crossref does not provide a reliable reading-access filter here; check the publisher or choose another source for open copies.'}</p>
         <External href={searchWebsiteUrl(query)}>Search on Crossref</External>
@@ -253,7 +254,7 @@ export function DiscoverPapers({ project, update, notify, initialQuery, initialR
             <span>{provider} · {openAlexSearch.pageSize} per page · up to 100 retrieved</span>
           </div>
           <div className="two-col"><label className="field"><span>Document type</span><select aria-label="Document type" value={documentType ?? ''} disabled={busy || provider === 'Crossref'} onChange={event => setDocumentType(event.target.value ? event.target.value as SearchOptions['documentType'] : undefined)}>{searchFilterChoices[provider].documents.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label className="field"><span>Source collection</span><select aria-label="Source collection" value={sourceType ?? ''} disabled={busy || provider === 'Crossref'} onChange={event => setSourceType(event.target.value ? event.target.value as SearchOptions['sourceType'] : undefined)}>{searchFilterChoices[provider].sources.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div><p className="muted">{searchFilterChoices[provider].note}</p><button type="button" className="button" onClick={()=>setTool(undefined)}>Done</button></>}
-          
+
           {tool==='databases' && <><p>Open this query on another website. These are direct search links, not imported results. Scholar and ResearchGate manage their own access and may ask you to sign in or complete a browser check. Import a downloaded RIS or BibTeX reference through Library to use it in your project.</p><div className="button-row">{scholarlySearchLinks(query).map(link => <External key={link.name} href={link.url}>{`Search ${link.name}`}</External>)}</div><a href="#library">Import references into your Library</a></>}
         </AtlasDialog>}
       </section>

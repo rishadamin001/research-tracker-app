@@ -1,6 +1,32 @@
 import { expect, test } from '@playwright/test';
 
 test.use({storageState:{cookies:[],origins:[]}});
+test('each tour stop can be skipped and replayed without changing project data', async ({page})=>{
+  await page.goto('/#preferences');
+  for(let index=0;index<7;index++){
+    await page.getByRole('button',{name:'Replay workspace tour'}).click();
+    const coach=page.locator('.tour-coach');
+    for(let n=0;n<index;n++) await coach.getByRole('button',{name:'Next',exact:true}).click();
+    await coach.getByRole('button',{name:'Skip tour'}).press('Enter');
+    await expect(page.locator('.atlas-tour')).toHaveCount(0);
+  }
+  await page.goto('/#projects');
+  await expect(page.getByRole('heading',{name:'My projects',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Delete project',exact:true})).toHaveCount(0);
+});
+test('project dialog preserves an unfinished draft and its opener',async({page})=>{
+  await page.goto('/#projects');
+  const start=page.getByRole('button',{name:'New project',exact:true});
+  await start.click();
+  const title=page.getByRole('dialog').getByLabel('Working title');
+  await title.fill('Synthetic sleep research');
+  await page.keyboard.press('Escape');
+  await expect(start).toBeFocused();
+  await start.click();
+  await expect(title).toHaveValue('Synthetic sleep research');
+  await page.getByRole('button',{name:'Close new project'}).click();
+  await expect(page.getByRole('button',{name:'Delete project',exact:true})).toHaveCount(0);
+});
 test('a new visitor can skip, revisit, or explore without creating a project', async ({page})=>{
   await page.goto('/');
   const welcome=page.getByRole('dialog',{name:'Welcome to Research Atlas'});

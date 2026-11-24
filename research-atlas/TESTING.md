@@ -1,5 +1,9 @@
 # Verification
 
+## 0.13.0 interface
+
+The [release record](docs/0.13/RELEASE.md) links the interface captures, local production measurements and university usability script. Existing browser regression cases use a returning visitor who previously skipped orientation. Dedicated first-visit cases start in an empty browser profile. They cover modal and nonmodal focus, replay and resume, missing targets, filter persistence, keyboard controls and reduced motion.
+
 ## Release checks
 
 ### 0.12.0 desktop candidate
