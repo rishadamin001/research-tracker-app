@@ -1,0 +1,42 @@
+[
+  {
+    "step": "welcome",
+    "width": 390,
+    "violations": []
+  },
+  {
+    "step": "spotlight",
+    "width": 390,
+    "violations": []
+  },
+  {
+    "step": "filters",
+    "width": 390,
+    "violations": []
+  },
+  {
+    "step": "search tips",
+    "width": 390,
+    "violations": []
+  },
+  {
+    "step": "welcome",
+    "width": 1440,
+    "violations": []
+  },
+  {
+    "step": "spotlight",
+    "width": 1440,
+    "violations": []
+  },
+  {
+    "step": "filters",
+    "width": 1440,
+    "violations": []
+  },
+  {
+    "step": "search tips",
+    "width": 1440,
+    "violations": []
+  }
+]

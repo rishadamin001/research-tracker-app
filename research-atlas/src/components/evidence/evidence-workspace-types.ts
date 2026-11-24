@@ -18,6 +18,7 @@ export interface PaperSearchProps {
   initialQuery?: string;
   initialRun?: SearchRun;
   openProjects: () => void;
+  onCreateForPaper?: (paper: Project['papers'][number]) => void;
   onNote?: (paperId: string) => void;
   onScreen?: (paperId: string) => void;
 }

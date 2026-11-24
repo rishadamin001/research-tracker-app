@@ -1,7 +1,7 @@
 'use client';
 
 import { Plus, Search } from 'lucide-react';
-import { useEffect, useEffectEvent, useRef, useState } from 'react';
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react';
 import { scholarlySearchLinks, searchWebsiteUrl } from '@/lib/links';
 import { addPaper, type Paper } from '@/lib/model';
 import { PaperSearchError } from '@/lib/providers';
@@ -17,6 +17,10 @@ import { SearchRunDetails } from './SearchRunDetails';
 import { PaperPublished } from './PaperPublished';
 import { RelatedDiscovery } from './RelatedDiscovery';
 import { DiscoverySourceLinks } from './DiscoverySourceLinks';
+import { HelpPopover } from '@/components/shared/HelpPopover';
+import { AtlasDialog } from '@/components/shared/AtlasDialog';
+import { showResearchHint } from '@/components/onboarding/researchHints';
+import { SearchTools, searchToolNames, type SearchTool } from './SearchTools';
 import { SearchLog } from './SearchLog';
 import './paper-search.css';
 
@@ -33,7 +37,10 @@ function newSearchPapers(papers: Paper[], previouslySeen?: ReadonlySet<string>) 
   return { papers: newPapers, seen };
 }
 
-export function DiscoverPapers({ project, update, notify, initialQuery, initialRun, openProjects, onNote, onScreen }: Omit<PaperSearchProps, 'openProjects'> & { openProjects?: PaperSearchProps['openProjects'] }) {
+export function DiscoverPapers({ project, update, notify, initialQuery, initialRun, openProjects, onCreateForPaper, onNote, onScreen }: Omit<PaperSearchProps, 'openProjects'> & { openProjects?: PaperSearchProps['openProjects'] }) {
+  const [tool, setTool] = useState<SearchTool>();
+  const closeTool=useCallback(()=>setTool(undefined),[]);
+  const [preview, setPreview] = useState<Paper>();
   const [query, setQuery] = useState(initialRun?.userQuery ?? initialQuery ?? (openProjects ? '' : project?.searches.at(-1)?.query ?? ''));
   const [provider, setProvider] = useState<SearchProvider>(initialRun?.provider ?? 'OpenAlex');
   const [year, setYear] = useState(searchYear(initialRun));
@@ -118,6 +125,7 @@ export function DiscoverPapers({ project, update, notify, initialQuery, initialR
       setLatestPageIds(null);
       setLatestOnly(false);
       setResults({ run, ...unique });
+      if (unique.papers.length) showResearchHint('search');
       recordRun(run);
     } catch (failure) {
       if (request.current !== controller || controller.signal.aborted) return;
@@ -215,7 +223,26 @@ export function DiscoverPapers({ project, update, notify, initialQuery, initialR
             <label className="field"><span>Search source</span><select aria-label="Search source" value={provider} disabled={busy} onChange={event => { const source = event.target.value as SearchProvider; setProvider(source); if (source === 'Crossref') setOpenAccess(false); setDocumentType(undefined); setSourceType(undefined); setFailedRun(undefined); setError(''); }}>{Object.entries(searchProviders).map(([source, value]) => <option key={source} value={source}>{value.label}</option>)}</select></label>
             <OrderSelect label="Sort papers" labels={{ ...paperOrderLabels, original: 'Relevance · provider order' }} order={order} onChange={setOrder} />
           </div>
-          <div className="filter-row">
+          <div className="search-tool-anchor"><SearchTools count={[year,openAccess,documentType,sourceType].filter(Boolean).length} onOpen={key=>setTool(tool===key?undefined:key)}/>{tool==='tips' && <HelpPopover title="Search tips" onClose={closeTool}>
+          <p className="muted">{searchProviders[provider].description}</p>
+          <p>Pick two or three ideas from your question. Try a short keyword phrase such as “student housing insecurity” and record alternative terms in separate searches. Save promising sources and read the full text before relying on a finding.</p>
+          <p>Each source starts with 20 records. Load additional pages when useful, up to 100 records per search. Different databases cover different publications. For a review, document the sources you searched and what they might miss.</p>
+          <External href={openAlexSearch.docsUrl}>OpenAlex advanced search guidance</External>
+        </HelpPopover>}</div>
+          <div className="applied-filters">{[year && ['From '+year,()=>setYear('')],openAccess && ['Open access',()=>setOpenAccess(false)],documentType && [documentType,()=>setDocumentType(undefined)],sourceType && [sourceType,()=>setSourceType(undefined)]].filter((chip): chip is [string,()=>void] => Array.isArray(chip)).map(([name,clear])=><button type="button" className="filter-chip" key={name} aria-label={'Remove filter '+name} onClick={clear}>{name} ×</button>)}</div>
+        </form>
+        {openProjects ? (
+          <p>{project ? <>Searches and saved papers go to <strong>{project.title}</strong>.</> : 'Browse freely. Choose a project when you want to save papers.'}</p>
+        ) : project?.question && <p><strong>Project question</strong><br />{project.question}</p>}
+
+
+        {requestKind === 'search' && <button type="button" className="text-button" onClick={cancelRequest}>Cancel search</button>}
+        {busy && !results && <div className="loading-paper" role="status"><strong>Retrieving papers from {provider}…</strong><i aria-hidden="true"/><i aria-hidden="true"/></div>}
+        {!results && pageNotice && <p role="status">{pageNotice}</p>}
+        <p className="muted">The search sends your keywords and filters to {provider}. Leave out confidential project or participant details.{provider === 'Crossref' && ' Crossref does not provide a reliable reading-access filter here; check the publisher or choose another source for open copies.'}</p>
+        <External href={searchWebsiteUrl(query)}>Search on Crossref</External>
+        {tool && tool!=='tips' && <AtlasDialog title={searchToolNames[tool]} sheet onClose={()=>setTool(undefined)}>
+          {tool==='filters' && <><div className="filter-row">
             <label>
               Published from
               <input placeholder="Any year" value={year} onChange={event => setYear(event.target.value)} maxLength={4} inputMode="numeric" />
@@ -226,26 +253,13 @@ export function DiscoverPapers({ project, update, notify, initialQuery, initialR
             </label>
             <span>{provider} · {openAlexSearch.pageSize} per page · up to 100 retrieved</span>
           </div>
-          <details><summary>Refine document and source types</summary><div className="two-col"><label className="field"><span>Document type</span><select aria-label="Document type" value={documentType ?? ''} disabled={busy || provider === 'Crossref'} onChange={event => setDocumentType(event.target.value ? event.target.value as SearchOptions['documentType'] : undefined)}>{searchFilterChoices[provider].documents.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label className="field"><span>Source collection</span><select aria-label="Source collection" value={sourceType ?? ''} disabled={busy || provider === 'Crossref'} onChange={event => setSourceType(event.target.value ? event.target.value as SearchOptions['sourceType'] : undefined)}>{searchFilterChoices[provider].sources.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div><p className="muted">{searchFilterChoices[provider].note}</p></details>
-        </form>
-        {openProjects ? (
-          <p>{project ? <>Searches and saved papers go to <strong>{project.title}</strong>.</> : 'Browse freely. Choose a project when you want to save papers.'}</p>
-        ) : project?.question && <p><strong>Project question</strong><br />{project.question}</p>}
-        <details>
-          <summary>How to build a useful search</summary>
-          <p className="muted">{searchProviders[provider].description}</p>
-          <p>Pick two or three ideas from your question. Try a short keyword phrase such as “student housing insecurity” and record alternative terms in separate searches. Save promising sources and read the full text before relying on a finding.</p>
-          <p>Each source starts with 20 records. Load additional pages when useful, up to 100 records per search. Different databases cover different publications. For a review, document the sources you searched and what they might miss.</p>
-          <External href={openAlexSearch.docsUrl}>OpenAlex advanced search guidance</External>
-        </details>
+          <div className="two-col"><label className="field"><span>Document type</span><select aria-label="Document type" value={documentType ?? ''} disabled={busy || provider === 'Crossref'} onChange={event => setDocumentType(event.target.value ? event.target.value as SearchOptions['documentType'] : undefined)}>{searchFilterChoices[provider].documents.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label className="field"><span>Source collection</span><select aria-label="Source collection" value={sourceType ?? ''} disabled={busy || provider === 'Crossref'} onChange={event => setSourceType(event.target.value ? event.target.value as SearchOptions['sourceType'] : undefined)}>{searchFilterChoices[provider].sources.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div><p className="muted">{searchFilterChoices[provider].note}</p><button type="button" className="button" onClick={()=>setTool(undefined)}>Done</button></>}
 
-        {requestKind === 'search' && <button type="button" className="text-button" onClick={cancelRequest}>Cancel search</button>}
-        {!results && pageNotice && <p role="status">{pageNotice}</p>}
-        <p className="muted">The search sends your keywords and filters to {provider}. Leave out confidential project or participant details.{provider === 'Crossref' && ' Crossref does not provide a reliable reading-access filter here; check the publisher or choose another source for open copies.'}</p>
-        <External href={searchWebsiteUrl(query)}>Search on Crossref</External>
-        <details className="search-elsewhere"><summary>Search Google Scholar, PubMed, ResearchGate or Semantic Scholar</summary><p>Open this query on another website. These are direct search links, not imported results. Scholar and ResearchGate manage their own access and may ask you to sign in or complete a browser check. Import a downloaded RIS or BibTeX reference through Library to use it in your project.</p><div className="button-row">{scholarlySearchLinks(query).map(link => <External key={link.name} href={link.url}>{`Search ${link.name}`}</External>)}</div><a href="#library">Import references into your Library</a></details>
+          {tool==='databases' && <><p>Open this query on another website. These are direct search links, not imported results. Scholar and ResearchGate manage their own access and may ask you to sign in or complete a browser check. Import a downloaded RIS or BibTeX reference through Library to use it in your project.</p><div className="button-row">{scholarlySearchLinks(query).map(link => <External key={link.name} href={link.url}>{`Search ${link.name}`}</External>)}</div><a href="#library">Import references into your Library</a></>}
+        </AtlasDialog>}
       </section>
 
+      {preview && <AtlasDialog title="Paper preview" sheet onClose={()=>setPreview(undefined)}><h3>{preview.title}</h3><p>{preview.authors}</p><PublicationIdentity title={preview.journal} publisher={preview.publisher} type={preview.venueType}/><h4>Abstract</h4><p>{preview.abstract || 'This database did not supply an abstract.'}</p><DiscoverySourceLinks paper={preview}/></AtlasDialog>}
       <SearchLog searches={project?.searches ?? localSearches} reuseSearch={search => {
         setQuery(search.run?.userQuery ?? search.query);
         if (search.run) {
@@ -311,6 +325,9 @@ export function DiscoverPapers({ project, update, notify, initialQuery, initialR
             <PublicationIdentity title={paper.journal} publisher={paper.publisher} type={paper.venueType} />
             <h3 ref={index === 0 ? firstResult : undefined} tabIndex={index === 0 ? -1 : undefined}>{paper.title}</h3>
             <p>{paper.authors || 'Authors not supplied'}</p>
+            {paper.abstract && <p className="abstract-preview">{paper.abstract}</p>}
+            <button type="button" className="text-button" aria-haspopup="dialog" onClick={()=>setPreview(paper)}>Preview paper</button>
+            {!project && onCreateForPaper && <button type="button" className="button secondary small" aria-haspopup="dialog" onClick={()=>onCreateForPaper(paper)}><Plus size={15}/>Save paper to a new project</button>}
             {project && <div className="search-save-actions">
               {update && <button
                 type="button"
@@ -322,6 +339,7 @@ export function DiscoverPapers({ project, update, notify, initialQuery, initialR
                   if (next === project) return;
                   update({ papers: next.papers });
                   notify('Paper saved to your project library and evidence matrix.');
+                  showResearchHint('paper');
                 }}
               >
                 <Plus size={15} aria-hidden="true" /> {saved ? 'Saved' : 'Save paper'}

@@ -32,6 +32,14 @@ export function PracticeLessonExercise({ lesson, progress, onProgress, openSecti
     <p className="practice-scenario"><strong>Example</strong> {lesson.examples[0].scenario}</p>
     <details className="planner-example">
       <summary>See a worked example</summary>
+      {lesson.id === 'question' && <dl className="lesson-contrast">
+        <div><dt>Broad interest</dt><dd>Sleep and student life</dd></div>
+        <div><dt>Focused question</dt><dd>Among first-year commuters on one campus, how does reported sleep duration vary between class days and weekends?</dd></div>
+      </dl>}
+      {lesson.id === 'interpret' && <dl className="lesson-contrast">
+        <div><dt>Source finding · fictional example</dt><dd>Six of twelve interviewees mentioned a late commute. Locator: Table 2.</dd></div>
+        <div><dt>Personal interpretation</dt><dd>Evening transport may affect access to study space. Interview students on other routes to explore that possibility.</dd></div>
+      </dl>}
       <div className="practice-examples">
         {lesson.examples.map((example, index) => <div key={example.discipline}>
           <h4>{example.discipline}</h4>

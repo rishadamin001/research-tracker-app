@@ -1,0 +1,107 @@
+{
+  "browser": "158.0.8127.42",
+  "profiles": {
+    "before": {
+      "measurements": [
+        {
+          "readyMs": 333,
+          "domMs": 180
+        },
+        {
+          "readyMs": 299,
+          "domMs": 161
+        },
+        {
+          "readyMs": 387,
+          "domMs": 191
+        },
+        {
+          "readyMs": 376,
+          "domMs": 204
+        },
+        {
+          "readyMs": 399,
+          "domMs": 214
+        }
+      ],
+      "gzipBytes": {
+        "assets/bibliography-DmT0GqrW.js": 121664,
+        "assets/index-byMq504b.css": 15656,
+        "assets/index-DZ7fcM8d.js": 268604
+      }
+    },
+    "after": {
+      "measurements": [
+        {
+          "readyMs": 512,
+          "domMs": 325
+        },
+        {
+          "readyMs": 391,
+          "domMs": 217
+        },
+        {
+          "readyMs": 407,
+          "domMs": 228
+        },
+        {
+          "readyMs": 371,
+          "domMs": 201
+        },
+        {
+          "readyMs": 662,
+          "domMs": 276
+        }
+      ],
+      "gzipBytes": {
+        "assets/bibliography-DmT0GqrW.js": 121664,
+        "assets/index-B2cENcHf.js": 274672,
+        "assets/index-CbdhvM4J.css": 17276
+      }
+    }
+  },
+  "layouts": [
+    {
+      "width": 320,
+      "sevenTargets": true,
+      "filterDrawer": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "width": 360,
+      "sevenTargets": true,
+      "filterDrawer": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "width": 390,
+      "sevenTargets": true,
+      "filterDrawer": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "width": 768,
+      "sevenTargets": true,
+      "filterDrawer": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "width": 1280,
+      "sevenTargets": true,
+      "filterDrawer": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "sevenTargets": true,
+      "filterDrawer": true,
+      "overflow": false,
+      "errors": []
+    }
+  ]
+}

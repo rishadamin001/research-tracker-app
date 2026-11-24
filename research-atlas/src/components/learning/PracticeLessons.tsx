@@ -1,4 +1,5 @@
 import { useState, useRef, useLayoutEffect } from 'react';
+import { ClipboardCheck, FilePenLine, HelpCircle, Network, Quote, Search } from 'lucide-react';
 import { practiceLessons } from '@/lib/practice-lessons';
 import type { PlannerTarget } from '@/lib/planner-guide';
 import { External } from '@/components/shared/External';
@@ -6,6 +7,7 @@ import { readProgress, type LessonProgress, progressKey, emptyProgress } from '.
 import { PracticeLessonExercise } from './PracticeLessonExercise';
 import './practice-lessons.css';
 
+const lessonIcons=[HelpCircle, Search, ClipboardCheck, Quote, Network, FilePenLine];
 export function PracticeLessons({ openSection }: { openSection?: (target: PlannerTarget) => void }) {
   const [progress, setProgress] = useState(readProgress);
   const [activeId, setActiveId] = useState(() => {
@@ -48,13 +50,14 @@ export function PracticeLessons({ openSection }: { openSection?: (target: Planne
     <p className="planner-intro">Choose a skill and try one question. This browser remembers your practice.</p>
     <div className="practice-layout">
       <ul className="planner-step-list practice-list" aria-label="Practice lessons">
-        {practiceLessons.map(lesson => {
+        {practiceLessons.map((lesson,index) => {
+          const Icon=lessonIcons[index];
           const saved = progress[lesson.id];
           const due = (saved?.revisitAt ?? Infinity) <= Date.now();
           return <li key={lesson.id}>
             <button type="button" aria-pressed={activeId === lesson.id} onClick={() => chooseLesson(lesson.id)}>
-              <span><strong>{lesson.title}</strong>
-                {due ? <small>Ready to revisit</small> : saved?.checkedOption !== undefined && <small>Practiced</small>}
+              <Icon size={19} aria-hidden="true"/><span><small>Lesson {index+1}</small><strong>{lesson.title}</strong><span className="lesson-description">{lesson.takeaway}</span>
+                {due ? <small>Ready to revisit</small> : saved?.checkedOption !== undefined ? <small>Practiced · Review</small> : <small>{saved ? 'Continue lesson' : 'Start lesson'}</small>}
               </span>
             </button>
           </li>;

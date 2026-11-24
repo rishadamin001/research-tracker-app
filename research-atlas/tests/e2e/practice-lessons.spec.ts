@@ -50,7 +50,7 @@ test('each lesson offers a second discipline and a direct project practice with 
   ];
   for (const [title, discipline, label, target] of lessons) {
     if (!page.url().endsWith('#guide')) await page.goto('/#guide');
-    await page.getByRole('list', { name: 'Practice lessons' }).getByRole('button', { name: title, exact: true }).click();
+    await page.getByRole('list', { name: 'Practice lessons' }).getByRole('button', { name: title }).click();
     const exercise = page.getByRole('article', { name: title, exact: true });
     await exercise.getByText('See a worked example', { exact: true }).click();
     await expect(exercise.getByRole('heading', { name: discipline, exact: true })).toBeVisible();

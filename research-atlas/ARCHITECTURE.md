@@ -1,5 +1,15 @@
 # Architecture
 
+## Interface and onboarding in 0.13
+
+The workspace shell owns navigation. The orientation controller highlights semantic `data-tour` targets and follows layout changes. The spotlight is nonmodal, so a learner can operate the highlighted control. Dialogs use the browser's modal behavior for actions that need a decision. Local tutorial keys are independent of project storage, encrypted backups and practice progress.
+
+Shared tokens, touch sizes and reduced-motion rules live in `src/app/interface.css`. Discover owns the existing provider and pagination state. Its dialogs present filters, external links, paper details and search activity. Search tips open in a nonmodal help panel.
+
+Using React and Lucide already shipped with the application keeps the tour offline and introduces no additional runtime license, remote script or stylesheet. Driver.js offers configurable popovers and targets, but Atlas would still need its own project-state and mobile-navigation integration. [Driver configuration](https://driverjs.com/docs/configuration) · [Native dialogs](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/dialog)
+
+The filter chips take inspiration from Linear's visible search criteria. Keeping paper metadata, notes and citations distinct follows a familiar reference-manager workflow. [Linear filters](https://linear.app/docs/filters) · [Zotero basics](https://www.zotero.org/support/quick_start_guide)
+
 ## Source layout
 
 The active web application, optional gateway and Android wrapper all live in the repository's `research-atlas/` directory. The root `client/` and `server/` directories contain the earlier app. The [Android wrapper](android/README.md) launches the existing website using the device's browser. Study data belongs to the browser profile and origin. The [hosting and accounts proposal](docs/HOSTING-AND-ACCOUNTS.md) describes future options.

@@ -6,6 +6,7 @@ import './app/globals.css';
 import './app/workspace.css';
 import './app/polish.css';
 import './components/workspace/beginner-entry.css';
+import './app/interface.css';
 
 initAppInstall();
 createRoot(document.getElementById('root')!).render(<Atlas />);
