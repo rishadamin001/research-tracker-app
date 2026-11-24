@@ -55,8 +55,8 @@ export function PracticeLessons({ openSection }: { openSection?: (target: Planne
           const saved = progress[lesson.id];
           const due = (saved?.revisitAt ?? Infinity) <= Date.now();
           return <li key={lesson.id}>
-            <button type="button" aria-label={lesson.title+(due?' · Ready to revisit':saved?.checkedOption !== undefined?' · Practiced':'')} aria-describedby={'skill-'+lesson.id} aria-pressed={activeId === lesson.id} onClick={() => chooseLesson(lesson.id)}>
-              <Icon size={19} aria-hidden="true"/><span><small>Lesson {index+1}</small><strong>{lesson.title}</strong><span id={'skill-'+lesson.id} className="lesson-description">{lesson.takeaway}</span>
+            <button type="button" aria-pressed={activeId === lesson.id} onClick={() => chooseLesson(lesson.id)}>
+              <Icon size={19} aria-hidden="true"/><span><small>Lesson {index+1}</small><strong>{lesson.title}</strong><span className="lesson-description">{lesson.takeaway}</span>
                 {due ? <small>Ready to revisit</small> : saved?.checkedOption !== undefined ? <small>Practiced · Review</small> : <small>{saved ? 'Continue lesson' : 'Start lesson'}</small>}
               </span>
             </button>

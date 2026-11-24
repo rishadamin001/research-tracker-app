@@ -28,7 +28,7 @@ export function PlannerWorkbench({ project, update, onStart, onProjects, ready }
   if (!project) return <section className="panel planner-empty">
     <FolderOpen size={26} aria-hidden="true" /><h3>Start a plan you can save</h3>
     <p>Pick an existing project or create one to save a timeline, budget, submission documents and reviewer replies.</p>
-    <div className="button-row"><button type="button" className="button" disabled={!ready} onClick={onStart}>Create a project</button><button type="button" className="button secondary" onClick={onProjects}>Open My projects</button></div>
+    <div className="button-row"><button type="button" className="button" disabled={!ready} aria-haspopup="dialog" onClick={onStart}>Create a project</button><button type="button" className="button secondary" onClick={onProjects}>Open My projects</button></div>
   </section>;
 
   const plan = project.researchPlan;

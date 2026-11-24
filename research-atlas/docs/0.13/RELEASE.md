@@ -17,8 +17,9 @@ The working branch starts at b0e1cef, including the Android launcher fix. The pu
 - [x] Capture the public baseline and measure the original bundle.
 - [x] Implement and exercise visual foundations and onboarding.
 - [x] Redesign Discover, beginner exploration, Learn and connected workspaces.
-- [ ] Complete responsive, accessibility, recovery, user-journey and device checks.
-- [ ] Record the release checks, comparison screenshots and deployment identity.
+- [x] Exercise the responsive layouts, accessibility, recovery and end-to-end research workflow.
+- [x] Record comparison screenshots, measured bundle sizes and device coverage.
+- The production revision and verification run are recorded after deployment.
 
 ## Results
 
@@ -26,10 +27,14 @@ A synthetic undergraduate project investigated sleep quality and academic perfor
 
 The [desktop and mobile baseline](before/) and [redesigned interface](after/) show the implemented application. [Desktop spotlight](after/spotlight-1440.png) · [Mobile spotlight](after/spotlight-390.png) · [Mobile filters](after/filters-390.png) · [New project](after/new-project-1440.png)
 
-Local production measurements used the same Brave executable, a loopback server, five fresh profiles per build and blocked service workers. The [raw results](performance-and-layout.json) include cold Discover readiness and compressed asset sizes. The measurements describe this laptop. They do not predict load times on a mobile connection.
+Local production measurements used the same Brave executable, a loopback server, five fresh profiles per build and blocked service workers. The [raw results](performance-and-layout.json) include cold Discover readiness and compressed asset sizes. Median cold Discover readiness was 474 ms before and 483 ms after. Main JavaScript increased from 268,604 to 274,672 gzip bytes and CSS from 15,656 to 17,269. The bibliography bundle stayed at 121,664 bytes. These short local runs do not establish a perceptible change on mobile networks.
 
 All seven spotlight targets and the filter drawer were exercised at 320, 360, 390, 768, 1280 and 1440 CSS pixels. These checks detected no horizontal overflow or browser errors. No participants were recruited. The [short usability script](USABILITY.md) records assistance, time and navigation errors for future sessions.
 
-The website delivers this interface to the existing Android wrapper. ADB listed no physical phone during the 0.13.0 check. The verified OnePlus installation and native download/restore results belong to 0.12.0. Android signing and origin association are separate owner decisions. Scholarly providers can still rate-limit or time out; existing retry and recovery behavior is preserved.
+Automated WCAG A/AA scans covered the welcome dialog, tour coach, filter drawer and search tips at 390 and 1440 pixels. The full-page Learn scan found six buttons whose screen-reader names omitted visible text. The lesson cards now derive their names from their visible contents. Local tests verified lesson selection, review progress, keyboard focus and reopening unfinished project dialogs.
+
+The connected OnePlus 7T on Android 12 loaded the USB-hosted 0.13.0 candidate. The welcome and first tour stop rendered at 384 × 752 CSS pixels without horizontal overflow. The screen lock interrupted the first attempt before visual rotation, Android Back, downloads and restore could be confirmed. Results from the earlier 0.12.0 native test are documented separately. The Android wrapper uses the existing hosted website. This update does not require a new APK.
+
+The live provider monitor encountered intermittent upstream errors. In one run Crossref returned 39 distinct records over two pages after a failed browser request. The strict monitor recorded the console error. Europe PMC also timed out on individual attempts. Retrieved records remain available during retries.
 
 The authoritative check and deployment records are linked from [the release pull request](https://github.com/rishadamin001/research-tracker-app/pull/12). After publication, the public page exposes its full Git commit in the `atlas-build-commit` metadata.

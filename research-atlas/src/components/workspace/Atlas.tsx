@@ -393,7 +393,11 @@ export default function Atlas() {
     go(roadmap[roadmap.findIndex(task => task.id === current.id) + 1]?.id ?? 'roadmap');
   }
 
-  return <div className="app-shell journey-shell" data-theme={preferences.theme} data-density={preferences.density} data-motion={preferences.motion}>
+  return <div className="app-shell journey-shell" onClickCapture={event => {
+    // Safari leaves pointer-activated buttons unfocused. Native dialogs restore the active opener.
+    const opener = event.target instanceof Element ? event.target.closest<HTMLButtonElement>('button[aria-haspopup="dialog"]') : null;
+    if (opener && document.activeElement !== opener) opener.focus({ preventScroll: true });
+  }}  data-theme={preferences.theme} data-density={preferences.density} data-motion={preferences.motion}>
     <a className="skip" href="#main" onClick={event => { event.preventDefault(); main.current?.focus(); }}>Skip to workspace</a>
     <aside inert={storageOperation} className={`sidebar journey-sidebar ${mobile ? 'open' : ''}`}>
       <a href="#overview" className="brand" onClick={event => { event.preventDefault(); go('overview'); }}>
@@ -417,10 +421,10 @@ export default function Atlas() {
         <div className="journey-breadcrumb">{current ? <><button className="text-button" onClick={() => go('roadmap')}>Project roadmap</button><ChevronRight size={15} /><span>{current.title}</span></> : <span>{view === 'notebook' ? 'Notebook' : mainNav.find(item => item.id === view)?.title ?? 'Get started'}</span>}</div>
         <span className="saved" role="status">{saveState}</span>
         <label className="mode-select"><span>Workspace</span><select aria-label="Guidance mode" value={preferences.interfaceMode ?? 'guided'} onChange={event => changePreferences({ interfaceMode: event.target.value as 'guided' | 'expert' })}><option value="guided">Step-by-step guidance</option><option value="expert">Focus workspace</option></select></label>
-        <button className="button small" data-tour="new-project" onClick={openNewProject} disabled={!ready}><Plus size={16} />New project</button>
+        <button className="button small" data-tour="new-project" aria-haspopup="dialog" onClick={openNewProject} disabled={!ready}><Plus size={16} />New project</button>
       </header>
       <main id="main" ref={main} tabIndex={-1} aria-busy={storageOperation} data-layout={['guide', 'primer', 'terms', 'privacy', 'support'].includes(view) ? 'reading' : ['paper-search', 'library', 'screen', 'extract', 'writing', 'discover'].includes(view) ? 'research' : 'working'} data-interface={preferences.interfaceMode ?? 'guided'}>
-        {(storageConflict || recoveryRaw) && <section className="error" role="alert"><h2>{storageConflict ? 'Another tab saved changes' : 'Some stored records need recovery'}</h2><p>Saving is paused so this tab cannot overwrite stored work. Download the copy in this tab before loading the latest saved workspace.</p><div className="button-row"><button className="button secondary" onClick={backup}>Download this tab’s backup</button>{recoveryRaw && <button className="button secondary" onClick={() => download('research-atlas-recovery-raw.json', recoveryRaw, 'application/json')}>Download original stored data</button>}<button className="button secondary" disabled={storageOperation} onClick={() => setReviewReload(true)}>Reload latest saved workspace</button></div></section>}
+        {(storageConflict || recoveryRaw) && <section className="error" role="alert"><h2>{storageConflict ? 'Another tab saved changes' : 'Some stored records need recovery'}</h2><p>Saving is paused so this tab cannot overwrite stored work. Download the copy in this tab before loading the latest saved workspace.</p><div className="button-row"><button className="button secondary" onClick={backup}>Download this tab’s backup</button>{recoveryRaw && <button className="button secondary" onClick={() => download('research-atlas-recovery-raw.json', recoveryRaw, 'application/json')}>Download original stored data</button>}<button className="button secondary" disabled={storageOperation} aria-haspopup="dialog" onClick={() => setReviewReload(true)}>Reload latest saved workspace</button></div></section>}
         {ready && projects.length > 0 && (saveState === 'Local storage unavailable' || saveState.startsWith('Could not save')) && <section className="error" role="alert"><p>Changes are still available in this tab. Download a recovery copy before reloading.</p><button type="button" className="button secondary" onClick={backup}>Download recovery backup</button></section>}
         {ready && preferences.interfaceMode !== 'expert' && <ContextualGuidance key={view} openLibrary={()=>go('library')}/>}
         {notice && <div className="notice" role="status">{notice}<button className="icon-button" onClick={() => setNotice('')} aria-label="Dismiss notice"><X size={16} /></button></div>}
@@ -440,11 +444,11 @@ export default function Atlas() {
             <span className="eyebrow">Your research workspace</span>
             <h1>Turn curiosity into<br />a research project.</h1>
             <p>Explore a topic, find papers, and build a draft with evidence you can trace.</p>
-            <button className="button light" onClick={project ? () => go('roadmap') : openNewProject} disabled={!ready}>{project ? 'Resume your project' : 'Start a research project'}<ArrowRight size={18} /></button>
+            <button className="button light" aria-haspopup={project ? undefined : 'dialog'} onClick={project ? () => go('roadmap') : openNewProject} disabled={!ready}>{project ? 'Resume your project' : 'Start a research project'}<ArrowRight size={18} /></button>
           </section>
           <section className="entry-grid intent-grid" aria-label="Choose a starting point">
             <button className="entry-card" onClick={() => go('primer')}><BookOpen /><strong>I’m new to research</strong><span>Explore an interest and meet your first real papers.</span><span className="intent-action">Start guided path <ArrowRight size={17} /></span></button>
-            <button className="entry-card" onClick={openNewProject} disabled={!ready}><Plus /><strong>I already have a topic or question</strong><span>Build a project roadmap around what you want to understand.</span><span className="intent-action">Start a project <ArrowRight size={17} /></span></button>
+            <button className="entry-card" aria-haspopup="dialog" onClick={openNewProject} disabled={!ready}><Plus /><strong>I already have a topic or question</strong><span>Build a project roadmap around what you want to understand.</span><span className="intent-action">Start a project <ArrowRight size={17} /></span></button>
             <button className="entry-card" onClick={() => go('paper-search')}><Search /><strong>I need to find papers</strong><span>Search first. Create a project when you want to save evidence.</span><span className="intent-action">Search for papers <ArrowRight size={17} /></span></button>
           </section>
           <nav className="secondary-paths" aria-label="More ways to explore"><button className="text-button" onClick={() => go('explore')}>Explore disciplines</button><button className="text-button" onClick={() => go('conferences')}>Find a conference</button><button className="text-button" onClick={() => go('projects')}>Open saved projects</button><button className="text-button" onClick={() => go('guide')}>Research planner</button></nav>
@@ -467,9 +471,9 @@ export default function Atlas() {
           onStart={() => go('primer')}
           onConferences={() => go('conferences')}
           openSection={target => go(target === 'analysis' ? 'data' : target === 'draft' ? 'writing' : target === 'publish' ? 'publication' : target)}
-          workbench={<section className="panel"><h2>Plan beside your project</h2><p>Your timeline, budget, submission pack and reviewer replies live in your project Overview.</p><button className="button" onClick={project ? () => go('roadmap') : openNewProject}>{project ? 'Open project plan' : 'Start a project'}</button></section>}
+          workbench={<section className="panel"><h2>Plan beside your project</h2><p>Your timeline, budget, submission pack and reviewer replies live in your project Overview.</p><button className="button" aria-haspopup={project ? undefined : 'dialog'} onClick={project ? () => go('roadmap') : openNewProject}>{project ? 'Open project plan' : 'Start a project'}</button></section>}
         />}
-        {view === 'publish-hub' && <><div className="page-heading"><div><span className="eyebrow">SHARE YOUR RESEARCH</span><h1>Publish your research</h1><p>Keep venue checks, conference dates, submission preparations, and reviewer replies together.</p></div></div><nav className="publish-tools" aria-label="Publishing tools">{([['match', 'Journal Match'], ['venues', 'Venue finder'], ['conferences', 'Conference finder'], ['submission', 'Submission & reviewer replies']] as const).map(([id,title]) => <button className="button secondary" key={id} aria-pressed={publishSection === id} onClick={() => setPublishSection(id)}>{title}</button>)}</nav>{publishSection === 'match' ? <JournalMatch key={project?.id ?? 'standalone'} project={project} update={update} onProjects={() => go('projects')} /> : publishSection === 'conferences' ? <ConferencePlanner /> : project ? publishSection === 'venues' ? <ExecutionWorkspace project={project} mode="publication" update={update} /> : <PlannerWorkbench project={project} update={update} onStart={openNewProject} onProjects={() => go('projects')} ready={ready} /> : <section className="panel"><h2>Start with a project</h2><p>Venue checks and submission notes belong to a particular study. You can browse conferences without creating a project.</p><button className="button" onClick={openNewProject}>Start a project</button></section>}</>}
+        {view === 'publish-hub' && <><div className="page-heading"><div><span className="eyebrow">SHARE YOUR RESEARCH</span><h1>Publish your research</h1><p>Keep venue checks, conference dates, submission preparations, and reviewer replies together.</p></div></div><nav className="publish-tools" aria-label="Publishing tools">{([['match', 'Journal Match'], ['venues', 'Venue finder'], ['conferences', 'Conference finder'], ['submission', 'Submission & reviewer replies']] as const).map(([id,title]) => <button className="button secondary" key={id} aria-pressed={publishSection === id} onClick={() => setPublishSection(id)}>{title}</button>)}</nav>{publishSection === 'match' ? <JournalMatch key={project?.id ?? 'standalone'} project={project} update={update} onProjects={() => go('projects')} /> : publishSection === 'conferences' ? <ConferencePlanner /> : project ? publishSection === 'venues' ? <ExecutionWorkspace project={project} mode="publication" update={update} /> : <PlannerWorkbench project={project} update={update} onStart={openNewProject} onProjects={() => go('projects')} ready={ready} /> : <section className="panel"><h2>Start with a project</h2><p>Venue checks and submission notes belong to a particular study. You can browse conferences without creating a project.</p><button className="button" aria-haspopup="dialog" onClick={openNewProject}>Start a project</button></section>}</>}
         {view === 'conferences' && <ConferencePlanner />}
         {view === 'preferences' && <><WorkspacePreferences value={preferences} onChange={changePreferences} /><InstallApp /></>}
         {view === 'privacy' && <PrivacyData backupDate={backupDate} onBackup={backup} />}
@@ -485,14 +489,14 @@ export default function Atlas() {
             <p>{item.example}</p>
             <div className="chips">{item.domains.map(domain => <button type="button" key={domain} className="discipline-topic" disabled={!ready} onClick={() => searchDiscipline(domain)}>{domain}</button>)}</div>
           </article>)}</div>
-          <button className="button" onClick={openNewProject} disabled={!ready}><Plus size={16} />Start a project</button>
+          <button className="button" aria-haspopup="dialog" onClick={openNewProject} disabled={!ready}><Plus size={16} />Start a project</button>
         </>}
 
         {(view === 'roadmap' || view === 'notebook' || current) && !project && <section className="panel empty-state">
           <FolderOpen size={28} /><h1>Create your research project</h1><p>Set a direction and keep your questions, evidence, and plans together.</p>
           {view === 'discover' && searchTopic
             ? <button className="button" onClick={() => searchDiscipline(searchTopic)} disabled={!ready}><Search size={17} />Search {searchTopic}</button>
-            : <button className="button" onClick={openNewProject} disabled={!ready}><Plus size={17} />Start a project</button>}
+            : <button className="button" aria-haspopup="dialog" onClick={openNewProject} disabled={!ready}><Plus size={17} />Start a project</button>}
         </section>}
 
         {(view === 'roadmap' || view === 'history' || view === 'notebook' || current) && view !== 'discover' && project && <ProjectShell project={project} view={view} onNavigate={go} />}
@@ -563,7 +567,7 @@ export default function Atlas() {
           </section>
           {project && <ReferenceExchange key={project.id} project={project} onImport={papers => update({ papers })} />}
           <div className="project-grid">{projects.map(item => <article key={item.id} className="panel journey-project"><h2>{item.title}</h2><p>{item.discipline} · {item.papers.length} saved references</p>
-            <div className="button-row"><button className="button" onClick={() => { selectProject(item.id); go('roadmap'); }}>Open roadmap</button><button className="button secondary" onClick={()=>setProjectAction({kind:'export',project:item})}>Export project</button><button className="text-button danger" onClick={()=>setProjectAction({kind:'remove',project:item})}>Delete project</button></div>
+            <div className="button-row"><button className="button" onClick={() => { selectProject(item.id); go('roadmap'); }}>Open roadmap</button><button className="button secondary" aria-haspopup="dialog" onClick={()=>setProjectAction({kind:'export',project:item})}>Export project</button><button className="text-button danger" aria-haspopup="dialog" onClick={()=>setProjectAction({kind:'remove',project:item})}>Delete project</button></div>
           </article>)}</div>
         </>}
         </div>

@@ -43,7 +43,7 @@ export function ConferenceCard({ event, today, isSaved, inTracker, onSave, onEdi
       {inTracker ? <button type="button" className="button secondary" onClick={onEdit}>Edit tracker entry</button>
         : <button type="button" className="button secondary" disabled={isSaved} onClick={onSave}>{isSaved ? <Check size={16} aria-hidden="true" /> : <Bookmark size={16} aria-hidden="true" />}{isSaved ? 'Saved' : 'Save to tracker'}</button>}
     </div>
-    <button type="button" className="text-button" onClick={()=>setDetails(true)}>Conference details</button>
+    <button type="button" className="text-button" aria-haspopup="dialog" onClick={()=>setDetails(true)}>Conference details</button>
     {details && <AtlasDialog title="Conference details" sheet onClose={()=>setDetails(false)}><h3>{event.title}</h3><dl className="venue-facts">
       <dt>Organizer</dt><dd>{event.organizer || 'Check the official announcement'}</dd><dt>When</dt><dd>{dates}</dd><dt>Where</dt><dd>{event.location || 'Location unconfirmed'}</dd>
       <dt>Source check</dt><dd>{event.checked ? showDate(event.checked) : 'No independent check recorded'}</dd></dl>{event.url && <External href={event.url}>Open event source</External>}<p>Confirm the submission deadline, review process and fees with the organizer.</p></AtlasDialog>}

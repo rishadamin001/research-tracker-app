@@ -73,7 +73,7 @@ export function JournalMatch({ project, update, onProjects }: { project?: Projec
       <details><summary>Inspect supporting articles</summary><ol>{item.papers.map(({ paper, position }) => <li key={paper.id}><External href={paper.url}>{paper.title}</External> · {paper.year ?? 'Year unknown'} · Search position {position}</li>)}</ol></details>
       {item.issns.length > 0 && <button className="button secondary" onClick={() => void identify(item)}>Check journal identity & listed fees</button>}
       {identity && <p>OpenAlex identity checked {new Date(identity.checkedAt).toLocaleDateString()}. {identity.homepage && <External href={identity.homepage}>Journal website</External>} Provider-reported DOAJ listing: {identity.inDoaj == null ? 'unknown' : identity.inDoaj ? 'yes' : 'no'}. Verify current indexing independently.</p>}
-      <button type="button" className="text-button" onClick={()=>setDetail(item)}>Journal details</button><p>Check scope, review policy, fees and waivers before submitting.</p>
+      <button type="button" className="text-button" aria-haspopup="dialog" onClick={()=>setDetail(item)}>Journal details</button><p>Check scope, review policy, fees and waivers before submitting.</p>
       <button className="button" onClick={() => save(item)}>{project ? 'Save to journal shortlist' : 'Choose a project to save'}</button>
     </article>; })}
   </section>;

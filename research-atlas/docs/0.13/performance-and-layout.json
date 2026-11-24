@@ -4,24 +4,24 @@
     "before": {
       "measurements": [
         {
-          "readyMs": 608,
-          "domMs": 391
+          "readyMs": 512,
+          "domMs": 273
         },
         {
-          "readyMs": 452,
-          "domMs": 241
+          "readyMs": 439,
+          "domMs": 238
         },
         {
           "readyMs": 474,
-          "domMs": 259
+          "domMs": 241
         },
         {
-          "readyMs": 531,
-          "domMs": 287
+          "readyMs": 539,
+          "domMs": 293
         },
         {
-          "readyMs": 408,
-          "domMs": 223
+          "readyMs": 473,
+          "domMs": 258
         }
       ],
       "gzipBytes": {
@@ -33,30 +33,30 @@
     "after": {
       "measurements": [
         {
-          "readyMs": 419,
-          "domMs": 220
+          "readyMs": 509,
+          "domMs": 273
         },
         {
-          "readyMs": 420,
-          "domMs": 233
+          "readyMs": 409,
+          "domMs": 232
         },
         {
-          "readyMs": 433,
-          "domMs": 252
+          "readyMs": 473,
+          "domMs": 258
         },
         {
-          "readyMs": 547,
-          "domMs": 292
+          "readyMs": 499,
+          "domMs": 272
         },
         {
-          "readyMs": 446,
+          "readyMs": 483,
           "domMs": 261
         }
       ],
       "gzipBytes": {
         "assets/bibliography-DmT0GqrW.js": 121664,
-        "assets/index-DUC2RfVs.js": 274392,
-        "assets/index-PA_jr-F6.css": 17215
+        "assets/index-9Nqt85a_.css": 17269,
+        "assets/index-C61QSnUx.js": 274672
       }
     }
   },

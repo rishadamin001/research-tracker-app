@@ -326,8 +326,8 @@ export function DiscoverPapers({ project, update, notify, initialQuery, initialR
             <h3 ref={index === 0 ? firstResult : undefined} tabIndex={index === 0 ? -1 : undefined}>{paper.title}</h3>
             <p>{paper.authors || 'Authors not supplied'}</p>
             {paper.abstract && <p className="abstract-preview">{paper.abstract}</p>}
-            <button type="button" className="text-button" onClick={()=>setPreview(paper)}>Preview paper</button>
-            {!project && onCreateForPaper && <button type="button" className="button secondary small" onClick={()=>onCreateForPaper(paper)}><Plus size={15}/>Save paper to a new project</button>}
+            <button type="button" className="text-button" aria-haspopup="dialog" onClick={()=>setPreview(paper)}>Preview paper</button>
+            {!project && onCreateForPaper && <button type="button" className="button secondary small" aria-haspopup="dialog" onClick={()=>onCreateForPaper(paper)}><Plus size={15}/>Save paper to a new project</button>}
             {project && <div className="search-save-actions">
               {update && <button
                 type="button"
