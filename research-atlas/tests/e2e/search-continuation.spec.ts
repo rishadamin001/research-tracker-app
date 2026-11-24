@@ -37,16 +37,17 @@ test('load more, stop/resume, page errors, audit export and refresh preserve bou
   await expect(page.locator('article.paper')).toHaveCount(40);
   await page.getByRole('button', { name: 'View 20 newly loaded papers', exact: true }).click();
   await expect(page.locator('article.paper')).toHaveCount(20);
-  await page.getByText('Search audit trail (1)', { exact: true }).click();
+  await page.getByText('Search activity (1)', { exact: true }).click();
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export search JSON', exact: true }).click();
   expect((await download).suggestedFilename()).toBe('search-history.json');
+  await page.getByRole('button',{name:'Close Search activity'}).click();
   refresh = true;
   await page.getByRole('button', { name: 'Refresh this search', exact: true }).click();
   await expect(results).toContainText('20 newly discovered records');
   expect(pages).toEqual([1, 2, 2, 2, 1]);
   await page.reload();
-  await expect(page.getByText('Search audit trail (2)', { exact: true })).toBeVisible();
+  await expect(page.getByText('Search activity (2)', { exact: true })).toBeVisible();
 });
 
 test('cancels a search and a page load without losing results or advancing the page', async ({ page }) => {

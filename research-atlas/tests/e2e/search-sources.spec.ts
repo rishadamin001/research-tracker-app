@@ -47,11 +47,12 @@ test('medical search retains its notebook filters while native topic navigation 
   await page.goto('/#paper-search');
   await page.getByLabel('Search source', { exact: true }).selectOption('Europe PMC');
   await page.getByRole('textbox', { name: 'Search literature' }).fill('Hypothyroidism');
+  await page.getByRole('button',{name:/^Filters/}).click();
   await page.getByLabel('Published from', { exact: true }).fill('2020');
   await page.getByRole('checkbox', { name: 'Open access only', exact: true }).check();
-  await page.getByText('Refine document and source types', { exact: true }).click();
   await page.getByLabel('Document type', { exact: true }).selectOption('review');
   await page.getByLabel('Source collection', { exact: true }).selectOption('medline');
+  await page.getByRole('button',{name:'Done',exact:true}).click();
   await page.getByRole('button', { name: 'Search papers', exact: true }).click();
   const controls = page.getByRole('region', { name: 'Search result controls' });
   await expect(controls).toContainText('Europe PMC reported 60 matches');
@@ -67,23 +68,27 @@ test('medical search retains its notebook filters while native topic navigation 
   expect(requests[0].searchParams.get('query')).toContain('FIRST_PDATE:[2020-01-01');
   expect(requests[0].searchParams.get('query')).toContain('PUB_TYPE:"Review" AND SRC:MED');
   await page.getByRole('button', { name: 'Search history', exact: true }).click();
-  await page.getByText('Search audit trail (1)', { exact: true }).click();
+  await page.getByText('Search activity (1)', { exact: true }).click();
   await page.getByRole('button', { name: 'Reuse search terms and filters', exact: true }).click();
   await expect(page.getByLabel('Search source', { exact: true })).toHaveValue('Europe PMC');
+  await page.getByRole('button',{name:/^Filters/}).click();
   await expect(page.getByLabel('Published from', { exact: true })).toHaveValue('2020');
   await expect(page.getByRole('checkbox', { name: 'Open access only', exact: true })).toBeChecked();
   await expect(page.getByLabel('Document type', { exact: true })).toHaveValue('review');
   await expect(page.getByLabel('Source collection', { exact: true })).toHaveValue('medline');
+  await page.getByRole('button',{name:'Done',exact:true}).click();
   await expect(page.locator('article.paper')).toHaveCount(20);
   expect(requests).toHaveLength(3);
   expect(requests[2].searchParams.get('query')).toContain('FIRST_PDATE:[2020-01-01');
   await page.evaluate(() => { window.location.hash = '#paper-search?topic=Climate+adaptation'; });
   await expect(page.getByRole('textbox', { name: 'Search literature' })).toHaveValue('Climate adaptation');
   await expect(page.getByLabel('Search source', { exact: true })).toHaveValue('OpenAlex');
+  await page.getByRole('button',{name:/^Filters/}).click();
   await expect(page.getByLabel('Published from', { exact: true })).toHaveValue('');
   await expect(page.getByRole('checkbox', { name: 'Open access only', exact: true })).not.toBeChecked();
   await expect(page.getByLabel('Document type', { exact: true })).toHaveValue('');
   await expect(page.getByLabel('Source collection', { exact: true })).toHaveValue('');
+  await page.getByRole('button',{name:'Done',exact:true}).click();
   await expect(controls).toContainText('OpenAlex reported 0 matches');
   expect(topicRequests).toHaveLength(1);
   expect(topicRequests[0].searchParams.get('search')).toBe('Climate adaptation');
@@ -103,7 +108,10 @@ test('cross-provider DOI duplicates keep one saved source and preserve publisher
   await page.getByRole('button', { name: 'Search papers', exact: true }).click();
   await page.getByRole('button', { name: 'Save paper', exact: true }).click();
   await page.getByLabel('Search source', { exact: true }).selectOption('Crossref');
+  await page.getByRole('button',{name:/^Filters/}).click();
   await expect(page.getByRole('checkbox', { name: 'Open access only', exact: true })).toBeDisabled();
+  await page.getByRole('button',{name:'Done',exact:true}).click();
+
   await page.getByRole('button', { name: 'Search papers', exact: true }).click();
   const paper = page.locator('article.paper').first();
   await expect(paper.getByText('POSI Q1 · 2026', { exact: true })).toBeVisible();
@@ -118,7 +126,7 @@ test('cross-provider DOI duplicates keep one saved source and preserve publisher
 test('external scholarly search links carry the entered query without importing or scraping results', async ({ page }) => {
   await page.goto('/#paper-search');
   await page.getByRole('textbox', { name: 'Search literature' }).fill('Hypothyroidism & pregnancy');
-  await page.getByText('Search Google Scholar, PubMed, ResearchGate or Semantic Scholar', { exact: true }).click();
+  await page.getByText('Search other databases', { exact: true }).click();
   for (const [name, host, key] of [['Google Scholar', 'scholar.google.com', 'q'], ['ResearchGate', 'www.researchgate.net', 'q'], ['PubMed', 'pubmed.ncbi.nlm.nih.gov', 'term'], ['Semantic Scholar', 'www.semanticscholar.org', 'q']]) {
     const href = await page.getByRole('link', { name: `Search ${name}`, exact: true }).getAttribute('href');
     const url = new URL(href!); expect(url.hostname).toBe(host); expect(url.searchParams.get(key)).toBe('Hypothyroidism & pregnancy');

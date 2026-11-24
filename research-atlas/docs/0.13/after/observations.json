@@ -1,0 +1,100 @@
+[
+  {
+    "name": "welcome",
+    "width": 1440,
+    "url": "http://127.0.0.1:5187/#overview",
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "name": "spotlight",
+    "width": 1440,
+    "url": "http://127.0.0.1:5187/#overview",
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "name": "home",
+    "width": 1440,
+    "url": "http://127.0.0.1:5187/#overview",
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "name": "new-project",
+    "width": 1440,
+    "url": "http://127.0.0.1:5187/#overview",
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "name": "discover",
+    "width": 1440,
+    "url": "http://127.0.0.1:5187/#paper-search",
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "name": "filters",
+    "width": 1440,
+    "url": "http://127.0.0.1:5187/#paper-search",
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "name": "learn",
+    "width": 1440,
+    "url": "http://127.0.0.1:5187/#guide",
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "name": "welcome",
+    "width": 390,
+    "url": "http://127.0.0.1:5187/#overview",
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "name": "spotlight",
+    "width": 390,
+    "url": "http://127.0.0.1:5187/#overview",
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "name": "home",
+    "width": 390,
+    "url": "http://127.0.0.1:5187/#overview",
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "name": "new-project",
+    "width": 390,
+    "url": "http://127.0.0.1:5187/#overview",
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "name": "discover",
+    "width": 390,
+    "url": "http://127.0.0.1:5187/#paper-search",
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "name": "filters",
+    "width": 390,
+    "url": "http://127.0.0.1:5187/#paper-search",
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "name": "learn",
+    "width": 390,
+    "url": "http://127.0.0.1:5187/#guide",
+    "overflow": false,
+    "errors": []
+  }
+]

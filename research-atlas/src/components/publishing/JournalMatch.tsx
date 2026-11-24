@@ -4,6 +4,7 @@ import { fetchJournalIdentity, journalSuggestions, prepareJournalQuery, suggesti
 import { runPublicationSearch } from '@/lib/search-publications';
 import type { SearchRun } from '@/lib/search-provenance';
 import { External } from '@/components/shared/External';
+import { AtlasDialog } from '@/components/shared/AtlasDialog';
 import { JournalFee, PublicationIdentity, QuartileBadge } from '@/components/shared/publication/RankingControls';
 import './journal-match.css';
 
@@ -11,6 +12,7 @@ type MatchResult = { run: SearchRun; suggestions: JournalSuggestion[] };
 
 export function JournalMatch({ project, update, onProjects }: { project?: Project; update: (patch: Partial<Project>) => void; onProjects: () => void }) {
   const [draft, setDraft] = useState(project?.journalMatchDraft ?? { title: '', abstract: '', keywords: '', query: '' });
+  const [detail,setDetail]=useState<JournalSuggestion>();
   const [result, setResult] = useState<MatchResult>();
   const [identities, setIdentities] = useState<Record<string, JournalIdentity>>({});
   const [busy, setBusy] = useState(false), [notice, setNotice] = useState('');
@@ -63,6 +65,7 @@ export function JournalMatch({ project, update, onProjects }: { project?: Projec
       <p>Retrieved <time dateTime={retrievedAt}>{new Date(retrievedAt).toLocaleString()}</time></p>
     </section>}
     {suggestions.length > 0 && <p>Ordered by the number and relevance positions of related articles in this search. Quartiles are a separate journal measure, not proof of fit. Showing up to six candidates.</p>}
+    {detail && <AtlasDialog title="Journal details" sheet onClose={()=>setDetail(undefined)}><h3>{detail.title}</h3><p>{identities[detail.key]?.publisher ?? detail.publisher ?? 'Publisher unconfirmed'}</p><p>ISSN {detail.issns.join(', ') || 'unavailable'}</p><JournalFee fee={identities[detail.key]?.fee}/><p>{identities[detail.key] ? 'Identity checked '+new Date(identities[detail.key].checkedAt).toLocaleDateString() : 'Journal identity has not been checked in this session.'}</p>{identities[detail.key]?.homepage && <External href={identities[detail.key].homepage!}>Official journal website</External>}<h4>Related articles</h4><ul>{detail.papers.map(({paper})=><li key={paper.id}><External href={paper.url}>{paper.title}</External></li>)}</ul></AtlasDialog>}
     {suggestions.slice(0, 6).map(item => { const identity = identities[item.key]; return <article className="panel" key={item.key}>
       <PublicationIdentity title={item.title} publisher={identity?.publisher ?? item.publisher} type="journal" />
       <QuartileBadge value={item.papers[0].paper.journalQuartile} /><JournalFee fee={identity?.fee} />
@@ -70,7 +73,7 @@ export function JournalMatch({ project, update, onProjects }: { project?: Projec
       <details><summary>Inspect supporting articles</summary><ol>{item.papers.map(({ paper, position }) => <li key={paper.id}><External href={paper.url}>{paper.title}</External> · {paper.year ?? 'Year unknown'} · Search position {position}</li>)}</ol></details>
       {item.issns.length > 0 && <button className="button secondary" onClick={() => void identify(item)}>Check journal identity & listed fees</button>}
       {identity && <p>OpenAlex identity checked {new Date(identity.checkedAt).toLocaleDateString()}. {identity.homepage && <External href={identity.homepage}>Journal website</External>} Provider-reported DOAJ listing: {identity.inDoaj == null ? 'unknown' : identity.inDoaj ? 'yes' : 'no'}. Verify current indexing independently.</p>}
-      <p>Before submitting: check aims and scope, accepted article types, editorial board, review policy, current fees and waivers. A missing fee is unknown, not free.</p>
+      <button type="button" className="text-button" onClick={()=>setDetail(item)}>Journal details</button><p>Check scope, review policy, fees and waivers before submitting.</p>
       <button className="button" onClick={() => save(item)}>{project ? 'Save to journal shortlist' : 'Choose a project to save'}</button>
     </article>; })}
   </section>;

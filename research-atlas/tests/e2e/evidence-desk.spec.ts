@@ -124,8 +124,8 @@ test('deleting a project removes its saved source filters', async ({ page }) => 
   await loadProject(page);
   await page.getByLabel('Find in saved literature', { exact: true }).fill('Commuter evidence 2');
   await page.goto('/#projects');
-  page.once('dialog', dialog => dialog.accept());
   await page.getByRole('button', { name: 'Delete project', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button',{name:'Delete project',exact:true}).click();
   await expect(page.getByRole('heading', { name: 'Traceable source journey (imported)', exact: true })).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem('research-atlas-evidence-filters-v1'))).toBeNull();
 });

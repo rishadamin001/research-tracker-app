@@ -3,6 +3,7 @@ import { backupLimitBytes, parseBackupFile, type BackupManifest, type ImportedBa
 import { createEncryptedBackup, encryptedBackupExtension, encryptedBackupLimitBytes, encryptedBackupMimeType, hasEncryptedBackupMarker, openEncryptedBackup, readEncryptedBackupFile } from '@/lib/encrypted-backup';
 import type { Project } from '@/lib/model';
 import type { Preferences } from '@/lib/preferences';
+import { showResearchHint } from '@/components/onboarding/researchHints';
 import { recordBackupFileCheck } from '@/lib/backup-status-storage';
 
 type Props = {
@@ -161,6 +162,7 @@ export function EncryptedBackupTools({ projects, preferences, ready, onReadyToIm
         signal.throwIfAborted();
         downloadEncryptedBackup(bytes);
         onBackupStarted(createdAt);
+        showResearchHint('backup');
         setFeedback({ kind: 'status', text: 'Encrypted backup download started.' });
       } else {
         const backup = await openEncryptedBackup(prompt.bytes, value, signal);

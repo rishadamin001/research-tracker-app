@@ -14,43 +14,52 @@ test('a beginner chooses an example, revisits it, or skips directly to Discover'
   await expect(page).toHaveURL(/#paper-search\?topic=Student\+housing$/);
 });
 
-test('the optional workspace tour resumes, supports keyboard controls, and stays dismissed', async ({ page }) => {
-  await page.goto('/#overview');
-  const tour = page.getByRole('region', { name: 'Workspace tour' });
-  await tour.getByRole('button', { name: 'Take the tour' }).press('Enter');
-  await expect(tour.getByRole('heading', { name: 'Home dashboard' })).toBeFocused();
-  await tour.getByRole('button', { name: 'Next stop' }).press('Enter');
-  await expect(tour.getByRole('heading', { name: 'Create a project' })).toBeFocused();
-  await tour.getByRole('button', { name: 'Continue later' }).click();
-  await expect(tour.getByRole('button', { name: 'Resume tour' })).toBeFocused();
-  await page.reload();
-  await tour.getByRole('button', { name: 'Resume tour' }).click();
-  await expect(tour.getByRole('heading', { name: 'Create a project' })).toBeVisible();
-  await tour.getByRole('button', { name: 'Skip tour' }).press('Enter');
-  await expect(tour).toHaveCount(0);
-  await expect(page.getByRole('main')).toBeFocused();
-  await page.reload();
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-  await expect(tour).toHaveCount(0);
-  await page.goto('/#preferences');
-  await tour.getByRole('button', { name: 'Take the tour' }).click();
-  for (const title of ['Home dashboard', 'Create a project', 'Find papers', 'Save to Library', 'Screen a paper', 'Researcher’s Notebook', 'Evidence Desk', 'Writing Studio', 'Export and back up']) {
-    await tour.getByRole('button', { name: title, exact: true }).press('Enter');
-    await expect(tour.getByRole('heading', { name: title, exact: true })).toBeVisible();
-  }
-  await tour.getByRole('button', { name: 'Finish tour' }).click();
-  await expect(tour.getByRole('button', { name: 'Replay tour' })).toBeFocused();
-  await page.goto('/#overview');
-  await expect(tour).toHaveCount(0);
-});
-
-test('focus workspace suppresses the Home tour while preferences still offers it', async ({ page }) => {
-  await page.goto('/#overview');
-  await expect(page.getByRole('region', { name: 'Workspace tour' })).toBeVisible();
-  await page.getByLabel('Guidance mode').selectOption('expert');
-  await expect(page.getByRole('region', { name: 'Workspace tour' })).toHaveCount(0);
-  await page.goto('/#preferences');
-  await expect(page.getByRole('button', { name: 'Take the tour' })).toBeVisible();
+test.describe('first visit and workspace orientation', () => {
+  test.use({ storageState: {cookies:[],origins:[]} });
+  test('the spotlight resumes, supports keyboard controls and remembers completion', async ({page})=>{
+    await page.goto('/#overview');
+    await page.getByRole('button',{name:'Take a quick tour'}).press('Enter');
+    const coach=page.locator('.tour-coach');
+    await expect(coach.getByRole('heading',{name:'Your starting point'})).toBeFocused();
+    await coach.getByRole('button',{name:'Next',exact:true}).press('Enter');
+    await expect(coach.getByRole('heading',{name:'Start a project'})).toBeFocused();
+    await coach.getByRole('button',{name:'Back',exact:true}).press('Enter');
+    await expect(coach.getByRole('heading',{name:'Your starting point'})).toBeFocused();
+    await coach.getByRole('button',{name:'Next',exact:true}).press('Enter');
+    await coach.getByRole('button',{name:'Close tour'}).press('Enter');
+    await expect(page.getByRole('button',{name:'Resume tour'})).toBeFocused();
+    await page.reload();
+    await page.getByRole('button',{name:'Resume tour'}).click();
+    await expect(coach.getByRole('heading',{name:'Start a project'})).toBeVisible();
+    await coach.getByRole('button',{name:'Skip tour'}).press('Enter');
+    await expect(page.getByRole('main')).toBeFocused();
+    await page.reload();
+    await expect(page.getByRole('heading',{level:1})).toBeVisible();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page.goto('/#preferences');
+    await page.getByRole('button',{name:'Replay workspace tour'}).click();
+    for(const title of ['Your starting point','Start a project','Discover papers','Keep your sources','Do the research','Learn by doing','Explore where to publish']){
+      await expect(coach.getByRole('heading',{name:title,exact:true})).toBeFocused();
+      await expect(page.locator('.tour-target-ring')).toBeVisible();
+      await coach.getByRole('button',{name:'Next',exact:true}).press('Enter');
+    }
+    await coach.getByRole('button',{name:'Finish tour'}).click();
+    await expect(page.getByRole('button',{name:'Replay workspace tour'})).toBeFocused();
+    await page.goto('/#overview');
+    await expect(page.getByRole('heading',{level:1})).toBeVisible();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+  });
+  test('focus workspace dismisses optional guidance and retains the preference on reload', async ({page})=>{
+    await page.goto('/#overview');
+    await page.getByRole('button',{name:'Take a quick tour'}).click();
+    await page.getByLabel('Guidance mode').selectOption('expert');
+    await expect(page.locator('.tour-coach')).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByLabel('Guidance mode')).toHaveValue('expert');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page.goto('/#preferences');
+    await expect(page.getByRole('button',{name:'Replay workspace tour'})).toBeVisible();
+  });
 });
 
 test('a learner sees the source example before interpreting it and can reveal a self-check', async ({ page }) => {

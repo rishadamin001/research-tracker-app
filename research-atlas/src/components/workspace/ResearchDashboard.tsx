@@ -5,6 +5,7 @@ import { taskStatus } from '@/lib/workflow';
 import { BackupFileCheckStatus } from '@/components/settings/BackupFileCheckStatus';
 import { BackupStatus } from '@/components/settings/BackupStatus';
 import type { Navigate } from './project-navigation-types';
+import { ResearchJourney } from './ResearchJourney';
 import { NextAction } from './NextAction';
 
 export function ResearchDashboard({ project, onNavigate, onOpenSource, backupDate, saveState }: { project: Project; onNavigate: Navigate; onOpenSource?: (paperId: string) => void; backupDate: string; saveState: string }) {
@@ -18,6 +19,7 @@ export function ResearchDashboard({ project, onNavigate, onOpenSource, backupDat
     <header className="dashboard-header"><span className="eyebrow">WELCOME BACK</span><h1>Your research today</h1><p>{project.title}</p></header>
     <section className="panel research-question"><span className="eyebrow">CURRENT QUESTION</span><h2>{project.question || 'Your question is taking shape'}</h2><button className="text-button" onClick={() => onNavigate('question')}>{project.question ? 'Review question and scope' : 'Draft your question'} <ArrowRight size={15} /></button></section>
     <NextAction project={project} onNavigate={onNavigate} />
+    <ResearchJourney project={project} go={onNavigate}/>
     <div className="dashboard-metrics"><article className="panel"><strong>{project.papers.length}</strong><span>saved references</span></article><article className="panel"><strong>{unreviewed}</strong><span>screening decisions to resolve</span></article><article className="panel"><strong>{claims.filter(c => c.reviewStatus !== 'reviewed').length}</strong><span>evidence claims awaiting review</span></article></div>
     <div className="two-col"><section className="panel"><h2>Recent sources</h2>{recentSources.length ? <ul>{recentSources.map((paper, index) => <li key={`${paper.id}-${index}`}><button type="button" className="text-button" onClick={() => onOpenSource ? onOpenSource(paper.id) : onNavigate('screen')}>{paper.title || 'Untitled reference'}</button><small> · {paper.decision}</small></li>)}</ul> : <p>Save a promising paper to start your evidence trail.</p>}<button type="button" className="text-button" onClick={() => onNavigate(recentSources.length ? 'screen' : 'paper-search')}>{recentSources.length ? 'Open the Evidence Desk' : 'Find a source'} <ArrowRight size={15} /></button></section><section className="panel"><h2>Recent edits</h2>{recentEdits.length ? <ol className="decision-log">{recentEdits.map(event => <li key={event.id}><time dateTime={event.updatedAt}>{new Date(event.updatedAt).toLocaleString()}</time><p>{event.detail}</p></li>)}</ol> : <p>Your recorded searches, question versions and evidence edits appear here as you work.</p>}<p className="muted">Question milestone: {project.question.trim() ? 'committed wording recorded' : 'provisional — explore sources while framing it'}.</p></section></div>
     <section className="panel" aria-labelledby="recent-notebook-notes">

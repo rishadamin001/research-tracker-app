@@ -1,0 +1,72 @@
+[
+  {
+    "name": "home",
+    "width": 1440,
+    "url": "https://rishadamin001.github.io/research-tracker-app/#overview",
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "name": "new-project",
+    "width": 1440,
+    "url": "https://rishadamin001.github.io/research-tracker-app/#overview",
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "name": "discover",
+    "width": 1440,
+    "url": "https://rishadamin001.github.io/research-tracker-app/#paper-search",
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "name": "filters",
+    "width": 1440,
+    "url": "https://rishadamin001.github.io/research-tracker-app/#paper-search",
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "name": "learn",
+    "width": 1440,
+    "url": "https://rishadamin001.github.io/research-tracker-app/#guide",
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "name": "home",
+    "width": 390,
+    "url": "https://rishadamin001.github.io/research-tracker-app/#overview",
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "name": "new-project",
+    "width": 390,
+    "url": "https://rishadamin001.github.io/research-tracker-app/#overview",
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "name": "discover",
+    "width": 390,
+    "url": "https://rishadamin001.github.io/research-tracker-app/#paper-search",
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "name": "filters",
+    "width": 390,
+    "url": "https://rishadamin001.github.io/research-tracker-app/#paper-search",
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "name": "learn",
+    "width": 390,
+    "url": "https://rishadamin001.github.io/research-tracker-app/#guide",
+    "overflow": false,
+    "errors": []
+  }
+]
